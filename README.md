@@ -56,7 +56,7 @@ Once started, you can:
 
 ### Connect the AgentOS UI to the AgentOS server
 
-- Open the [AgentOS UI](https://os.agno.com)
+- Open the [AgentOS UI](https://os.agno.com/?utm_source=github&utm_medium=example-repo&utm_campaign=ab-examples-railway&utm_content=railway-example&utm_term=railway)
 - Login and add `http://localhost:8000` as a new AgentOS. You can call it `Local AgentOS` (or any name you prefer).
 
 ### Load Knowledge Base for the Agno Knowledge Agent
@@ -134,7 +134,7 @@ Careful: This command will delete the AgentOS and PgVector database services fro
 
 To connect the AgentOS UI to the AgentOS server:
 
-- Open the [AgentOS UI](https://os.agno.com)
+- Open the [AgentOS UI](https://os.agno.com/?utm_source=github&utm_medium=example-repo&utm_campaign=ab-examples-railway&utm_content=railway-example&utm_term=railway)
 - Create a new AgentOS by clicking on the `+` button in the top left corner.
 - Enter the AgentOS URL and click on the `Connect` button.
 - You can add a local endpoint from your dev setup. To add the railway endpoint, you will be provided with a coupon code during the workshop.
@@ -203,7 +203,7 @@ docker compose up -d --build
 
 Need help, have a question, or want to connect with the community?
 
-- 📚 **[Read the Agno Docs](https://docs.agno.com)** for more in-depth information.
+- 📚 **[Read the Agno Docs](https://docs.agno.com/?utm_source=github&utm_medium=example-repo&utm_campaign=ab-examples-railway&utm_content=railway-example&utm_term=railway)** for more in-depth information.
 - 💬 **Chat with us on [Discord](https://agno.link/discord)** for live discussions.
 - ❓ **Ask a question on [Discourse](https://agno.link/community)** for community support.
 - 🐛 **[Report an Issue](https://github.com/agno-agi/agno/issues)** on GitHub if you find a bug or have a feature request.
