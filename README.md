@@ -1,6 +1,6 @@
 # AgentOS on Railway
 
-This repo contains the code for running a production-grade multi-agent system on Railway. It's powered by the AgentOS: a high-performance runtime for serving agents, multi-agent teams and agentic workflows.
+This repo contains code for running a production-grade multi-agent system on Railway. It's powered by the AgentOS: a high-performance runtime for serving agents, multi-agent teams and agentic workflows.
 
 This repo gives you:
 - **AgentOS runtime:** for serving agents, multi-agent teams and agentic workflows.
