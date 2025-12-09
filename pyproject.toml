@@ -1,0 +1,57 @@
+[project]
+name = "agent-os"
+version = "0.1.0"
+requires-python = ">=3.12"
+readme = "README.md"
+authors = [{ name = "Agno", email = "hello@agno.com" }]
+
+dependencies = [
+  "agno==2.3.8",
+  "anthropic",
+  "arxiv",
+  "ddgs",
+  "fastapi[standard]",
+  "mcp",
+  "openai",
+  "openinference-instrumentation-agno",
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "pandas",
+  "parallel-web",
+  "pgvector",
+  "psycopg[binary]",
+  "pypdf",
+  "sqlalchemy",
+  "yfinance",
+  "youtube-transcript-api",
+]
+
+[project.optional-dependencies]
+dev = ["mypy", "ruff"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+
+[tool.ruff]
+line-length = 120
+exclude = [".venv*"]
+[tool.ruff.lint.per-file-ignores]
+# Ignore `F401` (import violations) in all `__init__.py` files
+"__init__.py" = ["F401", "F403"]
+
+[tool.mypy]
+check_untyped_defs = true
+no_implicit_optional = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+exclude = [".venv*"]
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*", "setuptools.*", "nest_asyncio.*", "agno.*", "pandas", "requests"]
+ignore_missing_imports = true
+
+[tool.uv.pip]
+no-annotate = true
