@@ -11,9 +11,14 @@ chat:
       - "Summarize key financial metrics for TSLA."
 
     research-agent:
-      - "Write a report on memory for AI agents?"
-      - "Summarize the AI breakthroughs this week?"
-      - "What's happening in the global energy markets?"
+      - "Competitive landscape for vector databases."
+      - "Latest breakthroughs in small language models."
+      - "What has changed recently in the Japanese yen carry trade and why is it becoming more volatile?"
+
+    reasoning-research-agent:
+      - "Competitive landscape for vector databases."
+      - "Latest breakthroughs in small language models."
+      - "What has changed recently in the Japanese yen carry trade and why is it becoming more volatile?"
 
     memory-manager:
       - "What do you know about me?"

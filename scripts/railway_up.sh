@@ -4,6 +4,7 @@
 # Prerequisites:
 # - Railway CLI installed
 # - Railway account logged in via `railway login`
+# - railway.json present for region/replica/resource config
 
 set -e  # Exit on any error
 
@@ -31,7 +32,7 @@ railway add --service agent_os \
   --variables "DB_DRIVER=postgresql+psycopg" \
   --variables 'DB_USER=${{pgvector.PGUSER}}' \
   --variables 'DB_PASS=${{pgvector.PGPASSWORD}}' \
-  --variables 'DB_HOST=${{pgvector.PGHOST}}' \
+  --variables 'DB_HOST=${{pgvector.PGHOST_PRIVATE}}' \
   --variables 'DB_PORT=${{pgvector.PGPORT}}' \
   --variables 'DB_DATABASE=${{pgvector.PGDATABASE}}' \
   --variables "OPENAI_API_KEY=${OPENAI_API_KEY}" \

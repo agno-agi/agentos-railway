@@ -109,6 +109,22 @@ This command will:
 - Set environment variables in your AgentOS service.
 - Create a new domain for your AgentOS service.
 
+### Adding Knowledge on Railway
+
+To add knowledge to the Agno Knowledge Agent, run the following command:
+
+```sh
+railway ssh --service agent_os
+```
+
+This command will open a ssh session to the AgentOS service.
+
+Once you are in the ssh session, you can run the following command to add knowledge to the Agno Knowledge Agent:
+
+```sh
+python -m agents.agno_knowledge_agent
+```
+
 ### Updating the application
 
 To update the application, run the following command:

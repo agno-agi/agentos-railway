@@ -3,6 +3,7 @@ from textwrap import dedent
 from agno.agent import Agent
 from agno.models.anthropic import Claude
 from agno.tools.parallel import ParallelTools
+from agno.tools.reasoning import ReasoningTools
 
 from db.demo_db import demo_db
 
@@ -30,11 +31,11 @@ instructions = dedent("""\
 # ============================================================================
 # Create the Agent
 # ============================================================================
-research_agent = Agent(
-    name="Research Agent",
+reasoning_research_agent = Agent(
+    name="Reasoning Research Agent",
     role="Assist with research and information synthesis",
     model=Claude(id="claude-sonnet-4-5"),
-    tools=[ParallelTools(enable_search=True, enable_extract=True)],
+    tools=[ReasoningTools(add_instructions=True), ParallelTools(enable_search=True, enable_extract=True)],
     instructions=instructions,
     add_history_to_context=True,
     add_datetime_to_context=True,
