@@ -3,6 +3,7 @@
 This repo contains code for running a production-grade multi-agent system on Railway. It's powered by the AgentOS: a high-performance runtime for serving agents, multi-agent teams and agentic workflows.
 
 This repo gives you:
+
 - **AgentOS runtime:** for serving agents, multi-agent teams and agentic workflows.
 - **PostgreSQL database:** for storing agent sessions, knowledge, and memories.
 - A set of **pre-built agents, teams and workflows** to use as a starting point.
@@ -114,7 +115,7 @@ This command will:
 To add knowledge to the Agno Knowledge Agent, run the following command:
 
 ```sh
-railway ssh --service agent_os
+railway ssh --service agentos-railway
 ```
 
 This command will open a ssh session to the AgentOS service.
@@ -130,7 +131,7 @@ python -m agents.agno_knowledge_agent
 To update the application, run the following command:
 
 ```sh
-railway up --service agent_os -d
+railway up --service agentos-railway -d
 ```
 
 This rebuilds and redeploys the Docker image to your Railway service.
@@ -140,7 +141,7 @@ This rebuilds and redeploys the Docker image to your Railway service.
 To delete the application, run the following command:
 
 ```sh
-railway down --service agent_os
+railway down --service agentos-railway
 railway down --service pgvector
 ```
 
