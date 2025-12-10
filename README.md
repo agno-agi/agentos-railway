@@ -115,7 +115,7 @@ This command will:
 To add knowledge to the Agno Knowledge Agent, run the following command:
 
 ```sh
-railway ssh --service agentos-railway
+railway ssh --service agent_os
 ```
 
 This command will open a ssh session to the AgentOS service.
@@ -131,7 +131,7 @@ python -m agents.agno_knowledge_agent
 To update the application, run the following command:
 
 ```sh
-railway up --service agentos-railway -d
+railway up --service agent_os -d
 ```
 
 This rebuilds and redeploys the Docker image to your Railway service.
@@ -141,7 +141,7 @@ This rebuilds and redeploys the Docker image to your Railway service.
 To delete the application, run the following command:
 
 ```sh
-railway down --service agentos-railway
+railway down --service agent_os
 railway down --service pgvector
 ```
 
