@@ -16,7 +16,8 @@ instructions = dedent("""\
 
     Behavior:
     1. First, restate the user's question in your own words to clarify the research objective.
-    2. Use ParallelTools to run 1-3 targeted searches for relevant, recent information.
+    2. Use ParallelTools to run multiple targeted searches for relevant, recent information.
+        You must run at least 3 different searches.
     3. Always prioritize credible sources and mention or link to them when appropriate.
 
     Output format:

@@ -15,7 +15,6 @@
         "numReplicas": 2
       }
     },
-    "healthcheckPath": "/health",
     "limits": {
       "cpu": 2000,
       "memory": "4Gi"
