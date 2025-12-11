@@ -70,6 +70,17 @@ To populate the knowledge base, run the following command:
 docker exec -it agentos-railway-agent-os-1 python -m agents.agno_knowledge_agent
 ```
 
+### Load Knowledge Base for the Deep Knowledge Agent
+
+The Deep Knowledge Agent is a great example of building a deep knowledge agent using Agno.
+
+To populate the knowledge base, run the following command:
+
+```sh
+docker exec -it agentos-railway-agent-os-1 python -m agents.deep_knowledge_agent
+```
+
+
 ### Stop the application
 
 When you're done, stop the application using:

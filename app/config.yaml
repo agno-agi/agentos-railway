@@ -25,6 +25,11 @@ chat:
       - "I live in New York City"
       - "I like to hike and swim on the weekends"
 
+    deep-knowledge-agent:
+      - "What is Agno?"
+      - "What are Agno's key features?"
+      - "How does Agno handle knowledge base management?"
+
     youtube-agent:
       - "Summarize this video: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       - "Explain this video in simple terms: https://www.youtube.com/watch?v=nLkBNnnA8Ac&t=1s"

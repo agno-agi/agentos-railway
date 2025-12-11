@@ -4,6 +4,7 @@ from agno.os import AgentOS
 
 from agents.agno_knowledge_agent import agno_knowledge_agent
 from agents.agno_mcp_agent import agno_mcp_agent
+from agents.deep_knowledge_agent import deep_knowledge_agent
 from agents.finance_agent import finance_agent
 from agents.memory_manager import memory_manager
 from agents.reasoning_research_agent import reasoning_research_agent
@@ -29,6 +30,7 @@ agent_os = AgentOS(
         finance_agent,
         research_agent,
         reasoning_research_agent,
+        deep_knowledge_agent,
         memory_manager,
         youtube_agent,
     ],
