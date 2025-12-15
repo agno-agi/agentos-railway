@@ -80,6 +80,19 @@ To populate the knowledge base, run the following command:
 docker exec -it agentos-railway-agent-os-1 python -m agents.deep_knowledge_agent
 ```
 
+### Load data for the SQL Agent
+
+To load the data for the SQL Agent, run:
+
+```sh
+docker exec -it agentos-railway-agent-os-1 python -m agents.sql.load_f1_data
+```
+
+To populate the knowledge base, run:
+
+```sh
+docker exec -it agentos-railway-agent-os-1 python -m agents.sql.load_sql_knowledge
+```
 
 ### Stop the application
 
