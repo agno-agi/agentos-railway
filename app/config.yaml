@@ -44,3 +44,8 @@ chat:
       - "What is Agno?"
       - "What is AgentOS?"
       - "What are Agno's key features?"
+
+    self-learning-research-agent:
+      - "What is the consensus on AI agents in enterprise production systems?"
+      - "Has the consensus on AI agents in production systems changed recently?"
+      - "How are companies currently deploying Gemini models in production?"

@@ -1,9 +1,8 @@
 # AgentOS on Railway
 
-This repo contains code for running a production-grade multi-agent system on Railway. It's powered by the AgentOS: a high-performance runtime for serving agents, multi-agent teams and agentic workflows.
+This repo contains code for running a production-grade multi-agent system on Railway. It's powered by Agno's **AgentOS: a high-performance runtime for serving agents, multi-agent teams and agentic workflows.**
 
 This repo gives you:
-
 - **AgentOS runtime:** for serving agents, multi-agent teams and agentic workflows.
 - **PostgreSQL database:** for storing agent sessions, knowledge, and memories.
 - A set of **pre-built agents, teams and workflows** to use as a starting point.
@@ -70,16 +69,6 @@ To populate the knowledge base, run the following command:
 docker exec -it agentos-railway-agent-os-1 python -m agents.agno_knowledge_agent
 ```
 
-### Load Knowledge Base for the Deep Knowledge Agent
-
-The Deep Knowledge Agent is a great example of building a deep knowledge agent using Agno.
-
-To populate the knowledge base, run the following command:
-
-```sh
-docker exec -it agentos-railway-agent-os-1 python -m agents.deep_knowledge_agent
-```
-
 ### Load data for the SQL Agent
 
 To load the data for the SQL Agent, run:
@@ -92,6 +81,16 @@ To populate the knowledge base, run:
 
 ```sh
 docker exec -it agentos-railway-agent-os-1 python -m agents.sql.load_sql_knowledge
+```
+
+### Load Knowledge Base for the Deep Knowledge Agent
+
+The Deep Knowledge Agent is a great example of building a deep knowledge agent using Agno.
+
+To populate the knowledge base, run the following command:
+
+```sh
+docker exec -it agentos-railway-agent-os-1 python -m agents.deep_knowledge_agent
 ```
 
 ### Stop the application

@@ -9,6 +9,7 @@ from agents.finance_agent import finance_agent
 from agents.memory_manager import memory_manager
 from agents.reasoning_research_agent import reasoning_research_agent
 from agents.research_agent import research_agent
+from agents.self_learning_research_agent import self_learning_research_agent
 from agents.sql.sql_agent import sql_agent
 from agents.youtube_agent import youtube_agent
 from db.demo_db import demo_db
@@ -35,6 +36,7 @@ agent_os = AgentOS(
         memory_manager,
         youtube_agent,
         sql_agent,
+        self_learning_research_agent,
     ],
     teams=[finance_team],
     workflows=[research_workflow],

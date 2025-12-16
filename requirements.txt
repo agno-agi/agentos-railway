@@ -14,7 +14,7 @@ cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.1
 cryptography==46.0.3
-curl-cffi==0.13.0
+curl-cffi==0.14.0
 ddgs==9.9.3
 defusedxml==0.7.1
 distro==1.9.0
@@ -24,7 +24,7 @@ email-validator==2.3.0
 fake-useragent==2.2.0
 fastapi==0.124.4
 fastapi-cli==0.0.16
-fastapi-cloud-cli==0.6.0
+fastapi-cloud-cli==0.7.0
 fastar==0.8.0
 feedparser==6.0.12
 frozendict==2.4.7
@@ -87,7 +87,7 @@ rich==14.2.0
 rich-toolkit==0.17.0
 rignore==0.7.6
 rpds-py==0.30.0
-sentry-sdk==2.47.0
+sentry-sdk==2.48.0
 sgmllib3k==1.0.0
 shellingham==1.5.4
 six==1.17.0
