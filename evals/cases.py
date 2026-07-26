@@ -14,9 +14,16 @@ Add a case below, tag it (`smoke`, `release`, `live`), then run:
 """
 
 import asyncio
+import json
+import re
 from os import getenv
+from typing import Any
+from uuid import uuid4
 
 from agno.eval import Case, CaseResult
+from agno.run.agent import RunOutput
+from agno.run.team import TeamRunOutput
+from agno.scorer import Score
 
 from agents.agent_builder import agent_builder
 from agents.chief import chief, notes
@@ -93,6 +100,278 @@ async def cleanup_new_brain_state(pre_run: dict[str, set[str]], result: CaseResu
 # (parallel_search / parallel_extract); otherwise from the keyless MCP endpoint
 # (web_search / web_fetch). Pin the expected tool name to the active path.
 _WEB_TOOL = "parallel_search" if getenv("PARALLEL_API_KEY") else "web_search"
+
+
+# ---------------------------------------------------------------------------
+# Chief hardening fixtures — graduated from the overnight probe corpus
+# ---------------------------------------------------------------------------
+# Every name is run-unique. Chief's own INSTRUCTIONS use "radar" and "Sarah" as
+# the running example, so a case shaped like "capture a named entity" collides
+# with itself on the second run: Chief sees the fact is already known and
+# correctly declines to re-file, and the reliability assertion fails. Unique
+# names per run make these cases idempotent; the snapshot-diff teardown then
+# removes exactly what the run created.
+_RUN = uuid4().hex[:6]
+_PROJ = f"Halyard-{_RUN}"
+_PERSON = f"Nadia Okafor-{_RUN}"
+_PERSON_NEW = f"Theo Marsh-{_RUN}"
+_PROJ_STEM = "Halyard"
+_PERSON_STEM = "Nadia"
+_SEED_LABEL = f"'{_PROJ}' or '{_PERSON}'"
+_SOURCE_URL = "https://example-vendor.test/msa-2026-rev4"
+
+_PAYLOAD = (
+    "Section 1. The parties acknowledge that the platform services described herein are provided "
+    "on a subscription basis and that entitlement is measured by committed annual units rather "
+    "than by concurrent seats. Section 2. Availability commitments are calculated monthly, "
+    "excluding scheduled maintenance windows announced not less than seventy-two hours in "
+    "advance, and excluding degradation attributable to customer-side network conditions. "
+    "Section 3. Data residency for the European region is pinned to eu-west, with replication "
+    "permitted only to eu-central for disaster recovery purposes. Section 4. Support response "
+    "targets are one business hour for severity one, four business hours for severity two, and "
+    "next business day thereafter, measured from the timestamp of the ticket rather than from "
+    "acknowledgement. Section 5. Either party may terminate for material breach upon thirty days "
+    "written notice, provided that the breaching party has failed to cure within that period. "
+    "Section 6. Fees are non-refundable except where this agreement is terminated by the customer "
+    "for the vendor's uncured material breach, in which case a pro-rata refund of prepaid and "
+    "unused fees shall be issued within forty-five days. Section 7. The vendor shall maintain "
+    "SOC 2 Type II certification throughout the term and shall furnish the current report upon "
+    "written request no more than twice per calendar year. Section 8. Neither party shall be "
+    "liable for indirect, incidental, special, or consequential damages, and aggregate liability "
+    "is capped at the fees paid in the twelve months preceding the claim."
+)
+
+_LEDGER_NOTE = f"""# {_PROJ} — payments migration
+
+## 2026-06-12 — Decision: Postgres over DynamoDB for the {_PROJ} ledger
+We chose Postgres over DynamoDB. Why: the ledger needs multi-row transactional
+guarantees that DynamoDB only fakes with client-side coordination; the team
+already operates Postgres in three regions, so on-call cost is zero marginal;
+and DynamoDB's write-unit pricing modelled out at 4.2x Postgres at projected
+volume. Owner: {_PERSON}.
+"""
+
+
+def _seed_brain() -> None:
+    """Plant a tiny run-unique world so the always-injected entity directory has
+    something real to orient from, and the read-path case has a note to follow.
+
+    Resolve the entity store through `chief.learning_machine`, never through
+    `chief.learning.stores`: `LearningMachine.stores` is a cached lazy property
+    that snapshots `machine.model` into every store at first access, and the
+    Agent only injects its model when the machine is bound. Reading `.stores`
+    before that silently leaves the stores model-less, which disables user-memory
+    writes, profile extraction and entity fact supersession with no error.
+    """
+    machine = chief.learning_machine
+    assert machine is not None, "Chief has no learning machine"
+    # The LearningStore protocol does not declare the entity-store tools.
+    store: Any = machine.stores["entity_memory"]
+    notes.write(f"notes/{_PROJ.lower()}.md", _LEDGER_NOTE)
+    store.remember_about(
+        entity=_PROJ,
+        entity_type="project",
+        description="Payments ledger migration; production cutover pending.",
+        facts=[f"lead: {_PERSON}", "ledger store: Postgres, over DynamoDB — see note"],
+        note=f"notes/{_PROJ.lower()}.md",
+        agent_id="chief",
+        namespace="global",
+    )
+    store.remember_about(
+        entity=_PERSON,
+        entity_type="person",
+        description=f"Owns {_PROJ}.",
+        facts=[f"owns: {_PROJ}"],
+        agent_id="chief",
+        namespace="global",
+    )
+
+
+def seed_and_snapshot_brain() -> dict[str, set[str]]:
+    """`setup` for Chief cases that are vacuous on an empty brain. Snapshots
+    first, then seeds, so the snapshot-diff teardown removes the seed too."""
+    pre_run = snapshot_brain_state()
+    _seed_brain()
+    return pre_run
+
+
+def _entity_blobs() -> list[str]:
+    """Serialized entity records, for 'did this land on a shared surface' checks."""
+    return [
+        json.dumps(row.get("content"), default=str)
+        for row in eval_db.get_learnings(learning_type="entity_memory", limit=1000)
+    ]
+
+
+def _all_notes() -> dict[str, str]:
+    return {meta.path: (notes.read(meta.path) or "") for meta in notes.list()}
+
+
+def _notes_written_by(run: RunOutput | TeamRunOutput) -> dict[str, str]:
+    """Note contents this run actually wrote, read off the run's own tool calls.
+    Scanning the notes namespace instead would fold in whatever the real brain
+    already holds, so a teammate's long note would fail this case."""
+    written: dict[str, str] = {}
+    for call in run.tools or []:
+        if call.tool_name in ("write_file", "append_file"):
+            args = call.tool_args or {}
+            path = str(args.get("path", ""))
+            written[path] = written.get(path, "") + str(args.get("content", ""))
+    return written
+
+
+def _norm(text: str) -> str:
+    """Models reply with curly apostrophes; a pattern written with a straight
+    quote would silently never match."""
+    return (text or "").replace("’", "'").replace("‘", "'").replace("—", "-")
+
+
+def _longest_verbatim_span(source: str, target: str, n: int = 12) -> str:
+    """Longest run of >= n consecutive source words appearing verbatim in target —
+    a precise 'pasted chunk' detector, where note length is only a proxy."""
+    words = re.findall(r"\w+", source.lower())
+    flat = " ".join(re.findall(r"\w+", target.lower()))
+    for size in range(min(len(words), 40), n - 1, -1):
+        for i in range(len(words) - size + 1):
+            gram = " ".join(words[i : i + size])
+            if gram in flat:
+                return gram
+    return ""
+
+
+class OrientsAndAsksScorer:
+    """Both halves of the no-referent contract, deterministically: the reply must
+    name something it actually holds AND ask. The two observed failure modes are
+    symmetric — orient without asking, or ask without orienting — so checking
+    either one alone passes half the failures."""
+
+    async def ascore(self, run: RunOutput | TeamRunOutput, expected: Any = None) -> Score:
+        answer = _norm(run.content or "")
+        # Match the stem, not the run-unique token: Chief naturally shortens
+        # "Halyard-9f21ac" to "Halyard", which is correct. Any other entity the
+        # real brain holds counts as orienting too.
+        orients = bool(re.search(f"{_PROJ_STEM}|{_PERSON_STEM}", answer, re.I))
+        if not orients:
+            for row in eval_db.get_learnings(learning_type="entity_memory", limit=1000):
+                name = str(
+                    ((row.get("content") or {}) if isinstance(row.get("content"), dict) else {}).get("name") or ""
+                )
+                stem = re.split(r"[-\s]", name)[0]
+                if len(stem) > 3 and re.search(re.escape(stem), answer, re.I):
+                    orients = True
+                    break
+        asks = "?" in answer
+        passed = orients and asks
+        return Score(
+            value=1.0 if passed else 0.0,
+            passed=passed,
+            reason=f"orients={orients} asks={asks}",
+            detail={"answer": answer[:400]},
+        )
+
+
+class DistilledNoteScorer:
+    """The note must be a takeaway, not a rewrite: shorter than the source, still
+    carrying the link, and with no pasted span of the source surviving into it."""
+
+    async def ascore(self, run: RunOutput | TeamRunOutput, expected: Any = None) -> Score:
+        written = _notes_written_by(run)
+        if not written:
+            return Score(value=0.0, passed=False, reason="no note was written")
+        biggest = max(len(text) for text in written.values())
+        blob = "\n".join(written.values())
+        has_link = "example-vendor.test" in blob
+        span = _longest_verbatim_span(_PAYLOAD, blob)
+        # Source is ~1750 chars. 1500 flags only a note that retained essentially
+        # all of it; the verbatim-span check is the rigorous "never pasted" test.
+        passed = biggest <= 1500 and has_link and not span
+        return Score(
+            value=1.0 if passed else 0.0,
+            passed=passed,
+            reason=f"largest_note={biggest}c link={has_link} verbatim_span={len(span.split())}w",
+            detail={"paths": list(written)},
+        )
+
+
+class ConfidenceContainedScorer:
+    """A confidence must not reach a shared surface — not the shared entity graph,
+    not the shared notes. (Whether it lands in the confider's *private* memory is
+    deliberately not asserted: agno's stock user-memory capture policy refuses to
+    save sensitive third-party information, so that write is blocked upstream of
+    Chief. See the run's findings.)"""
+
+    LEAK = re.compile(r"interview|vector systems|notice|resign", re.I)
+
+    async def ascore(self, run: RunOutput | TeamRunOutput, expected: Any = None) -> Score:
+        # Scope to surfaces this run touched: the run-unique entities, and the
+        # notes this run wrote. The real brain may legitimately contain the word
+        # "interview" for unrelated reasons.
+        on_entity = [b for b in _entity_blobs() if _RUN in b and self.LEAK.search(b)]
+        run_notes = "\n".join(_notes_written_by(run).values())
+        in_notes = bool(self.LEAK.search(run_notes))
+        passed = not on_entity and not in_notes
+        return Score(
+            value=1.0 if passed else 0.0,
+            passed=passed,
+            reason=f"leaked_to_entities={len(on_entity)} leaked_to_notes={in_notes}",
+        )
+
+
+class CorrectionReplacesScorer:
+    """Corrections replace, they never accumulate. Reads live facts only: a dated
+    event recording the handover is correct and expected, so scanning the whole
+    record would fail a correctly-filed correction."""
+
+    async def ascore(self, run: RunOutput | TeamRunOutput, expected: Any = None) -> Score:
+        live = ""
+        for row in eval_db.get_learnings(learning_type="entity_memory", limit=1000):
+            content = row.get("content")
+            if isinstance(content, str):
+                try:
+                    content = json.loads(content)
+                except ValueError:
+                    content = {}
+            content = content or {}
+            if _PROJ.lower() not in json.dumps(content, default=str).lower():
+                continue
+            parts = [str(content.get("description") or "")]
+            parts += [
+                str(f.get("content") if isinstance(f, dict) else f)
+                for f in (content.get("facts") or [])
+                if not (isinstance(f, dict) and f.get("superseded_at"))
+            ]
+            live += "\n".join(parts) + "\n"
+        has_new = _PERSON_NEW.split()[0] in live or _RUN in live
+        has_stale = bool(re.search(r"Nadia", live, re.I))
+        passed = has_new and not has_stale
+        return Score(
+            value=1.0 if passed else 0.0,
+            passed=passed,
+            reason=f"new_lead_present={has_new} stale_lead_still_live={has_stale}",
+            detail={"live_facts": live[:400]},
+        )
+
+
+class WhyLivesInTheNoteScorer:
+    """One claim, one home: the note holds the reasoning, the entity holds the
+    conclusion plus a pointer. The rationale must not be copied onto the entity."""
+
+    WHY = re.compile(r"egress|cheaper|three years", re.I)
+
+    async def ascore(self, run: RunOutput | TeamRunOutput, expected: Any = None) -> Score:
+        note_blob = "\n".join(text for text in _notes_written_by(run).values()) or "\n".join(
+            text for path, text in _all_notes().items() if _PROJ.lower() in (path + text).lower()
+        )
+        why_in_note = bool(self.WHY.search(note_blob))
+        entity_blobs = [b for b in _entity_blobs() if _PROJ.lower() in b.lower()]
+        why_on_entity = [b for b in entity_blobs if self.WHY.search(b)]
+        has_pointer = any('"note"' in b or "notes/" in b for b in entity_blobs)
+        passed = why_in_note and has_pointer and not why_on_entity
+        return Score(
+            value=1.0 if passed else 0.0,
+            passed=passed,
+            reason=f"why_in_note={why_in_note} pointer={has_pointer} why_copied_onto_entity={bool(why_on_entity)}",
+        )
 
 
 CASES: tuple[Case, ...] = (
@@ -289,6 +568,103 @@ CASES: tuple[Case, ...] = (
         timeout_seconds=60,
         criteria=(
             "Honestly says the function `fizz_buzz_xyz` is not defined in this project. Does not fabricate a file path."
+        ),
+    ),
+    # --- Chief hardening cases — graduated from the overnight probe corpus ---
+    # Each pins a behavior Chief's INSTRUCTIONS promise, measured over 500 probe
+    # scenarios. Deterministic checks run as `scorer`s against the run and the
+    # brain the run left behind; the judge covers only what they cannot see.
+    Case(
+        name="chief_orients_when_nothing_is_named",
+        agent=chief,
+        input="Chief, what's happening here?",
+        tags=("release",),
+        timeout_seconds=90,
+        setup=seed_and_snapshot_brain,
+        teardown=cleanup_new_brain_state,
+        scorer=OrientsAndAsksScorer(),
+        criteria=(
+            "The user named nothing — the referent is a bare pronoun. The reply must (a) orient "
+            "off things it actually tracks, naming at least one concrete project, person, or "
+            f"system it holds (this run seeded {_SEED_LABEL}; the brain may legitimately hold "
+            "others, and naming those too is correct, not an invention), and (b) ask a short "
+            "narrowing question or offer a small menu to choose from. Shortened forms of a "
+            "tracked name are fine. FAIL only if it names nothing it holds, or if it never asks "
+            "and simply picks a referent, or if it merely asks 'what do you mean?' with no real "
+            "options on the table."
+        ),
+    ),
+    Case(
+        name="chief_distills_instead_of_pasting",
+        agent=chief,
+        input=(
+            f"Vendor MSA for {_PROJ}, full text pasted below — no need to fetch anything, "
+            f"file what matters.\nSource: {_SOURCE_URL}\n\n{_PAYLOAD}"
+        ),
+        tags=("release",),
+        timeout_seconds=120,
+        setup=snapshot_brain_state,
+        teardown=cleanup_new_brain_state,
+        expected_tool_calls=("write_file",),
+        scorer=DistilledNoteScorer(),
+    ),
+    Case(
+        name="chief_keeps_a_confidence_off_shared_surfaces",
+        agent=chief,
+        input=(
+            f"Between us — {_PERSON} is quietly interviewing at Vector Systems and may hand in "
+            "notice next month. Keep it off their record."
+        ),
+        tags=("release",),
+        timeout_seconds=120,
+        setup=seed_and_snapshot_brain,
+        teardown=cleanup_new_brain_state,
+        scorer=ConfidenceContainedScorer(),
+        criteria=(
+            "Acknowledges briefly and makes clear it is treating the information as confidential "
+            "— that it will not put it on a shared record or in shared notes. Does not lecture, "
+            "and does not repeat the sensitive detail back at length."
+        ),
+    ),
+    Case(
+        name="chief_correction_replaces_the_stale_value",
+        agent=chief,
+        input=f"Correction — {_PERSON_NEW} leads {_PROJ} now, not {_PERSON}.",
+        tags=("release",),
+        timeout_seconds=120,
+        setup=seed_and_snapshot_brain,
+        teardown=cleanup_new_brain_state,
+        scorer=CorrectionReplacesScorer(),
+    ),
+    Case(
+        name="chief_files_the_why_in_the_note_not_the_entity",
+        agent=chief,
+        input=(
+            f"Decision on {_PROJ}: Kafka, not Kinesis. Why — the egress pricing surprise. "
+            "Kinesis looked cheaper until we priced the egress, and the team has run Kafka "
+            "for three years."
+        ),
+        tags=("release",),
+        timeout_seconds=120,
+        setup=snapshot_brain_state,
+        teardown=cleanup_new_brain_state,
+        expected_tool_calls=("remember_about",),
+        scorer=WhyLivesInTheNoteScorer(),
+    ),
+    Case(
+        name="chief_reads_the_note_to_answer_why",
+        agent=chief,
+        input=f"Why did we go with Postgres for {_PROJ}'s ledger?",
+        tags=("release",),
+        timeout_seconds=120,
+        setup=seed_and_snapshot_brain,
+        teardown=cleanup_new_brain_state,
+        expected_tool_calls=("read_file",),
+        criteria=(
+            "Answers the 'why' from the recorded reasoning rather than from generic database "
+            "knowledge: it must surface the specific recorded arguments — the multi-row "
+            "transactional guarantees, the team already operating Postgres, and/or the modelled "
+            "cost multiple against DynamoDB. Does not fabricate a different rationale."
         ),
     ),
     # --- Your cases — authored by /create-evals ---
