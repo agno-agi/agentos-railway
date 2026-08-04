@@ -73,6 +73,18 @@ Click **Chat** under **Platform Manager** and ask: "How healthy is the platform?
 
 Click **Chat** under **Chief** and tell it what you're working on: "Hey Chief — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours. From then on, tag it in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Chief, what's happening?": same thread everywhere.
 
+### Step 6: Make it yours
+
+Your clone's `origin` points at this public template — a repo you can't push to. Give your platform a home of its own:
+
+```sh
+git remote rename origin upstream    # keep the template connected for updates
+git remote add origin <your-private-repo-url>
+git push -u origin main
+```
+
+Create the private repo first ([github.com/new](https://github.com/new), or `gh repo create <name> --private`). `upstream` stays connected, so `git pull upstream main` brings in template updates whenever you want them.
+
 ## Run in production
 
 You can run the platform anywhere that supports containerized images. This codebase comes with scripts to deploy the platform to [Railway](https://railway.com) — and a coding-agent skill, [`/deploy-platform`](.agents/skills/deploy-platform/SKILL.md), that drives them for you and verifies the live platform at the end.

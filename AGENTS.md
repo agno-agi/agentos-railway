@@ -176,7 +176,7 @@ Dev-time **coding-agent workflows** live in [`.agents/skills/`](.agents/skills/)
 
 These workflows cover platform setup, the agent-development lifecycle, and the production deploy in this template:
 
-- **`/setup-platform`** — take a fresh clone to a running platform with a first agent live on it: Docker check, `.env`, boot, MCP proof, the AgentOS UI connect, then a `create-agent` handoff. The README's Get Started prompt and the os.agno.com onboarding prompt both drive it.
+- **`/setup-platform`** — take a fresh clone to a running platform with a first agent live on it: Docker check, `.env`, boot, MCP proof, the AgentOS UI connect, a `create-agent` handoff, then a make-it-yours re-home into the user's own private repo (the template stays wired as `upstream` for updates). The README's Get Started prompt and the os.agno.com onboarding prompt both drive it.
 - **`/create-agent`** — scaffold a new agent: guided discovery or from a concrete idea → generate `agents/<slug>.py`, register it, smoke-test it live.
 - **`/extend-agent`** — you drive. Add a tool/source, refine `INSTRUCTIONS`, fix a known bug. Uses the `agno-docs` MCP for grounded toolkit research.
 - **`/improve-agent`** — Claude drives. Derives probes from the agent's `INSTRUCTIONS` and real usage in the database, judges, edits, re-runs. No user input needed.
