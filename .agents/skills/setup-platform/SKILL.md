@@ -22,6 +22,7 @@ Kicking off /setup-platform. Here's the map for this trip:
 4. Prove it — a real agent answer over the MCP endpoint
 5. Connect the UI — os.agno.com, one click
 6. First agent — we build it together, live
+7. Make it yours — your platform in its own private repo
 ```
 
 ## 1. Read the manual
@@ -93,11 +94,23 @@ Three things the code has to get right:
 
 Wire it the way [`agents/chief.py`](../../../agents/chief.py) does: `FileSystem(get_postgres_db(), namespace="radar")`, then `tools=[fs.tools(), WebSearchTools(), was_reported, record_reported]`. The file tools are what let it manage the preferences file and the brief notes; the instructions say the ledger is only ever touched through the two functions.
 
-Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer — and tell them that if they connected the UI, a **Refresh** puts their agent in the Agents list next to the built-in ones. Then come back here: stop before that skill's own closing and let Step 8 replace it, so the handover lands once.
+Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer — and tell them that if they connected the UI, a **Refresh** puts their agent in the Agents list next to the built-in ones. Then come back here: stop before that skill's own closing and let Steps 8 and 9 replace it, so the handover lands once.
 
 If they push back or want to stop, that's fine — carry on and adapt the remaining steps.
 
-## 8. Hand over the loop
+## 8. Make it yours
+
+Their clone's `origin` still points at the public template — a repo they can't push to — so the platform they just built has no home of its own. Offer to give it one; a quick beat, not a gate:
+
+```sh
+git remote rename origin upstream    # the template stays connected for updates
+git remote add origin <their-private-repo-url>
+git push -u origin main
+```
+
+If `gh` is installed and signed in, drive it end to end — after the rename, `gh repo create agent-platform --private --source=. --push` creates the private repo, wires it in as `origin`, and pushes. Otherwise point them at https://github.com/new (private is the right default), then run the add and push once they paste the URL. Either way `upstream` keeps template updates a `git pull upstream main` away. If they'd rather skip it, carry on — nothing later depends on it.
+
+## 9. Hand over the loop
 
 Finish with a short summary of what you built together and the loop the user now owns — leading with whichever loop the smoke test suggested:
 
