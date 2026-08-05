@@ -86,11 +86,6 @@ async def lifespan(app):  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 # Create AgentOS
 # ---------------------------------------------------------------------------
-# Chief joins the Studio registry here, post-construction: registry.py cannot
-# import it (chief's members include agent_builder, which imports the registry),
-# but Studio builds should still be able to reference the team by id.
-registry.teams = [chief]
-
 agent_os = AgentOS(
     name="AgentOS",
     tracing=True,

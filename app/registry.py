@@ -11,7 +11,6 @@ from agno.fs import FileSystem
 from agno.registry import Registry
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
-from agno.tools.reasoning import ReasoningTools
 from agno.tools.slack import SlackTools
 
 from agents.platform_manager import platform_manager
@@ -37,10 +36,9 @@ def get_parallel_tools() -> list[ParallelTools | MCPTools]:
 
 
 def get_agent_files_tools() -> list:
-    """Private files for any built agent: the templated namespace resolves to the
-    wielding agent's own id per call, so every agent that mounts this toolkit gets
-    its own isolated store (own 20MB quota) — no agent can read another's files,
-    and Chief's shared team notes stay a separate, deliberately gated surface."""
+    """Private file system for any agent: the templated namespace resolves to the
+    calling agent's id, so every agent that uses this toolkit gets its own isolated store (20MB quota)
+    """
     fs = FileSystem(get_postgres_db(), namespace="{agent_id}")
     # Instructions passed explicitly: built agents have no other channel for the
     # toolkit's usage guidance (code agents compose fs.instructions() themselves).
@@ -50,7 +48,7 @@ def get_agent_files_tools() -> list:
 def get_slack_tools() -> list[SlackTools]:
     """Send-scoped Slack toolkit, only when the Slack interface is configured.
 
-    Deliberately narrower than the SlackTools defaults: a registry any built agent
+    Deliberately narrower than the SlackTools defaults: a registry any agent
     can draw from gets post + channel listing, never history reads or file transfer.
     """
     if not getenv("SLACK_BOT_TOKEN"):
@@ -85,8 +83,6 @@ def score_eval_status(passed: int, total: int) -> str:
     return "PASS" if passed == total else "FAIL"
 
 
-# Chief (a Team) is attached in app/main.py after construction — importing it here
-# would cycle: chief's members include agent_builder, which imports this registry.
 registry = Registry(
     name="AgentOS Registry",
     tools=[
@@ -94,7 +90,6 @@ registry = Registry(
         *get_parallel_tools(),
         *get_agent_files_tools(),
         *get_slack_tools(),
-        ReasoningTools(add_instructions=True),
     ],
     models=[default_model()],
     dbs=[get_postgres_db()],

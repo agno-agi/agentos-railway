@@ -1,19 +1,10 @@
 manifest:
-  # --- Teams ---
-
-  chief:
-    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run the ones the team has built, and check on the platform."
-    quick_prompts:
-      - "What's up chief?"
-      - "Hey Chief, we're getting zapatos from garaje"
-      - "Chief, we're going with planetscale over RDS"
-
   # --- Agents ---
 
   agent-builder:
     description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
-      - "Build an agent like chief but sassier"
+      - "What can you build for me?"
       - "Build an agent that tracks AI news and writes a daily brief"
       - "Build a daily pulse workflow and schedule it for 9am"
 
@@ -23,6 +14,15 @@ manifest:
       - "Tell me about this AgentOS"
       - "Share some usage patterns"
       - "Which agent is slowest, and is anything failing?"
+
+  # --- Teams ---
+
+  chief:
+    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run the ones the team has built, and check on the platform."
+    quick_prompts:
+      - "What's up chief?"
+      - "Hey Chief, we're getting zapatos from garaje"
+      - "Chief how's the platform doing?"
 
   # --- Workflows ---
 

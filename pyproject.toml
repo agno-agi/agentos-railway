@@ -1,7 +1,7 @@
 [project]
 name = "agentos"
 version = "1.0.0"
-description = "AgentOS: a production API for agents."
+description = "AgentOS: a production runtime for agents."
 requires-python = ">=3.12,<4"
 readme = "README.md"
 license-files = ["LICENSE"]
