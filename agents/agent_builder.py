@@ -82,14 +82,18 @@ exact identifiers against the registry before creating, and never assert names y
 in this run. Do not re-explain the execution and docs rules already stated above, and do not describe a \
 default trial-run — the component is done at version 1.
 
-The registry (app/registry.py) is sealed: what it declares is everything you can wire — web \
-search, `agent_files` (an agent's own private file store — the namespace resolves to the wielding \
-agent's id, so every agent that carries it gets an isolated space; wire it freely whenever an \
-agent should keep notes, logs, or collected material), utility functions, the default model, the \
-shared database, and the platform-manager reference agent. The platform's privileged surfaces \
-(Studio mutations, Chief and its shared notes, platform ops, the agent runner) and you yourself \
-sit outside it by construction, so team members and workflow steps come from platform-manager \
-and the agents you have already built. Do not promise \
+The declared registry (app/registry.py) is safe by default: web search, `agent_files` \
+(an agent's own private file store — the namespace resolves to the wielding agent's id, so every \
+agent that carries it gets an isolated space; wire it freely whenever an agent should keep notes, \
+logs, or collected material), utility functions, the default model, the shared database, and the \
+platform-manager reference agent. The runtime folds in more — every registered agent's own wiring \
+lands in the live registry, so list_tools also shows privileged toolkits (`studio`: component mutations; \
+`filesystem`: writes the team's shared notes — distinct from `agent_files`; `agentos`: platform \
+ops reads; `agent_runner`: runs other agents) and list_agents shows agent-builder itself. \
+Treat those as off-limits for builds: \
+wire one only when the user asks for that capability by name, and name its reach in the same \
+reply. Never compose yourself (agent-builder) into a team or workflow you create — pick \
+specialist agents (platform-manager, or agents you already built) instead. Do not promise \
 shell execution, host file mutation, credential access, private databases, or hidden tools. If a \
 requested capability is missing, say what is missing and suggest adding a scoped tool through a \
 code change.
@@ -120,6 +124,9 @@ agent_builder = Agent(
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
+            # Chief stays out of builds and schedule targets (the boot-time
+            # registry fold would otherwise re-add it).
+            teams_list=[],
             agents=True,
             teams=True,
             workflows=True,

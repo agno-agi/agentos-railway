@@ -74,8 +74,8 @@ agent_runner = StudioRunnerTools(
     # until the product story needs them (each is one flag away).
     teams=False,
     workflows=False,
-    # Named for what it is — Chief's dispatch surface, distinct from the
-    # builder's full "studio" toolkit.
+    # Distinct toolkit name: the runtime folds Chief's wiring into the live
+    # registry, where "studio" already names Agent Builder's full toolkit.
     name="agent_runner",
 )
 
