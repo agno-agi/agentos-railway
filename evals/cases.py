@@ -117,9 +117,12 @@ def snapshot_schedule_ids() -> set[str]:
     return {schedule.id for schedule in ScheduleManager(eval_db).list(limit=1000)}
 
 
-# Registered by app/schedules.py on every boot, so never case-created. Spared by name
-# because sweeping one costs real state: deployment-check stops running until the next
-# boot, and run-evals returns disabled, silently reverting whoever enabled it.
+# Registered by app/schedules.py on every boot. Spared by name because sweeping one
+# costs real state: deployment-check stops running until the next boot, and run-evals
+# returns disabled, silently reverting whoever enabled it. On a booted DB the spare is
+# belt-and-braces (their ids pre-exist, and create_schedule's if_exists="update" means
+# a case reusing the name updates in place rather than minting a new row); the guard in
+# delete_new_schedules below covers the one case where name and id evidence disagree.
 _CODE_REGISTERED_SCHEDULES = frozenset({"deployment-check", "run-evals"})
 
 # A builder case creates a schedule or two. Far more looks like the same failure the
@@ -132,9 +135,21 @@ def delete_new_schedules(pre_run_ids: set[str]) -> None:
     """Hard-deletes schedules that did not exist before the case ran, sparing the
     template's own two."""
     manager = ScheduleManager(eval_db)
+    schedules = manager.list(limit=1000)
+    # A reserved-named schedule the snapshot doesn't know is ambiguous: either the
+    # snapshot silently failed (get_schedules swallows DB errors into an empty list)
+    # and this is the real one, or the DB never booted and a case minted an impostor
+    # that would outlive the sweep and stay enabled once a boot absorbs the name.
+    # Neither should be resolved silently — refuse and let a human look.
+    if not pre_run_ids and any(schedule.name in _CODE_REGISTERED_SCHEDULES for schedule in schedules):
+        raise RuntimeError(
+            "refusing to sweep schedules: the pre-case snapshot is empty but code-registered "
+            "schedule names exist, so the real deployment-check/run-evals cannot be told apart "
+            "from case-created rows. Inspect and delete by hand: ScheduleManager(eval_db).delete(<id>)."
+        )
     new = [
         schedule
-        for schedule in manager.list(limit=1000)
+        for schedule in schedules
         if schedule.id not in pre_run_ids and schedule.name not in _CODE_REGISTERED_SCHEDULES
     ]
     if len(new) > _MAX_SWEPT_SCHEDULES:
@@ -161,13 +176,15 @@ def snapshot_builder_state() -> dict[str, Any]:
 def delete_new_builder_state(pre_run: dict[str, Any]) -> None:
     """Hard-deletes components, schedules, and learning/note rows that did not exist
     before the case ran."""
-    delete_new_components(pre_run["component_ids"])
-    # Both sweeps below can refuse (see their caps); run each regardless of how the
-    # other went, so one refusal never strands the other's rows.
+    # Any sweep can refuse (see the caps) or hit a transient DB error; run each
+    # regardless of how the others went, so one failure never strands another's rows.
     try:
-        delete_new_schedules(pre_run["schedule_ids"])
+        delete_new_components(pre_run["component_ids"])
     finally:
-        delete_new_learning_state(pre_run["learning_state"], _MAX_SWEPT_LEARNINGS)
+        try:
+            delete_new_schedules(pre_run["schedule_ids"])
+        finally:
+            delete_new_learning_state(pre_run["learning_state"], _MAX_SWEPT_LEARNINGS)
 
 
 async def cleanup_new_builder_state(pre_run: dict[str, Any], result: CaseResult) -> None:

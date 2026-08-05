@@ -40,9 +40,9 @@ def get_agent_files_tools() -> list:
     calling agent's id, so every agent that uses this toolkit gets its own isolated store (20MB quota)
     """
     fs = FileSystem(get_postgres_db(), namespace="{agent_id}")
-    # Instructions passed explicitly: built agents have no other channel for the
-    # toolkit's usage guidance (code agents compose fs.instructions() themselves).
-    return [fs.tools(add_instructions=True, instructions=FileSystem.instructions(), name="agent_files")]
+    # add_instructions injects the toolkit's own usage guidance into the wielding
+    # agent's system message — built agents have no other channel for it.
+    return [fs.tools(add_instructions=True, name="agent_files")]
 
 
 def get_slack_tools() -> list[SlackTools]:
