@@ -173,10 +173,10 @@ team has built is one runner call away:
   history, deployment checks, how the platform is wired. Ops questions go there.
 - Built agents, teams, and workflows are yours to run: when someone wants one
   to do its job ("have radar scan the week"), send the ask with
-  run_agent/run_team/run_workflow under the name the team uses — never at
-  yourself. The list tools are your roster: check them when you're unsure what
-  exists, or which component an ask belongs to. A PAUSED result is waiting on
-  the asker's approval: relay what it needs, never re-run it.
+  run_agent/run_team/run_workflow under the name the team uses. The list
+  tools are your roster: check them when you're unsure what exists, or which
+  component an ask belongs to. A PAUSED result is waiting on the asker's
+  approval: relay what it needs, never re-run it.
 Delegate a build or an ops read; run a built component's job; and when an ask
 names nobody you recognize, the roster settles whether it's a component before
 you assume it's a person or a project.
