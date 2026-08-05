@@ -117,6 +117,36 @@ def snapshot_schedule_ids() -> set[str]:
     return {schedule.id for schedule in ScheduleManager(eval_db).list(limit=1000)}
 
 
+# Registered by app/schedules.py on every boot, so never case-created. Spared by name
+# because sweeping one costs real state: deployment-check stops running until the next
+# boot, and run-evals returns disabled, silently reverting whoever enabled it.
+_CODE_REGISTERED_SCHEDULES = frozenset({"deployment-check", "run-evals"})
+
+# A builder case creates a schedule or two. Far more looks like the same failure the
+# learnings cap guards: get_schedules swallows DB errors into an empty list, so a
+# transient failure during `setup` makes every existing schedule read as new.
+_MAX_SWEPT_SCHEDULES = 5
+
+
+def delete_new_schedules(pre_run_ids: set[str]) -> None:
+    """Hard-deletes schedules that did not exist before the case ran, sparing the
+    template's own two."""
+    manager = ScheduleManager(eval_db)
+    new = [
+        schedule
+        for schedule in manager.list(limit=1000)
+        if schedule.id not in pre_run_ids and schedule.name not in _CODE_REGISTERED_SCHEDULES
+    ]
+    if len(new) > _MAX_SWEPT_SCHEDULES:
+        raise RuntimeError(
+            f"refusing to sweep {len(new)} schedules (cap {_MAX_SWEPT_SCHEDULES}): the pre-case "
+            "snapshot looks incomplete, so these are not safely attributable to the case. "
+            "Inspect them and delete by hand: ScheduleManager(eval_db).delete(<id>)."
+        )
+    for schedule in new:
+        manager.delete(schedule.id)
+
+
 def snapshot_builder_state() -> dict[str, Any]:
     """`setup` hook for Studio-builder cases: Studio component ids, schedule ids, and
     learning/note state — the builder carries the shared per-user profile/memory
@@ -132,14 +162,12 @@ def delete_new_builder_state(pre_run: dict[str, Any]) -> None:
     """Hard-deletes components, schedules, and learning/note rows that did not exist
     before the case ran."""
     delete_new_components(pre_run["component_ids"])
-    manager = ScheduleManager(eval_db)
-    # Older snapshots (pre-schedules) lack the key; treat as nothing-to-sweep-against.
-    pre_schedule_ids = pre_run.get("schedule_ids")
-    if pre_schedule_ids is not None:
-        for schedule in manager.list(limit=1000):
-            if schedule.id not in pre_schedule_ids:
-                manager.delete(schedule.id)
-    delete_new_learning_state(pre_run["learning_state"], _MAX_SWEPT_LEARNINGS)
+    # Both sweeps below can refuse (see their caps); run each regardless of how the
+    # other went, so one refusal never strands the other's rows.
+    try:
+        delete_new_schedules(pre_run["schedule_ids"])
+    finally:
+        delete_new_learning_state(pre_run["learning_state"], _MAX_SWEPT_LEARNINGS)
 
 
 async def cleanup_new_builder_state(pre_run: dict[str, Any], result: CaseResult) -> None:
