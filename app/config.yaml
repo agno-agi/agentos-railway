@@ -11,11 +11,11 @@ manifest:
   # --- Agents ---
 
   agent-builder:
-    description: "Creates agents, teams, and workflows using the AgentOS Studio."
+    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
       - "Build an agent like chief but sassier"
       - "Build an agent that tracks AI news and writes a daily brief"
-      - "Build a multi-agent team with the chief and platform manager"
+      - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
     description: "Understands, monitors, and explains this AgentOS. Codebase context, runtime diagnostics, usage patterns."
