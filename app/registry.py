@@ -95,4 +95,8 @@ registry = Registry(
     dbs=[get_postgres_db()],
     functions=[route_component_type, score_eval_status],
     agents=[platform_manager],
+    # This declaration is the complete build surface: sealed stops AgentOS from
+    # folding OS components (chief, agent-builder) and their privileged toolkits
+    # back in at boot, so builders can wire exactly what is listed here.
+    sealed=True,
 )
