@@ -39,7 +39,7 @@ if SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET:
 
     interfaces.append(
         Slack(
-            agent=chief,
+            team=chief,
             streaming=True,
             token=SLACK_BOT_TOKEN,
             signing_secret=SLACK_SIGNING_SECRET,
@@ -86,6 +86,11 @@ async def lifespan(app):  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 # Create AgentOS
 # ---------------------------------------------------------------------------
+# Chief joins the Studio registry here, post-construction: registry.py cannot
+# import it (chief's members include agent_builder, which imports the registry),
+# but Studio builds should still be able to reference the team by id.
+registry.teams = [chief]
+
 agent_os = AgentOS(
     name="AgentOS",
     tracing=True,
@@ -96,7 +101,8 @@ agent_os = AgentOS(
     mcp_auth=mcp_auth,
     lifespan=lifespan,
     db=get_postgres_db(),
-    agents=[chief, agent_builder, platform_manager],
+    agents=[agent_builder, platform_manager],
+    teams=[chief],
     workflows=[deployment_check, run_evals],
     interfaces=interfaces,
     registry=registry,

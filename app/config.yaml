@@ -1,12 +1,14 @@
 manifest:
-  # --- Agents ---
+  # --- Teams ---
 
   chief:
-    description: "The team mascot. Tell Chief anything (decisions, what you learned, what you had for lunch)."
+    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run them, and check on the platform through its members."
     quick_prompts:
       - "What's up chief?"
       - "Hey Chief, we're getting zapatos from garaje"
       - "Chief, we're going with planetscale over RDS"
+
+  # --- Agents ---
 
   agent-builder:
     description: "Creates agents, teams, and workflows using the AgentOS Studio."

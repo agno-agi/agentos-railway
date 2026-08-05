@@ -11,8 +11,8 @@ from agno.registry import Registry
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
 from agno.tools.reasoning import ReasoningTools
+from agno.tools.slack import SlackTools
 
-from agents.chief import chief
 from agents.platform_manager import platform_manager
 from app.settings import default_model
 from db import get_postgres_db
@@ -35,6 +35,27 @@ def get_parallel_tools() -> list[ParallelTools | MCPTools]:
     ]
 
 
+def get_slack_tools() -> list[SlackTools]:
+    """Send-scoped Slack toolkit, only when the Slack interface is configured.
+
+    Deliberately narrower than the SlackTools defaults: a registry any built agent
+    can draw from gets post + channel listing, never history reads or file transfer.
+    """
+    if not getenv("SLACK_BOT_TOKEN"):
+        return []
+    return [
+        SlackTools(
+            token=getenv("SLACK_BOT_TOKEN"),
+            enable_send_message=True,
+            enable_send_message_thread=True,
+            enable_list_channels=True,
+            enable_get_channel_history=False,
+            enable_upload_file=False,
+            enable_download_file=False,
+        )
+    ]
+
+
 def route_component_type(request: str) -> str:
     """Suggest agent, team, or workflow from a plain-language request."""
     lower = request.lower()
@@ -52,15 +73,18 @@ def score_eval_status(passed: int, total: int) -> str:
     return "PASS" if passed == total else "FAIL"
 
 
+# Chief (a Team) is attached in app/main.py after construction — importing it here
+# would cycle: chief's members include agent_builder, which imports this registry.
 registry = Registry(
     name="AgentOS Registry",
     tools=[
         *get_agno_docs_tools(),
         *get_parallel_tools(),
+        *get_slack_tools(),
         ReasoningTools(add_instructions=True),
     ],
     models=[default_model()],
     dbs=[get_postgres_db()],
     functions=[route_component_type, score_eval_status],
-    agents=[chief, platform_manager],
+    agents=[platform_manager],
 )

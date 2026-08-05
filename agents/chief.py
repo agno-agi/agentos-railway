@@ -6,6 +6,11 @@ Chief is your company mascot, available in Slack, claude.ai, ChatGPT, or the
 AgentOS UI: "Chief, we're going with planetscale over RDS",
 "Chief, we're getting zapatos from garaje?". Chief connects the dots.
 
+Chief leads the platform team: Agent Builder and Platform Manager are its
+members, along with every agent built at runtime through the Studio — so
+"Chief, build me an agent for X" and "Chief, have radar scan the week" work
+from any frontend, including Slack.
+
 Under the hood, Chief manages 3 types of information to stay on top of things:
 - Notes: unstructured knowledge
 - Entities: people, projects, links
@@ -16,7 +21,8 @@ Notes and entities are shared by the whole team; profile and memory are per-user
 
 from os import getenv
 
-from agno.agent import Agent
+from agno.agent.agent import get_agent_by_id
+from agno.db.base import ComponentType
 from agno.fs import FileSystem
 from agno.learn import (
     EntityMemoryConfig,
@@ -25,9 +31,13 @@ from agno.learn import (
     UserMemoryConfig,
     UserProfileConfig,
 )
+from agno.team import Team
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
 
+from agents.agent_builder import agent_builder
+from agents.platform_manager import platform_manager
+from app.registry import registry
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -51,6 +61,34 @@ memory = LearningMachine(
     user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),  # private to each user
     entity_memory=EntityMemoryConfig(namespace="global"),  # shared by the team
 )
+
+# Reference agents never live in the components table, but exclude them defensively
+# so a factory member can never shadow a code-defined one.
+_CODE_COMPONENT_IDS = {"chief", "agent-builder", "platform-manager"}
+
+
+def _chief_members(**_: object) -> list:
+    """Chief's team, resolved fresh on every run (`cache_callables=False` below):
+    the reference specialists plus every agent built at runtime through the Studio,
+    so an agent published seconds ago is a delegate target on the next message."""
+    members: list = [agent_builder, platform_manager]
+    db = get_postgres_db()
+    rows, _count = db.list_components(
+        component_type=ComponentType.AGENT,
+        limit=100,
+        exclude_component_ids=_CODE_COMPONENT_IDS,
+    )
+    for row in rows:
+        # Fail-soft: a component whose config no longer materializes (a tool gone
+        # from the live registry) drops out of the roster instead of breaking Chief.
+        try:
+            agent = get_agent_by_id(db=db, id=row["component_id"], registry=registry)
+        except Exception:
+            continue
+        if agent is not None:
+            members.append(agent)
+    return members
+
 
 INSTRUCTIONS = """\
 You are Chief — the team mascot, and the one everybody tells things to.
@@ -139,10 +177,23 @@ silently, never ask what they mean with nothing offered.
 
 You can search and fetch the web. Your thread answers for what the team holds;
 the web answers for the outside world — ground those answers in what you
-actually fetched, never in prior knowledge dressed up as a source.\
+actually fetched, never in prior knowledge dressed up as a source.
+
+You also lead the platform team, so the doers sit one delegation away:
+- Agent Builder builds: someone asking to create, edit, publish, or delete an
+  agent, team, or workflow gets handed to agent-builder with their ask intact.
+  Deletes pause for the asker's approval — say so when you relay one.
+- Platform Manager knows the machine: usage, run activity, schedules, eval
+  history, deployment checks, how the platform is wired. Ops questions go there.
+- Agents the team has built join as members by name: when someone wants one to
+  do its job ("have radar scan the week"), delegate to it by that name.
+Delegate when the ask names a build, an ops read, or a built agent's job.
+Filing and recall stay yours — the brain is never delegated. Members answer in
+their own voice; the reply the user sees is always yours, and it credits the
+member that did the work.\
 """
 
-chief = Agent(
+chief = Team(
     id="chief",
     name="Chief",
     model=default_model(),
@@ -150,6 +201,13 @@ chief = Agent(
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
     tools=[notes.tools(), web_tools],
+    members=_chief_members,
+    # Resolve members every run so a just-built Studio agent appears immediately;
+    # the default caches the roster per user for the process lifetime.
+    cache_callables=False,
+    # Keep member tool state on the session so a member's confirmation gate
+    # (Agent Builder's deletes) can resume from Slack buttons or MCP continue_run.
+    store_member_responses=True,
     instructions=[INSTRUCTIONS, notes.instructions()],
     # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",
