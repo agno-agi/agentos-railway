@@ -7,6 +7,7 @@ The tools, functions, models, databases, and agents available to AgentOS Studio.
 
 from os import getenv
 
+from agno.fs import FileSystem
 from agno.registry import Registry
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
@@ -33,6 +34,15 @@ def get_parallel_tools() -> list[ParallelTools | MCPTools]:
             url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
         )
     ]
+
+
+def get_agent_files_tools() -> list:
+    """Private files for any built agent: the templated namespace resolves to the
+    wielding agent's own id per call, so every agent that mounts this toolkit gets
+    its own isolated store (own 20MB quota) — no agent can read another's files,
+    and Chief's shared team notes stay a separate, deliberately gated surface."""
+    fs = FileSystem(get_postgres_db(), namespace="{agent_id}")
+    return [fs.tools(add_instructions=True, name="agent_files")]
 
 
 def get_slack_tools() -> list[SlackTools]:
@@ -80,6 +90,7 @@ registry = Registry(
     tools=[
         *get_agno_docs_tools(),
         *get_parallel_tools(),
+        *get_agent_files_tools(),
         *get_slack_tools(),
         ReasoningTools(add_instructions=True),
     ],
