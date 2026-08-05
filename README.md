@@ -28,7 +28,7 @@ Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots
 
 This codebase comes with:
 
-- **Chief, your team's mascot.** "Chief, we're going with PlanetScale over RDS." "Chief, zak ran a good launch." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Every frontend talks to the same Chief: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
+- **Chief, your team's mascot — and team lead.** "Chief, we're going with PlanetScale over RDS." "Chief, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Chief also leads Agent Builder and Platform Manager, plus every agent your team builds, so building agents and checking on the platform work through the same name — from Slack too. Every frontend talks to the same Chief: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
 - **Two platform agents** that help you build and run the platform from your favorite AI apps like Claude and ChatGPT. **Agent Builder** creates agents, teams, and workflows using the AgentOS Studio. **Platform Manager** understands, monitors, and explains the platform: codebase questions, eval history, deployment checks, schedules.
 - **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform automatically — see [Using the platform](#using-the-platform).
 
@@ -253,7 +253,7 @@ can you access my agentos mcp?
 | `EVALS_CASE_TIMEOUT_SECONDS` | no | `90` | Default per-case timeout for run-evals runs; applies only to cases that don't set their own `timeout_seconds`. |
 | `EVALS_SUITE_TIMEOUT_SECONDS` | no | `900` | Whole-suite timeout for run-evals runs; per-case timeouts are the granular limit. The default bounds the `smoke` tag's worst case (incl. builder-case teardown). |
 | `PARALLEL_API_KEY` | no | none | Authenticates Chief's and the Studio registry's web search tools (Parallel SDK when set; keyless MCP fallback). |
-| `SLACK_BOT_TOKEN` / `SLACK_SIGNING_SECRET` | no | none | Both must be set to enable the Slack interface. |
+| `SLACK_BOT_TOKEN` / `SLACK_SIGNING_SECRET` | no | none | Both must be set to enable the Slack interface. The bot token also lights up the registry's send-only Slack toolkit for built agents. |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASS` / `DB_DATABASE` | no | matches compose | Postgres connection. |
 | `DB_DRIVER` | no | `postgresql+psycopg` | SQLAlchemy driver. |
 | `AGNO_DEBUG` | no | `False` | If `True`, Agno emits verbose debug logs. Compose sets this for dev. |
