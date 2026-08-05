@@ -148,7 +148,7 @@ CASES: tuple[Case, ...] = (
     # whatever the case wrote to the shared stores.
     Case(
         name="chief_captures_project_fact",
-        agent=chief,
+        team=chief,
         input="Remember: Wilhelmina Ashgrove-Petrov is leading the Quillhawk-Meridian rollout.",
         tags=("smoke", "release"),
         timeout_seconds=90,
@@ -168,7 +168,7 @@ CASES: tuple[Case, ...] = (
     # be undone by the teardown.
     Case(
         name="chief_answers_from_live_web",
-        agent=chief,
+        team=chief,
         input="What has the James Webb Space Telescope found recently? Just tell me — no need to file it.",
         tags=("live",),
         timeout_seconds=120,
@@ -191,8 +191,9 @@ CASES: tuple[Case, ...] = (
         setup=snapshot_learning_state,
         teardown=cleanup_new_learning_state,
         criteria=(
-            "Identifies `chief`, `platform-manager`, and `agent-builder` as the registered agents. "
-            "May reference app/main.py."
+            "Identifies `platform-manager` and `agent-builder` as the registered agents and `chief` "
+            "as the team that leads them. Naming all three components matters more than the "
+            "agent/team split. May reference app/main.py."
         ),
         expected_tool_calls=("query_my_codebase",),
     ),
@@ -342,7 +343,7 @@ CASES: tuple[Case, ...] = (
     # directory and its notes), never a fabricated status. Instructions: "a grounded no".
     Case(
         name="chief_grounded_no_on_unknown",
-        agent=chief,
+        team=chief,
         input="Where do we stand on the Zephyrium QALM-9 initiative?",
         tags=("release",),
         timeout_seconds=90,
