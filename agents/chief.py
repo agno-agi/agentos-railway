@@ -2,21 +2,12 @@
 Chief
 =====
 
-Chief is your company mascot and your team lead, available in Slack, claude.ai,
-ChatGPT, or the AgentOS UI: "Chief, we're going with planetscale over RDS",
-"Chief, build me an agent for X", "Chief, have radar scan the week". Chief
-connects the dots — and gets the right doer on the job.
-
-Chief leads the platform team: Agent Builder and Platform Manager are its
-members, and everything built at runtime through the Studio — agents, teams,
-workflows — is one runner call away, so building things, running them, and
-checking on the platform all work through the one name the team already
-talks to, from any frontend, including Slack.
-
-Under the hood, Chief manages 3 types of information to stay on top of things:
-- Notes: unstructured knowledge
-- Entities: people, projects, links
-- Profile and memory: user context and preferences
+Chief is your company mascot and your team's chief of staff, available in
+Slack, claude.ai, ChatGPT, or the AgentOS UI: "Chief, we're going with
+planetscale over RDS", "Chief, build me an agent for X", "Chief, have radar
+scan the week". Chief holds the thread; everything else is a handoff — builds
+to Agent Builder, ops questions to Platform Manager, and everything built at
+runtime through the Studio one runner call away.
 
 Notes and entities are shared by the whole team; profile and memory are per-user.
 """

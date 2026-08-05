@@ -28,8 +28,8 @@ Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots
 
 This codebase comes with:
 
-- **Chief, your team's mascot — and team lead.** "Chief, we're going with PlanetScale over RDS." "Chief, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Chief also leads Agent Builder and Platform Manager, plus every agent your team builds, so building agents and checking on the platform work through the same name — from Slack too. Every frontend talks to the same Chief: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
-- **Two platform agents** that help you build and run the platform from your favorite AI apps like Claude and ChatGPT. **Agent Builder** creates agents, teams, and workflows using the AgentOS Studio. **Platform Manager** understands, monitors, and explains the platform: codebase questions, eval history, deployment checks, schedules.
+- **Chief, your team's mascot — and its chief of staff.** "Chief, we're going with PlanetScale over RDS." "Chief, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Chief holds the thread; everything else is a handoff: it leads Agent Builder and Platform Manager, and runs everything your team builds, so building things and checking on the platform work through the same name — from Slack too. Every frontend talks to the same Chief: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
+- **Two platform agents** that help you build and run the platform from your favorite AI apps like Claude and ChatGPT. **Agent Builder** creates agents, teams, workflows, and schedules using the AgentOS Studio. **Platform Manager** understands, monitors, and explains the platform: codebase questions, eval history, deployment checks, schedules.
 - **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform automatically — see [Using the platform](#using-the-platform).
 
 Trace data, agent code, evals, and system logs are all available to coding agents, so the platform can inspect and improve itself end to end.
@@ -71,7 +71,7 @@ Click **Chat** under **Platform Manager** and ask: "How healthy is the platform?
 
 ### Step 5: Meet Chief
 
-Click **Chat** under **Chief** and tell it what you're working on: "Hey Chief — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours. From then on, tag it in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Chief, what's happening?": same thread everywhere.
+Click **Chat** under **Chief** and tell it what you're working on: "Hey Chief — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours. From then on, tag it in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Chief, what's happening?": same Chief everywhere.
 
 ### Step 6: Make it yours
 
