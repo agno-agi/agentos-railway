@@ -8,10 +8,10 @@ ChatGPT, or the AgentOS UI: "Chief, we're going with planetscale over RDS",
 connects the dots — and gets the right doer on the job.
 
 Chief leads the platform team: Agent Builder and Platform Manager are its
-members, and every agent built at runtime through the Studio is one runner
-call away — so building agents, running them, and checking on the platform
-all work through the one name the team already talks to, from any frontend,
-including Slack.
+members, and everything built at runtime through the Studio — agents, teams,
+workflows — is one runner call away, so building things, running them, and
+checking on the platform all work through the one name the team already
+talks to, from any frontend, including Slack.
 
 Under the hood, Chief manages 3 types of information to stay on top of things:
 - Notes: unstructured knowledge
@@ -63,21 +63,9 @@ memory = LearningMachine(
     entity_memory=EntityMemoryConfig(namespace="global"),  # shared by the team
 )
 
-# Built agents are dispatched, not enrolled: the runner lists what exists in the
-# Studio and runs one by id as the current user, so an agent published seconds
-# ago is runnable on the very next message — at the cost of one tool call on
-# use, not a per-message roster sweep that grows with every build.
-agent_runner = StudioRunnerTools(
-    registry=registry,
-    db=get_postgres_db(),
-    # Agents only: built teams and workflows stay off Chief's dispatch surface
-    # until the product story needs them (each is one flag away).
-    teams=False,
-    workflows=False,
-    # Distinct toolkit name: the runtime folds Chief's wiring into the live
-    # registry, where "studio" already names Agent Builder's full toolkit.
-    name="agent_runner",
-)
+# Dispatch for Studio-built components, resolved from the DB at call time —
+# a component published seconds ago is runnable on the next message.
+studio_runners = StudioRunnerTools(registry=registry, db=get_postgres_db())
 
 
 INSTRUCTIONS = """\
@@ -176,20 +164,21 @@ You can search and fetch the web. Your thread answers for what the team holds;
 the web answers for the outside world — ground those answers in what you
 actually fetched, never in prior knowledge dressed up as a source.
 
-You lead the platform team. The specialists are your members; the agents the
-team has built are one runner call away:
+You lead the platform team. The specialists are your members; everything the
+team has built is one runner call away:
 - Agent Builder builds: someone asking to create, edit, publish, or delete an
   agent, team, or workflow gets handed to agent-builder with their ask intact.
   Deletes pause for the asker's approval — say so when you relay one.
 - Platform Manager knows the machine: usage, run activity, schedules, eval
   history, deployment checks, how the platform is wired. Ops questions go there.
-- Built agents are yours to run: when someone wants one to do its job ("have
-  radar scan the week"), send the ask with run_agent under the name the team
-  uses. list_agents is your roster — check it when you're unsure what exists,
-  or which agent an ask belongs to. A PAUSED result is waiting on the asker's
-  approval: relay what it needs, never re-run it.
-Delegate a build or an ops read; run a built agent's job; and when an ask
-names nobody you recognize, the roster settles whether it's an agent before
+- Built agents, teams, and workflows are yours to run: when someone wants one
+  to do its job ("have radar scan the week"), send the ask with
+  run_agent/run_team/run_workflow under the name the team uses — never at
+  yourself. The list tools are your roster: check them when you're unsure what
+  exists, or which component an ask belongs to. A PAUSED result is waiting on
+  the asker's approval: relay what it needs, never re-run it.
+Delegate a build or an ops read; run a built component's job; and when an ask
+names nobody you recognize, the roster settles whether it's a component before
 you assume it's a person or a project.
 Filing and recall stay yours — the brain is never delegated. Whoever does the
 work — a member or a built agent — the reply the user sees is always yours,
@@ -203,7 +192,7 @@ chief = Team(
     db=get_postgres_db(),
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
-    tools=[notes.tools(), web_tools, agent_runner],
+    tools=[notes.tools(), web_tools, studio_runners],
     members=[agent_builder, platform_manager],
     # Keep member tool state on the session so a member's confirmation gate
     # (Agent Builder's deletes) can resume from Slack buttons or MCP continue_run.

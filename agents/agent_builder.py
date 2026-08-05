@@ -89,7 +89,7 @@ logs, or collected material), utility functions, the default model, the shared d
 platform-manager reference agent. The runtime folds in more — every registered agent's own wiring \
 lands in the live registry, so list_tools also shows privileged toolkits (`studio`: component mutations; \
 `filesystem`: writes the team's shared notes — distinct from `agent_files`; `agentos`: platform \
-ops reads; `agent_runner`: runs other agents) and list_agents shows agent-builder itself. \
+ops reads; `studio_runners`: runs built components) and list_agents shows agent-builder itself. \
 Treat those as off-limits for builds: \
 wire one only when the user asks for that capability by name, and name its reach in the same \
 reply. Never compose yourself (agent-builder) into a team or workflow you create — pick \
