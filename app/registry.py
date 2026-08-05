@@ -42,7 +42,9 @@ def get_agent_files_tools() -> list:
     its own isolated store (own 20MB quota) — no agent can read another's files,
     and Chief's shared team notes stay a separate, deliberately gated surface."""
     fs = FileSystem(get_postgres_db(), namespace="{agent_id}")
-    return [fs.tools(add_instructions=True, name="agent_files")]
+    # Instructions passed explicitly: built agents have no other channel for the
+    # toolkit's usage guidance (code agents compose fs.instructions() themselves).
+    return [fs.tools(add_instructions=True, instructions=FileSystem.instructions(), name="agent_files")]
 
 
 def get_slack_tools() -> list[SlackTools]:
