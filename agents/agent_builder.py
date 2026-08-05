@@ -93,7 +93,7 @@ ops reads; `agent_runner`: runs other agents) and list_agents shows agent-builde
 Treat those as off-limits for builds: \
 wire one only when the user asks for that capability by name, and name its reach in the same \
 reply. Never compose yourself (agent-builder) into a team or workflow you create — pick \
-specialist agents (platform-manager, or agents you already built) instead. Do not promise \
+specialist components (chief, platform-manager, or agents you already built) instead. Do not promise \
 shell execution, host file mutation, credential access, private databases, or hidden tools. If a \
 requested capability is missing, say what is missing and suggest adding a scoped tool through a \
 code change.
@@ -124,9 +124,6 @@ agent_builder = Agent(
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
-            # Chief stays out of builds and schedule targets (the boot-time
-            # registry fold would otherwise re-add it).
-            teams_list=[],
             agents=True,
             teams=True,
             workflows=True,
