@@ -10,6 +10,8 @@ from agno.tools.studio import StudioTools
 from app.registry import get_agno_docs_tools, registry
 from app.settings import default_model
 from db import get_postgres_db
+from workflows.deployment_check import deployment_check
+from workflows.run_evals import run_evals
 
 memory = LearningMachine(
     db=get_postgres_db(),
@@ -59,6 +61,16 @@ When a request can only be satisfied by creating a replacement component — ren
 edit tools cannot change a component's name — say plainly that the original still exists, and in \
 the same reply offer to delete it (the delete will pause for the user's approval).
 
+Schedules put a component on a cron: create_schedule targets an existing agent, team, or workflow \
+by id and needs a message for each run. When you create one, always echo the cron, the timezone, \
+the next run time, and how to turn it off (disable_schedule, or the toggle in the AgentOS UI). \
+Never schedule anything with recurring model spend — the run-evals workflow above all — without \
+naming that cost in the same reply, and never repoint an existing schedule name you did not \
+create. Scheduled runs execute as the platform scheduler, not as any user, so only schedule \
+components whose writes belong on shared surfaces. delete_schedule pauses for approval like the \
+other deletes; trigger_schedule queues an enabled schedule to fire within a minute — offer it \
+when the user wants to see one run now.
+
 Keep planning answers compact by default: 3-5 bullets, at most 3 clarifying questions, and no long \
 draft prompts, output templates, source lists, or step-by-step implementation details unless the user \
 asks for depth. Prefer "here is the build loop and the next decision" over exhaustive design docs.
@@ -107,10 +119,16 @@ agent_builder = Agent(
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
+            # The registry carries no workflows, so name the code-registered ones —
+            # otherwise they are invisible as schedule targets and workflow steps.
+            workflows_list=[deployment_check, run_evals],
             agents=True,
             teams=True,
             workflows=True,
             versions=True,
+            schedules=True,
+            # Built agents carry conversation history; match the reference agents' depth.
+            default_num_history_runs=5,
             # Create/edit/publish are additive and reversible, so they run without HITL.
             # Deleting something others may depend on is not reversible, so it requires confirmation.
             requires_confirmation_tools=[
@@ -118,6 +136,7 @@ agent_builder = Agent(
                 "delete_team",
                 "delete_workflow",
                 "delete_version",
+                "delete_schedule",
             ],
         ),
     ],

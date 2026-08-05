@@ -18,6 +18,7 @@ from os import getenv
 from typing import Any
 
 from agno.eval import Case, CaseResult
+from agno.scheduler.manager import ScheduleManager
 
 from agents.agent_builder import agent_builder
 from agents.chief import chief, notes
@@ -110,20 +111,34 @@ async def cleanup_new_learning_state(pre_run: dict[str, set[str]], result: CaseR
     await asyncio.to_thread(delete_new_learning_state, pre_run, _MAX_SWEPT_LEARNINGS)
 
 
+def snapshot_schedule_ids() -> set[str]:
+    """Schedule ids present before a builder case runs — the builder can create
+    schedules, and a case-created schedule left behind would fire daily."""
+    return {schedule.id for schedule in ScheduleManager(eval_db).list(limit=1000)}
+
+
 def snapshot_builder_state() -> dict[str, Any]:
-    """`setup` hook for Studio-builder cases: Studio component ids plus learning/note
-    state — the builder carries the shared per-user profile/memory stores, so a run
-    can write learnings as well as components."""
+    """`setup` hook for Studio-builder cases: Studio component ids, schedule ids, and
+    learning/note state — the builder carries the shared per-user profile/memory
+    stores, so a run can write learnings as well as components and schedules."""
     return {
         "component_ids": snapshot_component_ids(),
+        "schedule_ids": snapshot_schedule_ids(),
         "learning_state": snapshot_learning_state(),
     }
 
 
 def delete_new_builder_state(pre_run: dict[str, Any]) -> None:
-    """Hard-deletes components and learning/note rows that did not exist before the
-    case ran."""
+    """Hard-deletes components, schedules, and learning/note rows that did not exist
+    before the case ran."""
     delete_new_components(pre_run["component_ids"])
+    manager = ScheduleManager(eval_db)
+    # Older snapshots (pre-schedules) lack the key; treat as nothing-to-sweep-against.
+    pre_schedule_ids = pre_run.get("schedule_ids")
+    if pre_schedule_ids is not None:
+        for schedule in manager.list(limit=1000):
+            if schedule.id not in pre_schedule_ids:
+                manager.delete(schedule.id)
     delete_new_learning_state(pre_run["learning_state"], _MAX_SWEPT_LEARNINGS)
 
 
