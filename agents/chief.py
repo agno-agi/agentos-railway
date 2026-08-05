@@ -2,14 +2,16 @@
 Chief
 =====
 
-Chief is your company mascot, available in Slack, claude.ai, ChatGPT, or the
-AgentOS UI: "Chief, we're going with planetscale over RDS",
-"Chief, we're getting zapatos from garaje?". Chief connects the dots.
+Chief is your company mascot and your team lead, available in Slack, claude.ai,
+ChatGPT, or the AgentOS UI: "Chief, we're going with planetscale over RDS",
+"Chief, build me an agent for X", "Chief, have radar scan the week". Chief
+connects the dots — and gets the right doer on the job.
 
 Chief leads the platform team: Agent Builder and Platform Manager are its
-members, along with every agent built at runtime through the Studio — so
-"Chief, build me an agent for X" and "Chief, have radar scan the week" work
-from any frontend, including Slack.
+members, and every agent built at runtime through the Studio is one runner
+call away — so building agents, running them, and checking on the platform
+all work through the one name the team already talks to, from any frontend,
+including Slack.
 
 Under the hood, Chief manages 3 types of information to stay on top of things:
 - Notes: unstructured knowledge
@@ -21,8 +23,6 @@ Notes and entities are shared by the whole team; profile and memory are per-user
 
 from os import getenv
 
-from agno.agent.agent import get_agent_by_id
-from agno.db.base import ComponentType
 from agno.fs import FileSystem
 from agno.learn import (
     EntityMemoryConfig,
@@ -34,6 +34,7 @@ from agno.learn import (
 from agno.team import Team
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
+from agno.tools.studio_runner import StudioRunnerTools
 
 from agents.agent_builder import agent_builder
 from agents.platform_manager import platform_manager
@@ -62,45 +63,38 @@ memory = LearningMachine(
     entity_memory=EntityMemoryConfig(namespace="global"),  # shared by the team
 )
 
-# Reference agents never live in the components table, but exclude them defensively
-# so a factory member can never shadow a code-defined one.
-_CODE_COMPONENT_IDS = {"chief", "agent-builder", "platform-manager"}
-
-
-def _chief_members(**_: object) -> list:
-    """Chief's team, resolved fresh on every run (`cache_callables=False` below):
-    the reference specialists plus every agent built at runtime through the Studio,
-    so an agent published seconds ago is a delegate target on the next message."""
-    members: list = [agent_builder, platform_manager]
-    db = get_postgres_db()
-    rows, _count = db.list_components(
-        component_type=ComponentType.AGENT,
-        limit=100,
-        exclude_component_ids=_CODE_COMPONENT_IDS,
-    )
-    for row in rows:
-        # Fail-soft: a component whose config no longer materializes (a tool gone
-        # from the live registry) drops out of the roster instead of breaking Chief.
-        try:
-            agent = get_agent_by_id(db=db, id=row["component_id"], registry=registry)
-        except Exception:
-            continue
-        if agent is not None:
-            members.append(agent)
-    return members
+# Built agents are dispatched, not enrolled: the runner lists what exists in the
+# Studio and runs one by id as the current user, so an agent published seconds
+# ago is runnable on the very next message — at the cost of one tool call on
+# use, not a per-message roster sweep that grows with every build.
+agent_runner = StudioRunnerTools(
+    registry=registry,
+    db=get_postgres_db(),
+    # Agents only: built teams and workflows stay off Chief's dispatch surface
+    # until the product story needs them (each is one flag away).
+    teams=False,
+    workflows=False,
+    # Distinct toolkit name: the runtime folds Chief's wiring into the live
+    # registry, where "studio" already names Agent Builder's full toolkit.
+    name="agent_runner",
+)
 
 
 INSTRUCTIONS = """\
-You are Chief — the team mascot, and the one everybody tells things to.
+You are Chief — the team's mascot and its lead: the one everybody tells
+things to, and the one who gets things done.
 You are interacting with user: {user_id}.
 You are available via Slack, claude.ai, ChatGPT, or the AgentOS UI.
 But you don't know which interface the user is interacting with you from.
 
 Your team tells you everything: "Chief, we're going with PlanetScale over RDS.",
 "Chief, zak ran a good launch.", "Chief, we're all getting lunch at one?"
+And your team asks you for everything: "Chief, build me an agent for this.",
+"Chief, is anything failing?", "Chief, have radar scan the week."
 
 You are delighted every time.
-Being told things is the whole job, and connecting the dots afterwards is the fun part.
+Holding the thread is half the job; getting the right doer on the ask is the
+other half. Connecting the dots between the two is the fun part.
 
 Who you are:
 - You love this team and it shows. Warm, plain-spoken, quick. Use people's
@@ -114,6 +108,9 @@ Who you are:
 - Encouraging without inflating. You believe in these people, so you tell them
   the truth: bad news arrives warm, clear, and unpadded, with the move you'd
   make right behind it.
+- You lead by dispatch, not by doing everything yourself. A good lead knows
+  who does what, hands the ask over intact, and stands behind the result —
+  the platform team and every agent it has built are yours to send.
 - Sound like a person, not a filing system. "Got it — zak's on the launch 🫡"
   beats narrating tool calls. One word of confirmation when you file or fetch
   keeps the thread trusted.
@@ -179,18 +176,24 @@ You can search and fetch the web. Your thread answers for what the team holds;
 the web answers for the outside world — ground those answers in what you
 actually fetched, never in prior knowledge dressed up as a source.
 
-You also lead the platform team, so the doers sit one delegation away:
+You lead the platform team. The specialists are your members; the agents the
+team has built are one runner call away:
 - Agent Builder builds: someone asking to create, edit, publish, or delete an
   agent, team, or workflow gets handed to agent-builder with their ask intact.
   Deletes pause for the asker's approval — say so when you relay one.
 - Platform Manager knows the machine: usage, run activity, schedules, eval
   history, deployment checks, how the platform is wired. Ops questions go there.
-- Agents the team has built join as members by name: when someone wants one to
-  do its job ("have radar scan the week"), delegate to it by that name.
-Delegate when the ask names a build, an ops read, or a built agent's job.
-Filing and recall stay yours — the brain is never delegated. Members answer in
-their own voice; the reply the user sees is always yours, and it credits the
-member that did the work.\
+- Built agents are yours to run: when someone wants one to do its job ("have
+  radar scan the week"), send the ask with run_agent under the name the team
+  uses. list_agents is your roster — check it when you're unsure what exists,
+  or which agent an ask belongs to. A PAUSED result is waiting on the asker's
+  approval: relay what it needs, never re-run it.
+Delegate a build or an ops read; run a built agent's job; and when an ask
+names nobody you recognize, the roster settles whether it's an agent before
+you assume it's a person or a project.
+Filing and recall stay yours — the brain is never delegated. Whoever does the
+work — a member or a built agent — the reply the user sees is always yours,
+and it credits the doer.\
 """
 
 chief = Team(
@@ -200,11 +203,8 @@ chief = Team(
     db=get_postgres_db(),
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
-    tools=[notes.tools(), web_tools],
-    members=_chief_members,
-    # Resolve members every run so a just-built Studio agent appears immediately;
-    # the default caches the roster per user for the process lifetime.
-    cache_callables=False,
+    tools=[notes.tools(), web_tools, agent_runner],
+    members=[agent_builder, platform_manager],
     # Keep member tool state on the session so a member's confirmation gate
     # (Agent Builder's deletes) can resume from Slack buttons or MCP continue_run.
     store_member_responses=True,

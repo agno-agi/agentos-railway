@@ -2,7 +2,7 @@ manifest:
   # --- Teams ---
 
   chief:
-    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run them, and check on the platform through its members."
+    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run the ones the team has built, and check on the platform."
     quick_prompts:
       - "What's up chief?"
       - "Hey Chief, we're getting zapatos from garaje"
