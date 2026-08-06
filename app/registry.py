@@ -9,9 +9,13 @@ from os import getenv
 
 from agno.fs import FileSystem
 from agno.registry import Registry
+from agno.tools.calculator import CalculatorTools
+from agno.tools.file_generation import FileGenerationTools
 from agno.tools.mcp import MCPTools
+from agno.tools.openai import OpenAITools
 from agno.tools.parallel import ParallelTools
 from agno.tools.slack import SlackTools
+from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.platform_manager import platform_manager
 from app.settings import default_model
@@ -66,6 +70,30 @@ def get_slack_tools() -> list[SlackTools]:
     ]
 
 
+def get_media_tools() -> list[OpenAITools]:
+    """Image generation and text-to-speech on the platform's existing OpenAI key.
+
+    Generated media come back as run artifacts (bytes on the RunResponse), so they
+    persist in Postgres and survive ephemeral container filesystems. Transcription
+    stays off: transcribe_audio reads server-local file paths, which agents on this
+    platform never have. The toolkit's default image model is the deprecated
+    dall-e-3; gpt-image-2 is current.
+    """
+    # OpenAITools raises without the key; the registry import must not.
+    if not getenv("OPENAI_API_KEY"):
+        return []
+    return [OpenAITools(enable_transcription=False, image_model="gpt-image-2")]
+
+
+def get_file_generation_tools() -> list[FileGenerationTools]:
+    """Downloadable files (JSON, CSV, TXT, HTML, code) as in-memory run artifacts.
+
+    PDF and DOCX stay off until their optional deps are pinned — flip the flags
+    after adding reportlab / python-docx to pyproject.toml.
+    """
+    return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
+
+
 def route_component_type(request: str) -> str:
     """Suggest agent, team, or workflow from a plain-language request."""
     lower = request.lower()
@@ -90,6 +118,12 @@ registry = Registry(
         *get_parallel_tools(),
         *get_agent_files_tools(),
         *get_slack_tools(),
+        *get_media_tools(),
+        *get_file_generation_tools(),
+        # Structured ask-the-user questions: pauses the run, resumes via the
+        # same HITL surfaces as Agent Builder's delete gate.
+        UserFeedbackTools(),
+        CalculatorTools(),
     ],
     models=[default_model()],
     dbs=[get_postgres_db()],
