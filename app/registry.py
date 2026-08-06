@@ -5,8 +5,6 @@ AgentOS Registry
 The tools, functions, models, databases, and agents available to AgentOS Studio.
 """
 
-import json
-import re
 from os import getenv
 
 from agno.fs import FileSystem
@@ -18,9 +16,17 @@ from agno.tools.openai import OpenAITools
 from agno.tools.parallel import ParallelTools
 from agno.tools.slack import SlackTools
 from agno.tools.user_feedback import UserFeedbackTools
-from agno.workflow import StepInput
 
 from agents.platform_manager import platform_manager
+from app.functions import (
+    content_to_file,
+    csv_to_markdown_table,
+    extract_json,
+    extract_urls,
+    json_to_csv,
+    route_component_type,
+    score_eval_status,
+)
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -97,47 +103,6 @@ def get_file_generation_tools() -> list[FileGenerationTools]:
     return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
 
-# Workflow step executors are always called as func(step_input) with a StepInput —
-# there is no string adapter, so every registry function takes the whole StepInput.
-def _step_text(step_input: StepInput) -> str:
-    """The text a function step operates on: the previous step's output, else the workflow input."""
-    if step_input.previous_step_content is not None:
-        return str(step_input.previous_step_content)
-    return step_input.get_input_as_string() or ""
-
-
-def route_component_type(step_input: StepInput) -> str:
-    """Suggest agent, team, or workflow for the request in the previous step's output (or the workflow input)."""
-    lower = _step_text(step_input).lower()
-    if any(word in lower for word in ("daily", "schedule", "pipeline", "approval", "steps", "workflow")):
-        return "workflow"
-    if any(word in lower for word in ("team", "specialists", "debate", "reviewers", "coordinate")):
-        return "team"
-    return "agent"
-
-
-def score_eval_status(step_input: StepInput) -> str:
-    """PASS when the eval report in the previous step's output shows every case passed, FAIL otherwise.
-
-    Reads JSON `passed`/`total` keys, or an `N/M passed` line like the run-evals report emits.
-    """
-    text = _step_text(step_input)
-    passed = total = None
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        data = None
-    if isinstance(data, dict) and isinstance(data.get("passed"), int) and isinstance(data.get("total"), int):
-        passed, total = data["passed"], data["total"]
-    else:
-        match = re.search(r"(\d+)\s*/\s*(\d+)\s*passed", text)
-        if match:
-            passed, total = int(match.group(1)), int(match.group(2))
-    if passed is None or total is None or total <= 0:
-        return "FAIL"
-    return "PASS" if passed == total else "FAIL"
-
-
 registry = Registry(
     name="AgentOS Registry",
     tools=[
@@ -154,6 +119,15 @@ registry = Registry(
     ],
     models=[default_model()],
     dbs=[get_postgres_db()],
-    functions=[route_component_type, score_eval_status],
+    # Deterministic workflow-step executors — see app/functions.py for the contract.
+    functions=[
+        route_component_type,
+        score_eval_status,
+        extract_json,
+        extract_urls,
+        json_to_csv,
+        csv_to_markdown_table,
+        content_to_file,
+    ],
     agents=[platform_manager],
 )
