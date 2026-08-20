@@ -10,12 +10,13 @@ from pathlib import Path
 from agno.os import AgentOS
 from agno.utils.log import log_info
 
-from agents.agent_builder import agent_builder
-from agents.chief import chief
-from agents.platform_manager import platform_manager
+from agents.builder import platform_builder
+from agents.engineer import platform_engineer
+from agents.manager import platform_manager
 from app.registry import registry
 from app.schedules import register_schedules
 from db import get_postgres_db
+from teams.lead import agno_team
 from workflows.deployment_check import deployment_check
 from workflows.run_evals import run_evals
 
@@ -28,7 +29,7 @@ agentos_url = getenv("AGENTOS_URL", "http://127.0.0.1:8000")
 
 # ---------------------------------------------------------------------------
 # Interfaces
-# - Chief becomes available on Slack when both env vars are set
+# - Agno becomes available on Slack when both env vars are set
 # ---------------------------------------------------------------------------
 SLACK_BOT_TOKEN = getenv("SLACK_BOT_TOKEN", "")
 SLACK_SIGNING_SECRET = getenv("SLACK_SIGNING_SECRET", "")
@@ -39,12 +40,12 @@ if SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET:
 
     interfaces.append(
         Slack(
-            team=chief,
+            team=agno_team,
             streaming=True,
             token=SLACK_BOT_TOKEN,
             signing_secret=SLACK_SIGNING_SECRET,
             resolve_user_identity=True,
-            loading_text="Barbequeing...",
+            loading_text="Pulling the thread...",
         )
     )
 
@@ -96,8 +97,8 @@ agent_os = AgentOS(
     mcp_auth=mcp_auth,
     lifespan=lifespan,
     db=get_postgres_db(),
-    agents=[agent_builder, platform_manager],
-    teams=[chief],
+    agents=[platform_builder, platform_manager, platform_engineer],
+    teams=[agno_team],
     workflows=[deployment_check, run_evals],
     interfaces=interfaces,
     registry=registry,

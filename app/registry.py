@@ -17,7 +17,7 @@ from agno.tools.parallel import ParallelTools
 from agno.tools.slack import SlackTools
 from agno.tools.user_feedback import UserFeedbackTools
 
-from agents.platform_manager import platform_manager
+from agents.manager import platform_manager
 from app.functions import (
     content_to_file,
     csv_to_markdown_table,
@@ -113,7 +113,7 @@ registry = Registry(
         *get_media_tools(),
         *get_file_generation_tools(),
         # Structured ask-the-user questions: pauses the run, resumes via the
-        # same HITL surfaces as Agent Builder's delete gate.
+        # same HITL surfaces as Platform Builder's archive gate.
         UserFeedbackTools(),
         CalculatorTools(),
     ],

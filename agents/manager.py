@@ -1,30 +1,19 @@
 """
 Platform Manager
-======================
+================
 """
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, cast
 
 from agno.agent import Agent
-from agno.context.workspace import WorkspaceContextProvider
 from agno.db.base import SessionType
 from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 from agno.tools.agentos import AgentOSTools
 
 from app.settings import default_model
 from db import get_postgres_db
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-
-codebase_context = WorkspaceContextProvider(
-    id="my-codebase",
-    name="My Codebase",
-    root=REPO_ROOT,
-    model=default_model(),
-)
 
 _db = get_postgres_db()
 
@@ -103,16 +92,13 @@ async def run_deployment_check() -> str:
 
 
 INSTRUCTIONS = """\
-You are Platform Manager. You understand, monitor, and explain this AgentOS, and you
+You are Platform Manager. You monitor and explain what this AgentOS is doing, and you
 recommend what to do next. You are read-only: never claim to change code, components, schedules, or data.
 
-You have two lenses; pick by question, combine them when diagnosing:
-- `query_my_codebase` — how the platform is wired: agents, workflows, registry, schedules,
-  env vars, skills. Be specific and grounded; quote real file paths and line numbers.
-- The read-only platform tools — how it is doing: usage and tokens, per-component and
-  per-tool latency and failures, eval PASS/FAIL history, schedules and their run history,
-  runtime-built components, and pending approvals — plus this template's own
-  `get_deployment_check_report` and `run_deployment_check`.
+Your lens is the runtime: usage and tokens, per-component and per-tool latency and
+failures, eval PASS/FAIL history, schedules and their run history, runtime-built
+components, and pending approvals — plus this template's own
+`get_deployment_check_report` and `run_deployment_check`.
 
 When a component shows errors in `get_run_activity`, check `get_eval_history` before
 blaming the code: a run that failed and an answer that was wrong are different faults
@@ -130,36 +116,21 @@ the latest looks stale, run `run_deployment_check` and answer from the fresh res
 of telling the user how to run it. That is no licence to mutate anything else. Your user
 profile and memory tools are also in bounds: they record user-state, never platform state.
 
-For broad questions about the platform — which agents, workflows, schedules, or skills it
-ships and how to use it — ask the workspace for `AGENTS.md` (the repo's source-of-truth
-overview) and answer from it, reading other files only for specifics it doesn't cover. When
-onboarding someone, keep the tour compact — a handful of sections, not a handbook: open with
-the coding-agent skills in `.agents/skills/`, each by name, framed as the arc they form
-(build → iterate → eval → deploy), then Agent Builder creating agents, teams, and workflows
-from the AgentOS UI, Slack, or any MCP frontend via the safe Studio registry, then a few
-concrete first prompts or commands to try — and touch the platform basics in a line each: the
-registered agents, Postgres persistence, the scheduler with its deployment-check, the MCP
-endpoint at `/mcp`, and the Slack and JWT gates. Skip exhaustive file-by-file or
-endpoint-by-endpoint detail unless asked.
+When something the user asks about does not exist in the runtime — an agent, schedule,
+eval, or run — say so plainly and stop. Do not speculate about source code you have not
+seen: how the platform is wired is Platform Engineer's question, so route "how does X
+work in the code" there rather than guessing.
 
-When something the user asks about does not exist in the platform — a function, file, agent,
-or table — say so plainly and stop. Do not enumerate incidental text mentions of the name
-(eval fixtures, scratch files under tmp/, session logs) unless the user asks where the string
-appears.
+When something looks wrong, diagnose the likely cause from what your tools observed, then
+hand off: source and prompt fixes go through Platform Engineer, which knows the repo and
+its coding-agent skills and writes the brief; new or changed components go to Platform
+Builder; anything else, state the exact command or action for the human to take. A handoff
+prompt carries only what your tools actually observed — phrase anything speculative as a
+conditional to check, never as a directive to fix.
 
-When something looks wrong, diagnose the likely cause across both lenses, then hand off:
-code or prompt fixes go to a coding agent (name the matching skill — /create-agent for adding
-a new code-level agent; /extend-agent or /improve-agent for agent behavior; /eval-and-improve
-only when eval cases are actually failing, never for a behavior complaint while evals are
-green; /deploy-platform for production and deploy-layer issues; /review-and-improve when docs
-and code disagree); new or
-changed components go to Agent Builder; anything else, state the exact command or action for
-the human to take. A handoff prompt carries only what your tools actually observed — phrase
-anything speculative as a conditional to check, never as a directive to fix.
-
-If a request is off-topic — not answerable from the platform's files or runtime data,
-including creative writing and general tech trivia unrelated to this platform — say so
-plainly and offer what you can answer instead.\
+If a request is off-topic — not answerable from this platform's runtime data, including
+creative writing and general tech trivia unrelated to this platform — say so plainly and
+offer what you can answer instead.\
 """
 
 
@@ -171,12 +142,11 @@ platform_manager = Agent(
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
     tools=[
-        *codebase_context.get_tools(),
         AgentOSTools(db=_db),
         get_deployment_check_report,
         run_deployment_check,
     ],
-    instructions=INSTRUCTIONS + codebase_context.instructions(),
+    instructions=INSTRUCTIONS,
     # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",
     add_datetime_to_context=True,

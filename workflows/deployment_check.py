@@ -135,20 +135,27 @@ def _check_slack_config() -> CheckResult:
 
 def _check_reference_components() -> CheckResult:
     try:
-        from agents.agent_builder import agent_builder
-        from agents.chief import chief
-        from agents.platform_manager import platform_manager
+        from agents.builder import platform_builder
+        from agents.engineer import platform_engineer
+        from agents.manager import platform_manager
         from app.registry import registry
+        from teams.lead import agno_team
         from workflows.run_evals import run_evals
     except Exception as exc:
         return _fail("Components", f"Could not import reference components: {exc}")
 
-    agent_ids = sorted([agent_id for agent_id in (chief.id, platform_manager.id, agent_builder.id) if agent_id])
+    component_ids = sorted(
+        [
+            component_id
+            for component_id in (agno_team.id, platform_builder.id, platform_manager.id, platform_engineer.id)
+            if component_id
+        ]
+    )
     workflow_ids = sorted([workflow_id for workflow_id in (deployment_check.id, run_evals.id) if workflow_id])
     return _pass(
         "Components",
         "Reference components import cleanly: "
-        f"agents={', '.join(agent_ids)}; workflows={', '.join(workflow_ids)}. "
+        f"components={', '.join(component_ids)}; workflows={', '.join(workflow_ids)}. "
         f"Registry has {len(registry.tools)} tools.",
     )
 

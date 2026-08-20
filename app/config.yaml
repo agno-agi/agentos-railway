@@ -1,7 +1,7 @@
 manifest:
   # --- Agents ---
 
-  agent-builder:
+  platform-builder:
     description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
       - "What can you build for me?"
@@ -9,20 +9,27 @@ manifest:
       - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
-    description: "Understands, monitors, and explains this AgentOS. Codebase context, runtime diagnostics, usage patterns."
+    description: "Monitors and explains what this AgentOS is doing: usage patterns, run activity, deployment checks."
     quick_prompts:
-      - "Tell me about this AgentOS"
+      - "How healthy is the platform right now?"
       - "Share some usage patterns"
       - "Which agent is slowest, and is anything failing?"
 
+  platform-engineer:
+    description: "Knows how this AgentOS is built: reads the source and explains the wiring, grounded in real files."
+    quick_prompts:
+      - "Tell me about this AgentOS"
+      - "How is the MCP endpoint wired?"
+      - "Which env vars does this platform read?"
+
   # --- Teams ---
 
-  chief:
-    description: "The team mascot, and the team lead. Tell Chief anything; it can also build agents, run the ones the team has built, and check on the platform."
+  agno:
+    description: "This platform, speaking for itself. Tell Agno anything; it builds agents, runs what the team has built, and checks on itself."
     quick_prompts:
-      - "What's up chief?"
-      - "Hey Chief, we're getting zapatos from garaje"
-      - "Chief how's the platform doing?"
+      - "What's up Agno?"
+      - "Agno, we're getting zapatos from garaje"
+      - "Agno, how are you doing?"
 
   # --- Workflows ---
 

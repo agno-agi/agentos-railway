@@ -9,7 +9,7 @@ returns a string (the step's content) or a `StepOutput` when the step attaches
 a downloadable file artifact. No model calls, no tokens, no side effects — a
 function step's behavior is exactly its code.
 
-Agent Builder discovers these through `list_functions`, which surfaces each
+Platform Builder discovers these through `list_functions`, which surfaces each
 function's name, docstring, and signature. The docstring is the contract a
 builder relies on, so keep its first line precise about input and output.
 """
