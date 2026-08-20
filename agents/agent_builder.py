@@ -109,18 +109,17 @@ agent_builder = Agent(
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
-            agents=True,
-            teams=True,
-            workflows=True,
+            create_agents=True,
+            create_teams=True,
+            create_workflows=True,
             versions=True,
             schedules=True,
             default_num_history_runs=5,
-            # Create/edit/publish are additive and reversible, so they run without HITL.
-            # Deleting something others may depend on is not reversible, so it requires confirmation.
+            # Create/edit/publish are additive and reversible (drafts, versions, restore),
+            # so they run without HITL. Archiving pulls a component out of service and
+            # disables its schedules, and the two deletes discard real state — those pause.
             requires_confirmation_tools=[
-                "delete_agent",
-                "delete_team",
-                "delete_workflow",
+                "archive_component",
                 "delete_version",
                 "delete_schedule",
             ],
