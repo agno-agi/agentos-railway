@@ -51,9 +51,9 @@ echo -e "    ${DIM}> rm -rf ${VENV_DIR}${NC}"
 rm -rf ${VENV_DIR}
 
 echo ""
-echo -e "    ${DIM}Creating Python 3.12 venv...${NC}"
-echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.12${NC}"
-uv venv ${VENV_DIR} --python 3.12 --quiet
+echo -e "    ${DIM}Creating Python 3.14 venv...${NC}"
+echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.14${NC}"
+uv venv ${VENV_DIR} --python 3.14 --quiet
 
 echo ""
 echo -e "    ${DIM}Installing requirements...${NC}"
