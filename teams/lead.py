@@ -180,10 +180,11 @@ agno_team = Team(
     learning=memory,
     tools=[notes.tools(), web_tools, studio_runners],
     members=[platform_builder, platform_manager, platform_engineer],
-    # Keep member tool state on the session so a member's confirmation gate
-    # (Platform Builder's archive/delete pauses) can resume from Slack buttons
-    # or MCP continue_run.
-    store_member_responses=True,
+    # Off: member runs always persist as their own rows in the runs table (that
+    # is the member-history source after a reload), and the member-response
+    # scrub spares paused runs, so HITL gates resume either way. True would only
+    # add a duplicate embedded copy to every team run row.
+    store_member_responses=False,
     instructions=[INSTRUCTIONS, notes.instructions()],
     # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",
