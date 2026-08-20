@@ -23,16 +23,16 @@ The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`). Compose runs uvi
   ```
 
   Empty result = the container's `/app` is bound to a different repo path. Either `cd` to that repo or restart the container from this directory (`docker compose down && docker compose up -d --build`).
-- Ask the user for the target agent **slug** (e.g. `chief`).
+- Ask the user for the target agent **slug** (e.g. `platform-manager`).
 - Recommend the user create a feature branch (`git checkout -b extend/<slug>-$(date +%Y%m%d)`) so any wrong turns are easy to revert.
 
 ## 1. Read the agent first
 
-Open `agents/<slug>.py`. Capture:
+Open the component's file — `agents/<slug>.py` for user-built agents; the reference components map ids to files: `platform-builder` → [`agents/builder.py`](../../../agents/builder.py), `platform-manager` → [`agents/manager.py`](../../../agents/manager.py), `platform-engineer` → [`agents/engineer.py`](../../../agents/engineer.py), the `agno` team → [`teams/lead.py`](../../../teams/lead.py). Capture:
 
 - **Stated purpose** — the file's docstring + the `INSTRUCTIONS` string.
 - **Tools** — what's wired and what each one does.
-- **Pattern** — direct tools (like the notes toolkit in [`agents/chief.py`](../../../agents/chief.py), which also composes a `learning=` machine), context provider (the `codebase_context` wiring in [`agents/platform_manager.py`](../../../agents/platform_manager.py)), or a mix (Platform Manager also carries direct read-only runtime tools; Agent Builder is the Studio-tools pattern with delete-only confirmation gates).
+- **Pattern** — direct tools (like the notes toolkit in [`teams/lead.py`](../../../teams/lead.py), which also composes a `learning=` machine), context provider (the `WorkspaceContextProvider` wiring in [`agents/engineer.py`](../../../agents/engineer.py), run in tools mode for direct reads), or a mix (Platform Manager pairs the read-only `AgentOSTools` runtime toolkit with the deployment-check functions; Platform Builder is the Studio-tools pattern where create/edit/publish run immediately and only `archive_component` / `delete_version` / `delete_schedule` keep a confirmation gate).
 - **Existing levers** — `enable_agentic_memory`, `num_history_runs`, `knowledge=`, model id.
 
 Restate the agent's purpose to the user in 1-2 sentences before asking what to change. This catches "I thought it did X but actually it does Y" upfront.
@@ -59,7 +59,7 @@ What to capture per branch:
 - **Add a capability**:
   - *Knowledge base* — `from db import create_knowledge`, instantiate with a name + table, pass via `knowledge=` on the Agent. Document load step (`.add_content_async()`) goes wherever ingestion lives.
   - *Memory* — flags on the Agent constructor: `enable_agentic_memory`, `enable_user_memories`, `add_history_to_context`, `num_history_runs`. Read agno's memory docs to pick the right one.
-  - *Sub-agent / context provider* — mirror the `codebase_context` provider in [`agents/platform_manager.py`](../../../agents/platform_manager.py): instantiate the provider, spread `provider.get_tools()` into `tools=[...]`, and append `provider.instructions()` to `INSTRUCTIONS`. The parent sees one `query_<thing>(question)` tool; the sub-agent does the work. (Ignore that file's other tools — the `AgentOSTools` toolkit and the two deployment-check functions are direct tools, not part of the provider pattern.)
+  - *Sub-agent / context provider* — mirror the `WorkspaceContextProvider` wiring in [`agents/engineer.py`](../../../agents/engineer.py): instantiate the provider, spread `provider.get_tools()` into `tools=[...]`, and append `provider.instructions()` to `INSTRUCTIONS`. In the default mode the parent sees one `query_<thing>(question)` tool and a sub-agent does the work; `engineer.py` opts into `ContextMode.tools` so the agent gets the provider's read tools (`read_file`, `list_files`, `search_content`) directly.
   - *Scheduled task* — see [agno scheduler docs](https://docs.agno.com/agent-os/scheduler) and the `scheduler=True` line in [`app/main.py`](../../../app/main.py).
 - **Refine instructions** — no docs needed. Read the current `INSTRUCTIONS`, propose a minimal diff. Prefer narrowing ("on recent-events questions, follow up with a `web_fetch`") over forbidding.
 - **Fix a bug** — first reproduce the failure on the live agent (see Step 6). Then identify the layer: `INSTRUCTIONS` (most common), tool (wrong tool wired or missing), model (under-capable), env (rate limit, missing key, MCP unreachable).
@@ -72,7 +72,7 @@ Before editing, tell the user in 2-3 lines what you're about to change and why. 
 
 Then edit. Files in scope:
 
-- [`agents/<slug>.py`](../../../agents/) — instructions, tools, model, memory flags, knowledge.
+- [`agents/<slug>.py`](../../../agents/) (or the component's file — see Step 1's map) — instructions, tools, model, memory flags, knowledge.
 - [`app/main.py`](../../../app/main.py) — only if registering a new sub-agent or changing interface wiring.
 - [`app/config.yaml`](../../../app/config.yaml) — update the agent's manifest entry: refresh the `description` if the job changed, and add or update `quick_prompts` to exercise the new capability.
 - [`pyproject.toml`](../../../pyproject.toml) — only if a toolkit needs new pip deps.
@@ -110,9 +110,9 @@ docker exec agentos-api grep -c "<unique substring from your edit>" /app/agents/
 
 ## 6. Smoke test the change
 
-Pick a prompt that **exercises the change you just made**. For "Add a tool," the prompt should force the new tool to fire. For "Fix a bug," reuse the failing prompt the user described. For "Refine instructions," pick a prompt the rule was meant to handle.
+Pick a prompt that **exercises the change you just made**. For "Add a tool," the prompt should force the new tool to fire. For "Fix a bug," reuse the failing prompt the user described. For "Refine instructions," pick a prompt the rule was meant to handle. (Targeting the `agno` team? Swap `/agents/<slug>/runs` below for `/teams/agno/runs` — same flags.)
 
-> **Warning — smoke tests against `agent-builder` mutate the DB.** Its create / edit / publish / `set_current_version` Studio tools execute immediately (only the four delete tools pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or snapshot state before the run and hard-delete anything new afterward — use `snapshot_builder_state()` / `delete_new_builder_state()` from [`evals/cases.py`](../../../evals/cases.py) (components plus learning rows — the builder carries the shared per-user profile/memory stores). The same applies when reproducing a bug on `agent-builder` in Step 3.
+> **Warning — smoke tests against `platform-builder` mutate the DB.** Its create / edit / publish Studio tools execute immediately (create/edit produce drafts, but the builder's instructions make `publish=true` the default completion — only `archive_component` / `delete_version` / `delete_schedule` pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component, and can create a schedule that keeps firing daily. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or snapshot state before the run and hard-delete anything new afterward — use `snapshot_builder_state()` / `cleanup_new_builder_state()` from [`evals/cases.py`](../../../evals/cases.py) (components plus schedules plus learning rows — the builder carries the shared per-user profile/memory stores). The same applies when reproducing a bug on `platform-builder` in Step 3.
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
@@ -163,29 +163,29 @@ A simple change (one tool, one prompt refinement) takes 5-10 minutes. A capabili
 
 ## Worked example
 
-Target: `chief`. The user wants Chief to also be able to read pages and PDFs from URLs, so "file this link" captures the content, not just the address.
+Target: the `agno` team ([`teams/lead.py`](../../../teams/lead.py)). The user wants Agno to also be able to read pages and PDFs from URLs, so "file this link" captures the content, not just the address.
 
 **Step 2** — user picks "Add a tool."
 
-**Step 3** — search the agno-docs MCP for "PDF" and "fetch." Find that Chief's existing Parallel web tools already cover fetching HTML pages, but PDF parsing isn't included. Find `agno.tools.jina` (Jina Reader turns any URL, PDF, or HTML into clean markdown) — capture import, env var (`JINA_API_KEY`, optional — it works keyless, a key just raises the rate ceiling), pip dep (`jina`).
+**Step 3** — search the agno-docs MCP for "PDF" and "fetch." Find that Agno's existing Parallel web tools already cover fetching HTML pages, but PDF parsing isn't included. Find `agno.tools.jina` (Jina Reader turns any URL, PDF, or HTML into clean markdown) — capture import, env var (`JINA_API_KEY`, optional — it works keyless, a key just raises the rate ceiling), pip dep (`jina`).
 
-**Step 4** — propose: *"Add `JinaReaderTools` so `chief` can fetch and parse the links you hand it before filing them. Needs `jina` in `pyproject.toml`; works keyless, set `JINA_API_KEY` for higher limits. Add a quick prompt that exercises a PDF URL."* User says yes.
+**Step 4** — propose: *"Add `JinaReaderTools` so `agno` can fetch and parse the links you hand it before filing them. Needs `jina` in `pyproject.toml`; works keyless, set `JINA_API_KEY` for higher limits. Add a quick prompt that exercises a PDF URL."* User says yes.
 
-Edit `agents/chief.py` to import `JinaReaderTools` and add it to `tools=[notes.tools(), web_tools, JinaReaderTools()]`. Add `jina` to `pyproject.toml` (and optionally `JINA_API_KEY=` to [`example.env`](../../../example.env)). Add a quick prompt to the agent's manifest entry in `app/config.yaml`:
+Edit `teams/lead.py` to import `JinaReaderTools` and add it to `tools=[notes.tools(), web_tools, studio_runners, JinaReaderTools()]`. Add `jina` to `pyproject.toml` (and optionally `JINA_API_KEY=` to [`example.env`](../../../example.env)). Add a quick prompt to the team's manifest entry in `app/config.yaml`:
 
 ```yaml
 manifest:
-  chief:
+  agno:
     quick_prompts:
       - "Read https://arxiv.org/pdf/2501.12948 and file what matters"
 ```
 
 **Step 5** — pip deps changed: `./scripts/generate_requirements.sh && docker compose up -d --build`. Poll `/health`.
 
-**Step 6** — cURL the agent with the quick prompt. Logs show `Running: read_url(` against the arxiv URL, then a note write with the distilled content.
+**Step 6** — cURL the team (`POST /teams/agno/runs`) with the quick prompt. Logs show `Running: read_url(` against the arxiv URL, then a note write with the distilled content.
 
 **Step 7** — user says "no, that's it."
 
-**Step 8** — diff summary, commit `feat(chief): add JinaReaderTools for URL and PDF capture`, recommend the `improve-agent` skill to harden the broader behavior.
+**Step 8** — diff summary, commit `feat(agno): add JinaReaderTools for URL and PDF capture`, recommend the `improve-agent` skill to harden the broader behavior.
 
 That's the loop. Most sessions are smaller — one tool, one rule, one bug.

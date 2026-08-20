@@ -53,7 +53,7 @@ Build what makes *their* week easier. Resist the demo classics (news digest, gen
 
 | Decision | How you decide it |
 |---|---|
-| **Pattern** | **Direct tools** (the required structure in Step 3; [`agents/chief.py`](../../../agents/chief.py) shows it live — ignore its `learning=` extras) when the agent uses ≤2 toolkits — this is the common case. **Context provider** (mirror the `codebase_context` wiring in [`agents/platform_manager.py`](../../../agents/platform_manager.py)) when it queries one information source through a single `query_<thing>` tool, or you're hiding a sub-agent. Pick one and mention it in a clause; never make the user choose. |
+| **Pattern** | **Direct tools** (the required structure in Step 3; [`agents/manager.py`](../../../agents/manager.py) shows it live — ignore its `learning=` extras) when the agent uses ≤2 toolkits — this is the common case. **Context provider** (mirror the `codebase` wiring in [`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source — a single `query_<thing>` tool by default, or the provider's direct read tools in `ContextMode.tools` as the engineer does. Pick one and mention it in a clause; never make the user choose. |
 | **Slug** | Derive it from the purpose (`pr-reviewer`, `linear-triager`). Kebab-case. State it, don't ask for sign-off. |
 | **Model** | `default_model()` — already `gpt-5.6-sol`. Override only if the user asks. |
 | **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer keyless toolkits (HackerNews, ArXiv, Wikipedia, DuckDuckGo via `WebSearchTools`) when they'd serve just as well — a keyless agent works on the first try. |
@@ -90,9 +90,9 @@ Don't guess any of the four. Skip this step entirely if the agent is chat-only w
 
 Create `agents/<slug>.py` (replacing `-` with `_` for the filename: `agents/linear_agent.py`). Follow the closest reference pattern:
 
-- **Direct tools** → follow the required structure below ([`agents/chief.py`](../../../agents/chief.py) is the live example; skip its `learning=` and notes wiring unless the new agent needs durable state across sessions).
-- **Context provider** → mirror the `codebase_context` part of [`agents/platform_manager.py`](../../../agents/platform_manager.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions. Skip its extra runtime tools unless the new agent also needs direct tools.
-- **Studio builder** → mirror [`agents/agent_builder.py`](../../../agents/agent_builder.py) when the agent should create or refine AgentOS components through StudioTools.
+- **Direct tools** → follow the required structure below ([`agents/manager.py`](../../../agents/manager.py) is the live example; skip its `learning=` wiring unless the new agent needs durable state across sessions).
+- **Context provider** → mirror the `codebase` part of [`agents/engineer.py`](../../../agents/engineer.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions. Skip its `learning=` wiring unless the new agent also needs durable state.
+- **Studio builder** → mirror [`agents/builder.py`](../../../agents/builder.py) when the agent should create or refine AgentOS components through StudioTools.
 
 Required structure:
 
@@ -141,7 +141,7 @@ from agents.<slug_underscore> import <slug_underscore>
 
 agent_os = AgentOS(
     ...
-    agents=[agent_builder, platform_manager, <slug_underscore>],
+    agents=[platform_builder, platform_manager, platform_engineer, <slug_underscore>],
     ...
 )
 ```
@@ -204,7 +204,7 @@ jq -r '.content // .' < /tmp/agent-out.json
 
 Pass = `HTTP 200` and a non-empty `.content` field.
 
-> **Studio-builder-pattern agents:** create/edit/publish StudioTools execute immediately against the DB — only deletes pause for confirmation. Don't smoke-test with a "Build me X" quick prompt; it will create and publish a real component. Probe with a read-only prompt instead (e.g. "What components can you see in the registry?"), or delete anything the smoke test created (the delete pauses for approval — grant it in the AgentOS UI, or over MCP with the `continue_run` tool).
+> **Studio-builder-pattern agents:** create/edit StudioTools execute immediately against the DB, and the builder pattern treats publish as completion — only `archive_component`, `delete_version`, and `delete_schedule` pause for confirmation. Don't smoke-test with a "Build me X" quick prompt; it will create and publish a real component. Probe with a read-only prompt instead (e.g. "What components can you see in the registry?"), or archive anything the smoke test created (the archive pauses for approval — grant it in the AgentOS UI, or over MCP with the `continue_run` tool).
 
 Check the container logs to see which tools fired:
 

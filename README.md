@@ -1,6 +1,6 @@
-# AgentOS: FastAPI for Agents
+# AgentOS: The Agent Platform That Builds Itself
 
-AgentOS turns your agents into a production API and MCP server. One AI backend that serves every frontend.
+AgentOS turns your agents into a production API and MCP server. One AI backend that serves every frontend — and a platform that grows itself: coding agents build it at the source, and the platform builds new agents, teams, and workflows at runtime.
 
 1. **Your product.** Call the REST API from your app: run agents, stream responses, and manage sessions, memory, and knowledge.
 2. **AgentOS UI.** Chat with agents, build new ones, inspect sessions, traces, memory, and evals from the AgentOS UI at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
@@ -10,7 +10,7 @@ AgentOS turns your agents into a production API and MCP server. One AI backend t
 
 <img width="3298" height="2412" alt="AgentOS" src="https://github.com/user-attachments/assets/40a53a42-d4d2-402b-8e92-742609207957" />
 
-<p align="center"><em>Built on <a href="https://docs.agno.com">Agno</a>. Everything runs in your cloud, your data lives in your database.</em></p>
+<p align="center"><em>Built on the <a href="https://docs.agno.com">Agno framework</a>. Everything runs in your cloud, your data lives in your database.</em></p>
 
 ## Get Started
 
@@ -28,9 +28,9 @@ Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots
 
 This codebase comes with:
 
-- **Chief, your team's mascot — and its chief of staff.** "Chief, we're going with PlanetScale over RDS." "Chief, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Chief holds the thread; everything else is a handoff: it leads Agent Builder and Platform Manager, and runs everything your team builds, so building things and checking on the platform work through the same name — from Slack too. Every frontend talks to the same Chief: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
-- **Two platform agents** that help you build and run the platform from your favorite AI apps like Claude and ChatGPT. **Agent Builder** creates agents, teams, workflows, and schedules using the AgentOS Studio. **Platform Manager** understands, monitors, and explains the platform: codebase questions, eval history, deployment checks, schedules.
-- **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform automatically — see [Using the platform](#using-the-platform).
+- **Agno — the platform, speaking for itself.** "Agno, we're going with PlanetScale over RDS." "Agno, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Agno holds the thread; everything else is a handoff: it leads the three platform agents and runs everything your team builds, so building things, checking on the platform, and understanding it all work through the same name — from Slack too. Every frontend talks to the same Agno: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
+- **Three platform agents** behind it, one per job. **Platform Builder** creates agents, teams, workflows, and schedules using the AgentOS Studio — builds come out published and runnable. **Platform Manager** monitors what the platform is doing: usage, run activity, eval history, deployment checks, schedules. **Platform Engineer** knows how the platform is built: it reads the source and explains the wiring, grounded in real files.
+- **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform at the source — see [Using the platform](#using-the-platform).
 
 Trace data, agent code, evals, and system logs are all available to coding agents, so the platform can inspect and improve itself end to end.
 
@@ -59,19 +59,21 @@ Confirm your AgentOS is running at [http://localhost:8000/docs](http://localhost
 1. Open [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway) and sign in.
 2. Click **Connect OS**, enter `http://localhost:8000` as the URL, name it **Local AgentOS**, and connect.
 
-### Step 3: Build your first agent
+### Step 3: Meet Agno — and build your first agent through it
 
-1. Click **Chat** under the **Agent Builder** agent and try the first prompt: "Build an agent that tracks AI news and writes a daily brief". Go through the agent development process.
-2. Once created, click the **Refresh** button on the top right. You should now see the "Daily AI News Brief" agent in the **Agents** dropdown. Click the newly created agent.
-3. Ask: "What's new with Anthropic?"
+1. Click **Chat** under the **Agno** team and tell it what you're working on: "Hey Agno — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours.
+2. Now ask it to build: "Build an agent that tracks AI news and writes a daily brief". Agno hands the build to Platform Builder, and the agent comes back created **and published** — live on the platform.
+3. Click the **Refresh** button on the top right. You should now see the "Daily AI News Brief" agent in the **Agents** dropdown — chat with it directly, or just tell Agno: "Have the news agent brief me."
+
+From then on, tag Agno in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Agno, what's happening?": same Agno everywhere.
 
 ### Step 4: Check platform health
 
-Click **Chat** under **Platform Manager** and ask: "How healthy is the platform?" It answers from the codebase and runtime data — eval history, deployment checks, schedules, and the component you just built.
+Click **Chat** under **Platform Manager** and ask: "How healthy is the platform?" It answers from runtime data — eval history, deployment checks, schedules, and the run activity of the agent you just built.
 
-### Step 5: Meet Chief
+### Step 5: See how it's built
 
-Click **Chat** under **Chief** and tell it what you're working on: "Hey Chief — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours. From then on, tag it in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Chief, what's happening?": same Chief everywhere.
+Click **Chat** under **Platform Engineer** and ask: "Tell me about this AgentOS." It reads the repo and gives you the tour — the agents, the skills, the wiring — grounded in real files. Any time you wonder how something works, this is the agent that knows.
 
 ### Step 6: Make it yours
 
@@ -264,7 +266,7 @@ can you access my agentos mcp?
 | `EVALS_TAG` | no | `smoke` | Eval tag run by the run-evals workflow. |
 | `EVALS_CASE_TIMEOUT_SECONDS` | no | `90` | Default per-case timeout for run-evals runs; applies only to cases that don't set their own `timeout_seconds`. |
 | `EVALS_SUITE_TIMEOUT_SECONDS` | no | `900` | Whole-suite timeout for run-evals runs; per-case timeouts are the granular limit. The default bounds the `smoke` tag's worst case (incl. builder-case teardown). |
-| `PARALLEL_API_KEY` | no | none | Authenticates Chief's and the Studio registry's web search tools (Parallel SDK when set; keyless MCP fallback). |
+| `PARALLEL_API_KEY` | no | none | Authenticates Agno's and the Studio registry's web search tools (Parallel SDK when set; keyless MCP fallback). |
 | `SLACK_BOT_TOKEN` / `SLACK_SIGNING_SECRET` | no | none | Both must be set to enable the Slack interface. The bot token also lights up the registry's send-only Slack toolkit for built agents. |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASS` / `DB_DATABASE` | no | matches compose | Postgres connection. |
 | `DB_DRIVER` | no | `postgresql+psycopg` | SQLAlchemy driver. |

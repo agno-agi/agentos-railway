@@ -46,7 +46,7 @@ Restate the surface area in 4-5 lines so the user can redirect before you read e
 
 - Top-level docs: [`README.md`](../../../README.md) (including its setup prompt), [`AGENTS.md`](../../../AGENTS.md), and [`example.env`](../../../example.env).
 - Coding-agent skills: [`.agents/skills/*/SKILL.md`](../../../.agents/skills/) (frontmatter `name` matches the folder; `description` is trigger-rich; relative links resolve from two levels deep, i.e. `../../../`).
-- Code: [`app/`](../../../app/), [`agents/`](../../../agents/), [`workflows/`](../../../workflows/), [`db/`](../../../db/), [`evals/`](../../../evals/), [`scripts/`](../../../scripts/).
+- Code: [`app/`](../../../app/), [`agents/`](../../../agents/), [`teams/`](../../../teams/), [`workflows/`](../../../workflows/), [`db/`](../../../db/), [`evals/`](../../../evals/), [`scripts/`](../../../scripts/).
 - Configs: [`compose.yaml`](../../../compose.yaml), [`Dockerfile`](../../../Dockerfile), [`pyproject.toml`](../../../pyproject.toml), [`railway.json`](../../../railway.json).
 
 Skip: `.venv/`, `*_cache/`, `.git/`, anything generated.
@@ -57,8 +57,8 @@ If the user has a specific concern (recent refactor, prepping a public release, 
 
 Read every file in scope. Build a mental model of:
 
-- **Registered agents** — what's imported in `app/main.py`'s `agents=[...]`?
-- **Agent files on disk** — what's in [`agents/`](../../../agents/)?
+- **Registered agents + team** — what's imported in `app/main.py`'s `agents=[...]` and `teams=[...]`?
+- **Agent and team files on disk** — what's in [`agents/`](../../../agents/) and [`teams/`](../../../teams/)?
 - **Env vars actually read** — grep `os.environ`, `os.getenv`, `getenv(`, plus settings/config modules.
 - **Manifest** — what's in [`app/config.yaml`](../../../app/config.yaml) under `manifest` (description + quick prompts per component)?
 - **Eval cases** — what's in [`evals/cases.py`](../../../evals/cases.py)?
@@ -74,14 +74,14 @@ The bulk of the work. Diff each pair below; auto-fix per the rules at the top.
 
 | Check | Where | Common drift |
 |---|---|---|
-| Every agent file is registered | [`agents/`](../../../agents/) ↔ `app/main.py` | New agent file not imported |
-| Every registered agent + workflow has a manifest entry | `app/main.py` ↔ `app/config.yaml` | Component added without description/prompts |
+| Every agent + team file is registered | [`agents/`](../../../agents/), [`teams/`](../../../teams/) ↔ `app/main.py` | New agent or team file not imported |
+| Every registered agent, team + workflow has a manifest entry | `app/main.py` ↔ `app/config.yaml` | Component added without description/prompts |
 | Every env var in code is documented | code grep ↔ `AGENTS.md` env table + `example.env` | New var added without entries |
 | Every var in `example.env` is read somewhere | `example.env` ↔ code grep | Stale var nobody reads |
 | Every path mentioned in docs exists | `README.md`, `AGENTS.md`, `docs/*.md`, `.agents/skills/*/SKILL.md` ↔ filesystem | Renamed or deleted file |
 | Every script mentioned in docs is real + does what's claimed | docs ↔ `scripts/` | Renamed or behavior drifted |
 | Architecture diagrams match registered agents + workflows | `README.md`, `AGENTS.md` Architecture sections | New agent or workflow missing from the tree |
-| Eval cases reference real agents + tools | `evals/cases.py` ↔ `agents/` | Slug renamed or tool removed |
+| Eval cases reference real agents + tools | `evals/cases.py` ↔ `agents/`, `teams/` | Slug renamed or tool removed |
 | Every workflow file is registered | [`workflows/`](../../../workflows/) ↔ `app/main.py` `workflows=[...]` | New workflow not imported/registered |
 | Every schedule hits a real workflow | `app/schedules.py` `endpoint` ↔ workflow `id`s | Endpoint points at a renamed/removed workflow |
 | `Key Files` table in `AGENTS.md` matches reality | `AGENTS.md` ↔ filesystem | Renamed file, deleted file, new file not listed |
@@ -101,7 +101,7 @@ curl -s http://localhost:8000/agents | jq -r '.[].id' | sort
 
 If the list doesn't match the slugs in `agents=[...]`, flag it — Step 4 will be testing the wrong code. Common causes: the container is bound to a different repo path, or `docker compose restart` is needed. Stop and surface to the user.
 
-For each agent registered in `app/main.py`, hit it with one of its `quick_prompts` — **except `agent-builder`**: its quick prompts are all "Build …" requests, and its create/edit/publish Studio tools execute immediately against the DB (only deletes pause for confirmation), so a quick-prompt smoke would create a real component and leave it behind. Probe it with a plan-only message instead, e.g. `message=Before creating anything, explain how you would build an agent that tracks AI news daily.` If a create fires anyway, hard-delete the new component (`snapshot_builder_state` / `delete_new_builder_state` in [`evals/cases.py`](../../../evals/cases.py) are the helpers — they sweep new learning rows too, since the builder carries the shared per-user profile/memory stores).
+For each agent registered in `app/main.py`, hit it with one of its `quick_prompts` — **except `platform-builder`**: its quick prompts are all "Build …" requests, and its instructions make publish the default completion of a build (create/edit produce drafts, but the builder passes `publish=true` to finish the job; only archives and hard deletes pause for confirmation), so a quick-prompt smoke would create and publish a real, dispatchable component and leave it live. Probe it with a plan-only message instead, e.g. `message=Before creating anything, explain how you would build an agent that tracks AI news daily.` If a create fires anyway, sweep the new state (`snapshot_builder_state` / `delete_new_builder_state` in [`evals/cases.py`](../../../evals/cases.py) are the helpers — they sweep new schedules and learning rows too, since the builder can create schedules and carries the shared per-user profile/memory stores).
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \

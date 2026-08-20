@@ -19,7 +19,7 @@ If the user named one, that's the pick. Otherwise compare `agents/` against the 
 
 ## 2. Map what it promises
 
-Read the agent's file. Its `INSTRUCTIONS` are a list of testable claims — every "always cite", "never fabricate", "use X for Y" is a case waiting to be written. Note the tools (reliability assertions), the model, and the pattern. One check has teeth: **is this a studio-builder?** Detect it operationally — `StudioTools` in the agent's `tools=` with any of `create_*`/`edit_*`/`publish_*` missing from `requires_confirmation_tools` — and look transitively too: a team member, workflow step, or sub-agent that wires in StudioTools counts. Builder cases write real DB rows, so they carry the snapshot hooks (shown in Step 5), no exceptions; when in doubt, add the hooks anyway — they're free on a run that creates nothing. A second check: does the agent carry **learning stores** (`learning=` on the Agent — all three reference agents do)? Those cases take the learning hooks; the builder hooks already include them.
+Read the agent's file. Its `INSTRUCTIONS` are a list of testable claims — every "always cite", "never fabricate", "use X for Y" is a case waiting to be written. Note the tools (reliability assertions), the model, and the pattern. One check has teeth: **is this a studio-builder?** Detect it operationally — `StudioTools` in the component's tools, directly or transitively through team members; in this repo that's `platform-builder` and the `agno` team. Builder cases write real DB rows — components, schedules, learnings — so they carry the builder hooks (shown in Step 5), no exceptions; when in doubt, add the hooks anyway — they're free on a run that creates nothing. A second check: does the agent carry **learning stores** (`learning=` — all four reference components do)? Those cases take the learning hooks; the builder hooks already include them.
 
 ## 3. Mine the platform
 
@@ -53,10 +53,10 @@ Case(
     timeout_seconds=90,
     criteria="<what a correct answer contains — specific, falsifiable>",
     expected_tool_calls=("<tool>",),
-    # Studio-builder agent (Step 2)? These two lines are mandatory — both live in this file:
+    # Studio-builder component (Step 2)? These two lines are mandatory — both live in this file:
     # setup=snapshot_builder_state,
     # teardown=cleanup_new_builder_state,
-    # Not a builder, but carries learning stores (`learning=` — chief, platform-manager)?
+    # Not a builder, but carries learning stores (`learning=` — platform-manager, platform-engineer)?
     # setup=snapshot_learning_state,
     # teardown=cleanup_new_learning_state,
 )

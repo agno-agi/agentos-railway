@@ -7,13 +7,13 @@ description: Run the eval suite (python -m evals), diagnose every failure, fix w
 
 > _**Coding-agent workflow** — a `/slash-command` your coding agent (Claude Code, Codex, others) runs while developing this repo. Invoke it by name (e.g. `/eval-and-improve`) or describe the task and it triggers automatically._
 
-You're running the platform's eval suite, diagnosing every failure, fixing what's in scope, and stopping when all cases pass. The eval wiring lives in [`evals/cases.py`](../../../evals/cases.py) (declares `agno.eval.Case`s) and [`evals/__main__.py`](../../../evals/__main__.py) (a thin entrypoint over agno's eval suite runner, `agno.eval.cli`), while fixes may also touch `agents/<slug>.py` or rare one-line config flips in `app/main.py` per Step 3. Each case uses agno's built-in [`AgentAsJudgeEval`](https://docs.agno.com/evals/agent-as-judge) (LLM judge against a `criteria` rubric, binary pass/fail) and/or [`ReliabilityEval`](https://docs.agno.com/evals/reliability) (asserts which tools fired) — no custom DSL.
+You're running the platform's eval suite, diagnosing every failure, fixing what's in scope, and stopping when all cases pass. The eval wiring lives in [`evals/cases.py`](../../../evals/cases.py) (declares `agno.eval.Case`s) and [`evals/__main__.py`](../../../evals/__main__.py) (a thin entrypoint over agno's eval suite runner, `agno.eval.cli`), while fixes may also touch `agents/<slug>.py`, `teams/lead.py`, or rare one-line config flips in `app/main.py` per Step 3. Each case uses agno's built-in [`AgentAsJudgeEval`](https://docs.agno.com/evals/agent-as-judge) (LLM judge against a `criteria` rubric, binary pass/fail) and/or [`ReliabilityEval`](https://docs.agno.com/evals/reliability) (asserts which tools fired) — no custom DSL.
 
 ## 0. Preconditions
 
 - Postgres reachable on 5432: `nc -z localhost 5432` returns 0. If not, `docker compose up -d agentos-db` from the source repo. (`docker compose ps` is unreliable from worktrees or alternate clones.)
-- Venv active: `source .venv/bin/activate`. If `.venv` doesn't exist (fresh checkout or worktree), run `./scripts/venv_setup.sh` first. `evals/cases.py` imports the agents directly from `agents/`, so no AgentOS server has to be running.
-- `.env` populated with `OPENAI_API_KEY` (and `PARALLEL_API_KEY` if you have one — the runner pins Chief's expected web tool name based on it). `evals/__main__.py` loads `.env` at startup (via `python-dotenv`), so you do not need to source `.env` first. Worktrees don't inherit `.env` (it's gitignored) — copy it from the source repo if missing.
+- Venv active: `source .venv/bin/activate`. If `.venv` doesn't exist (fresh checkout or worktree), run `./scripts/venv_setup.sh` first. `evals/cases.py` imports the components directly from `agents/` and `teams/`, so no AgentOS server has to be running.
+- `.env` populated with `OPENAI_API_KEY` (and `PARALLEL_API_KEY` if you have one — the runner pins Agno's expected web tool name based on it). `evals/__main__.py` loads `.env` at startup (via `python-dotenv`), so you do not need to source `.env` first. Worktrees don't inherit `.env` (it's gitignored) — copy it from the source repo if missing.
 
 ## 1. Run the suite
 
@@ -42,12 +42,12 @@ For every failed case, decide which kind of failure it is and fix at the appropr
 | Judge fails, response is fabricated | Agent hallucinated when it should have said it didn't know | Add a "if you can't find a real source, say so plainly" rule to the agent's instructions |
 | Reliability fails: "missing tool X" | Agent didn't call the expected tool on this prompt | (a) Strengthen the routing rule in instructions, OR (b) the case is too narrow — broaden `expected_tool_calls` or drop the assertion |
 | Reliability fails: "additional tool Y called" with `allow_additional_tool_calls=False` | Agent fanned out beyond the case's expectation | Tighten the agent's instructions OR set `allow_additional_tool_calls=True` |
-| Reliability fails on Chief's web tool name (`parallel_search` ↔ `web_search`) | `PARALLEL_API_KEY` mismatch between `.env` and your shell — `evals/cases.py` pins `_WEB_TOOL` at import time | Sync the var in both places, then re-run |
+| Reliability fails on Agno's web tool name (`parallel_search` ↔ `web_search`) | `PARALLEL_API_KEY` mismatch between `.env` and your shell — `evals/cases.py` pins `_WEB_TOOL` at import time | Sync the var in both places, then re-run |
 | Same case flips PASS/FAIL across consecutive runs with no code change | Judge variance — rubric is too loose | Re-run 2-3 times to confirm; if it keeps flipping, tighten the case's `criteria` (more specific, more falsifiable) |
 | Single case fails on full suite but passes alone | Transient flake or upstream rate limit (429s, MCP shutdown traceback) | Re-run the case in isolation. If it passes, re-run the full suite. If 429s persist, back off — don't fix the agent. |
 | Many cases fail at once | Broad regression — model swap, MCP server down, tool removed | Diagnose the root cause first; do NOT paper over with prompt edits |
 | `eval_db` write errors | Postgres down or migration missing | Bring DB up; check `docker logs agentos-db` |
-| `cleanup:` in a case's error | A snapshot-diff `teardown` hook couldn't delete what the case created — Studio components (builder cases) or Chief writes (chief cases: entities, memories, notes). Both surfaces are ungated, so cases write real DB rows (a timeout does not mean nothing was created; the hooks wait 10s then delete what landed) | Check Postgres, then hard-delete the leftovers by id: `eval_db.delete_component(<id>, hard_delete=True)` for components, `eval_db.delete_learning(<id>)` / `notes.delete(<path>)` for brain state; don't edit the agent or the case |
+| `cleanup:` in a case's error | A snapshot-diff `teardown` hook couldn't delete what the case created — Studio components and schedules (builder cases) or Agno writes (agno cases: entities, memories, notes). Both surfaces are ungated, so cases write real DB rows (a timeout does not mean nothing was created; the hooks wait 10s then delete what landed) | Check Postgres, then hard-delete the leftovers by id: `eval_db.delete_component(<id>, hard_delete=True)` for components, `ScheduleManager(eval_db).delete(<id>)` for schedules, `eval_db.delete_learning(<id>)` / `notes.delete(<path>)` for brain state; don't edit the agent or the case |
 
 **Rule:** never weaken a case to make it green. Edit a case only when the assertion was wrong (overspecified rubric, wrong tool name, mismatch with how the agent's tools are named today). Catching a real regression is the whole point.
 
@@ -59,7 +59,7 @@ And when you touch a case, check the green is earned, not just present: the expe
 
 In scope from this prompt:
 
-- `agents/<slug>.py` — instructions, tools, model.
+- `agents/<slug>.py` (or `teams/lead.py` for the Agno team) — instructions, tools, model.
 - `evals/cases.py` — when an assertion was genuinely wrong.
 - One-line config flips in `app/main.py` if a case requires it (rare).
 
@@ -101,8 +101,8 @@ Case(
     criteria="<rubric describing a correct response>",
     expected_tool_calls=("<tool_name>",),
     # Required whenever the case's agent has the ungated create/edit/publish
-    # Studio tools (every agent-builder case) — the snapshot-diff hooks delete
-    # whatever the run created, even on timeout:
+    # Studio tools (every platform-builder case) — the snapshot-diff hooks delete
+    # whatever the run created (components, schedules, learnings), even on timeout:
     setup=snapshot_builder_state,
     teardown=cleanup_new_builder_state,
 )
@@ -147,6 +147,6 @@ class Case:
 
 The runner calls `agent.arun()` once per case and feeds the response into both checks, so cases that set both fields cost one agent run, not two.
 
-Set `setup=snapshot_builder_state, teardown=cleanup_new_builder_state` (both in [`evals/cases.py`](../../../evals/cases.py)) on every case whose agent can reach the ungated create/edit/publish Studio tools (all agent-builder cases do this): setup snapshots Studio component ids plus learning/note state before the case and teardown hard-deletes only the new rows after, so eval runs never leave components behind and never touch pre-existing ones. The same pattern covers the other learning-store agents: `setup=snapshot_learning_state, teardown=cleanup_new_learning_state` on every case that probes `chief` or `platform-manager`, so entities, memories, and notes a case *creates* are removed after it. One limit to know, because it decides how you write the case: the diff is on row identity, and an entity's facts, events and relationships all live inside a single row. So a case that merges into an entity, profile, or note that already existed leaves that edit behind — a superseded fact or a rewritten note line cannot be undone. Give every fixture a name no real team would have on file (`chief_captures_project_fact` and `chief_grounded_no_on_unknown` both do), and the case only ever touches rows it created.
+Set `setup=snapshot_builder_state, teardown=cleanup_new_builder_state` (both in [`evals/cases.py`](../../../evals/cases.py)) on every case whose agent can reach the ungated create/edit/publish Studio tools (all platform-builder cases do this): setup snapshots Studio component ids, schedule ids, and learning/note state before the case and teardown hard-deletes only the new rows after, so eval runs never leave components behind — or schedules that would keep firing daily — and never touch pre-existing ones. The same pattern covers the other learning-store components: `setup=snapshot_learning_state, teardown=cleanup_new_learning_state` on every case that probes `agno`, `platform-manager`, or `platform-engineer`, so entities, memories, and notes a case *creates* are removed after it. One limit to know, because it decides how you write the case: the diff is on row identity, and an entity's facts, events and relationships all live inside a single row. So a case that merges into an entity, profile, or note that already existed leaves that edit behind — a superseded fact or a rewritten note line cannot be undone. Give every fixture a name no real team would have on file (`agno_captures_project_fact` and `agno_grounded_no_on_unknown` both do), and the case only ever touches rows it created.
 
-`evals/cases.py` also conditions Chief's expected web tool name on `PARALLEL_API_KEY` (Parallel SDK if the key is set, keyless MCP otherwise). If your shell has the var set but `.env` doesn't (or vice versa), the assertion checks the wrong tool — sync them before debugging.
+`evals/cases.py` also conditions Agno's expected web tool name on `PARALLEL_API_KEY` (Parallel SDK if the key is set, keyless MCP otherwise). If your shell has the var set but `.env` doesn't (or vice versa), the assertion checks the wrong tool — sync them before debugging.
