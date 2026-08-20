@@ -95,12 +95,19 @@ def get_media_tools() -> list[OpenAITools]:
 
 
 def get_file_generation_tools() -> list[FileGenerationTools]:
-    """Downloadable files (JSON, CSV, PDF, DOCX, TXT, HTML, code) as in-memory run artifacts.
+    """Downloadable files (JSON, CSV, TXT, HTML, code) as in-memory run artifacts.
 
-    PDF and DOCX need their optional deps (reportlab / python-docx), pinned in
-    pyproject.toml — the toolkit silently drops them if the imports go missing.
+    PDF and DOCX stay off by choice, not for missing deps. Artifacts are carried as
+    bytes on the run and persist in the Postgres run row, where a base64-encoded
+    binary does not compress at all — it costs its full size plus the 33% base64
+    expansion, and every session read returns it inline. The text formats are stored
+    as raw UTF-8 in the same column and compress ~100x. HTML covers the
+    formatted-document case at text cost.
+
+    reportlab / python-docx stay pinned regardless: the toolkit's import guard warns
+    at import time when they are absent, whatever these flags say.
     """
-    return [FileGenerationTools()]
+    return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
 
 registry = Registry(
