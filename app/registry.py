@@ -100,9 +100,10 @@ def get_file_generation_tools() -> list[FileGenerationTools]:
     PDF and DOCX stay off by choice, not for missing deps. Artifacts are carried as
     bytes on the run and persist in the Postgres run row, where a base64-encoded
     binary does not compress at all — it costs its full size plus the 33% base64
-    expansion, and every session read returns it inline. The text formats are stored
-    as raw UTF-8 in the same column and compress ~100x. HTML covers the
-    formatted-document case at text cost.
+    expansion, and every session read returns it inline. The text/* formats (CSV,
+    TXT, HTML, code) are stored as raw UTF-8 in the same column and compress ~100x;
+    JSON's application/json mime makes it the one text format that rides base64
+    like a binary. HTML covers the formatted-document case at text cost.
 
     reportlab / python-docx stay pinned regardless: the toolkit's import guard warns
     at import time when they are absent, whatever these flags say.
