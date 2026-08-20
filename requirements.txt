@@ -49,6 +49,8 @@ certifi==2026.6.17
     #   httpx
 cffi==2.1.0
     # via cryptography
+charset-normalizer==3.5.1
+    # via reportlab
 click==8.4.2
     # via uvicorn
 croniter==6.2.3
@@ -137,6 +139,8 @@ jsonschema-specifications==2025.9.1
     # via jsonschema
 keyring==25.7.0
     # via py-key-value-aio
+lxml==6.1.2
+    # via python-docx
 markdown-it-py==4.2.0
     # via rich
 mcp==1.28.1
@@ -195,6 +199,8 @@ pathable==0.6.0
     # via jsonschema-path
 pgvector==0.5.0
     # via agno
+pillow==12.3.0
+    # via reportlab
 platformdirs==4.10.0
     # via fastmcp-slim
 propcache==0.5.2
@@ -238,6 +244,8 @@ pyperclip==1.11.0
     # via fastmcp-slim
 python-dateutil==2.9.0.post0
     # via croniter
+python-docx==1.2.0
+    # via agentos (pyproject.toml)
 python-dotenv==1.2.2
     # via
     #   agentos (pyproject.toml)
@@ -260,6 +268,8 @@ referencing==0.37.0
     #   jsonschema
     #   jsonschema-path
     #   jsonschema-specifications
+reportlab==5.0.0
+    # via agentos (pyproject.toml)
 rich==15.0.0
     # via
     #   agno
@@ -301,10 +311,6 @@ typer==0.26.8
 typing-extensions==4.16.0
     # via
     #   agno
-    #   aiohttp
-    #   aiosignal
-    #   anyio
-    #   exceptiongroup
     #   fastapi
     #   fastmcp-slim
     #   mcp
@@ -314,13 +320,11 @@ typing-extensions==4.16.0
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   parallel-web
-    #   psycopg
     #   py-key-value-aio
     #   pydantic
     #   pydantic-core
-    #   referencing
+    #   python-docx
     #   sqlalchemy
-    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via

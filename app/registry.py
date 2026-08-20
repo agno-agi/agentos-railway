@@ -95,12 +95,12 @@ def get_media_tools() -> list[OpenAITools]:
 
 
 def get_file_generation_tools() -> list[FileGenerationTools]:
-    """Downloadable files (JSON, CSV, TXT, HTML, code) as in-memory run artifacts.
+    """Downloadable files (JSON, CSV, PDF, DOCX, TXT, HTML, code) as in-memory run artifacts.
 
-    PDF and DOCX stay off until their optional deps are pinned — flip the flags
-    after adding reportlab / python-docx to pyproject.toml.
+    PDF and DOCX need their optional deps (reportlab / python-docx), pinned in
+    pyproject.toml — the toolkit silently drops them if the imports go missing.
     """
-    return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
+    return [FileGenerationTools()]
 
 
 registry = Registry(
