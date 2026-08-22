@@ -6,7 +6,7 @@ AgentOS turns your agents into a production API and MCP server. One AI backend t
 2. **AgentOS UI.** Chat with agents, build new ones, inspect sessions, traces, memory, and evals from the AgentOS UI at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
 3. **Coding agents.** Manage the full agent development lifecycle (create, extend, improve, eval, review) using the skills in [`.agents/skills/`](.agents/skills/).
 4. **AI apps.** Use your agents from Claude and ChatGPT using the MCP server at `/mcp`.
-5. **Chat interfaces.** Chat with your agents from Slack, WhatsApp, Telegram, and Discord.
+5. **Chat interfaces.** Chat with your agents from Slack — set two env vars and it's live. WhatsApp, Telegram, and Discord follow the same conditional pattern with agno's other interfaces.
 
 <img width="3298" height="2412" alt="AgentOS" src="https://github.com/user-attachments/assets/40a53a42-d4d2-402b-8e92-742609207957" />
 
@@ -28,9 +28,10 @@ Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots
 
 This codebase comes with:
 
-- **Agno — the platform, speaking for itself.** "Agno, we're going with PlanetScale over RDS." "Agno, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Agno holds the thread; everything else is a handoff: it leads the three platform agents and runs everything your team builds, so building things, checking on the platform, and understanding it all work through the same name — from Slack too. Every frontend talks to the same Agno: what you tell it in Slack is there when you ask from claude.ai or ChatGPT.
+- **Agno — the platform, speaking for itself.** "Agno, we're going with PlanetScale over RDS." "Agno, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Agno holds the thread; everything else is a handoff: it leads the three platform agents and runs everything your team builds, so building things, checking on the platform, and understanding it all work through the same name — from Slack too. Notes and entities are shared by everyone on the platform, so what the team files is there whichever frontend you ask from. What Agno learns about *you* follows your identity, which a deployment with JWT gives you across every channel.
 - **Three platform agents** behind it, one per job. **Platform Builder** creates agents, teams, workflows, and schedules using the AgentOS Studio — builds come out published and runnable. **Platform Manager** monitors what the platform is doing: usage, run activity, eval history, deployment checks, schedules. **Platform Engineer** knows how the platform is built: it reads the source and explains the wiring, grounded in real files.
-- **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform at the source — see [Using the platform](#using-the-platform).
+- **A safe registry, so "builds itself" is bounded.** [`app/registry.py`](app/registry.py) declares exactly what a component built at runtime may be given: web search, a private file store, the shared notebook, media and file generation, a knowledge base, the platform's per-user memory, a step-function library. Platform Builder composes from that list and cannot extend it — new capability is a reviewed code change, which is why letting agents build agents is safe to leave on.
+- **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform at the source — including growing that registry — see [Using the platform](#using-the-platform).
 
 Trace data, agent code, evals, and system logs are all available to coding agents, so the platform can inspect and improve itself end to end.
 
@@ -191,7 +192,7 @@ Deletes the Railway project: the agent-os service, the pgvector database, and it
 
 ### Opting out of JWT (not recommended)
 
-Set `authorization=False` in [`app/main.py`](app/main.py) and redeploy. Use this only inside a private VPC behind another auth layer. Without it, anyone who guesses your Railway domain can access your platform.
+Change `authorization=runtime_env != "dev"` to `authorization=False` in [`app/main.py`](app/main.py) and redeploy. Use this only inside a private VPC behind another auth layer. Without it, anyone who guesses your Railway domain can access your platform.
 
 ## Using the platform
 
