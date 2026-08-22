@@ -14,7 +14,6 @@ Notes and entities are shared by the whole team; profile and memory are per-user
 
 from os import getenv
 
-from agno.fs import FileSystem
 from agno.learn import (
     EntityMemoryConfig,
     LearningMachine,
@@ -30,6 +29,7 @@ from agno.tools.studio_runner import StudioRunnerTools
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
+from app.notes import notes
 from app.registry import registry
 from app.settings import default_model
 from db import get_postgres_db
@@ -45,9 +45,8 @@ else:
         url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
     )
 
-# Shared notes managed by Agno
-notes = FileSystem(get_postgres_db(), namespace="brain")
-
+# Agno holds the world as well as the self, so it composes its own machine: the same
+# per-user pair app/learning.py declares (shared_self), plus the shared entity store.
 memory = LearningMachine(
     db=get_postgres_db(),
     user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),  # private to each user
@@ -55,9 +54,24 @@ memory = LearningMachine(
     entity_memory=EntityMemoryConfig(namespace="global"),  # shared by the team
 )
 
-# Dispatch for Studio-built components, resolved from the DB at call time —
+# Dispatch for every component this platform can run, resolved at call time —
 # a component published seconds ago is runnable on the next message.
-studio_runners = StudioRunnerTools(registry=registry, db=get_postgres_db())
+# include_all_components admits the code-defined ones too: the framework discovers
+# every OS-registered agent, team, and workflow into the live registry at boot, but
+# dispatching them is opt-in. Without it Agno can only run what the Studio built, so
+# an agent a coding agent added to app/main.py would be listed by the platform and
+# unreachable through the one name people talk to.
+studio_runners = StudioRunnerTools(
+    registry=registry,
+    db=get_postgres_db(),
+    include_all_components=True,
+    # ...except code-defined teams. Boot discovery puts every OS-registered component
+    # in the registry, this team included, and the runner has no self-dispatch guard —
+    # so admitting code-defined teams would hand Agno a run_team("agno") on itself, with
+    # no depth limit. An explicit empty allowlist admits none of them; teams built in the
+    # Studio come from the database half and are unaffected.
+    include_teams=[],
+)
 
 
 INSTRUCTIONS = """\
@@ -167,6 +181,14 @@ team has built is one runner call away:
   platform-builder to publish, and say so. When an ask names nobody you
   recognize, the roster settles whether it's a component before you assume
   it's a person or a project.
+- Relay a refusal exactly as the member or tool reported it — the error it
+  named and the remedy it gave, nothing added. Never supply a cause of your
+  own, and never invert a finding: "validation passed with no warnings" is
+  never relayed as validation reporting a problem. Inventing a plausible
+  mechanism — a permission you did not check, a database, routing, or
+  migration fault nobody reported — makes the answer wrong exactly where the
+  team trusts you most, and it sends them to debug a thing that is not broken.
+  When you know no more than the member told you, say that and stop.
 Filing and recall stay yours — the brain is never delegated. Whoever does the
 work, the reply is yours — and it credits the doer.\
 """

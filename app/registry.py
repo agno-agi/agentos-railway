@@ -27,6 +27,9 @@ from app.functions import (
     route_component_type,
     score_eval_status,
 )
+from app.knowledge import platform_knowledge
+from app.learning import shared_self
+from app.notes import get_shared_notes_tools
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -105,8 +108,10 @@ def get_file_generation_tools() -> list[FileGenerationTools]:
     JSON's application/json mime makes it the one text format that rides base64
     like a binary. HTML covers the formatted-document case at text cost.
 
-    reportlab / python-docx stay pinned regardless: the toolkit's import guard warns
-    at import time when they are absent, whatever these flags say.
+    reportlab / python-docx stay pinned so flipping either flag is a one-line change
+    on a platform that decides the storage cost is worth it. Nothing warns when they
+    are absent: the import guard logs at debug level, and the constructor's warning is
+    gated on the very flags this call sets to False.
     """
     return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
@@ -117,6 +122,7 @@ registry = Registry(
         *get_agno_docs_tools(),
         *get_parallel_tools(),
         *get_agent_files_tools(),
+        *get_shared_notes_tools(),
         *get_slack_tools(),
         *get_media_tools(),
         *get_file_generation_tools(),
@@ -137,5 +143,12 @@ registry = Registry(
         csv_to_markdown_table,
         content_to_file,
     ],
+    # The per-user self every reference agent carries, offered to built components
+    # by name (learning_name). One declaration, one configuration — see app/learning.py.
+    learning=[shared_self],
+    # The platform's one knowledge base — see app/knowledge.py. It ships empty;
+    # documents go in through the AgentOS UI's Knowledge page, and components
+    # reference it by name (knowledge_name).
+    knowledge=[platform_knowledge],
     agents=[platform_manager],
 )

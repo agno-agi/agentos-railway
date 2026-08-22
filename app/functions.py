@@ -12,6 +12,14 @@ function step's behavior is exactly its code.
 Platform Builder discovers these through `list_functions`, which surfaces each
 function's name, docstring, and signature. The docstring is the contract a
 builder relies on, so keep its first line precise about input and output.
+
+Failures are returned, never raised. A raised exception is retried four times
+identically and then kills the whole workflow run, which is the wrong shape for a
+deterministic step that simply got input it cannot use. Each function instead
+returns a string starting with `Error: `, so the run survives and a Condition can
+branch on it with a CEL expression:
+
+    previous_step_content.startsWith("Error: ")
 """
 
 import csv
@@ -25,6 +33,12 @@ from agno.workflow import StepInput, StepOutput
 
 _URL_PATTERN = re.compile(r"https?://[^\s<>\"')\]]+")
 _TABLE_ROW_CAP = 50
+_ERROR_PREFIX = "Error: "
+
+
+def _error(message: str) -> str:
+    """A step failure a workflow can branch on instead of dying on."""
+    return f"{_ERROR_PREFIX}{message}"
 
 
 def _step_text(step_input: StepInput) -> str:
@@ -34,8 +48,11 @@ def _step_text(step_input: StepInput) -> str:
     return step_input.get_input_as_string() or ""
 
 
+_NO_JSON = object()
+
+
 def _first_json_value(text: str) -> Any:
-    """Decode the first JSON object or array found in text; raise ValueError when none decodes."""
+    """Decode the first JSON object or array found in text; `_NO_JSON` when none decodes."""
     decoder = json.JSONDecoder()
     for match in re.finditer(r"[\[{]", text):
         try:
@@ -43,7 +60,7 @@ def _first_json_value(text: str) -> Any:
         except json.JSONDecodeError:
             continue
         return value
-    raise ValueError("no valid JSON object or array in the previous step's output")
+    return _NO_JSON
 
 
 def _cell(value: Any) -> str:
@@ -68,6 +85,8 @@ def score_eval_status(step_input: StepInput) -> str:
     """PASS when the eval report in the previous step's output shows every case passed, FAIL otherwise.
 
     Reads JSON `passed`/`total` keys, or an `N/M passed` line like the run-evals report emits.
+    A report it cannot read scores FAIL, so this gate fails closed: never treat FAIL alone
+    as proof that a case failed.
     """
     text = _step_text(step_input)
     passed = total = None
@@ -89,10 +108,13 @@ def score_eval_status(step_input: StepInput) -> str:
 def extract_json(step_input: StepInput) -> str:
     """Return the first JSON object or array found in the previous step's output, validated and pretty-printed.
 
-    Errors when the previous step produced no parseable JSON — put this step between a
-    gathering agent and any step that needs structured input.
+    Returns `Error: ...` when the previous step produced no parseable JSON — put this
+    step between a gathering agent and any step that needs structured input.
     """
-    return json.dumps(_first_json_value(_step_text(step_input)), indent=2, ensure_ascii=False)
+    value = _first_json_value(_step_text(step_input))
+    if value is _NO_JSON:
+        return _error("no valid JSON object or array in the previous step's output")
+    return json.dumps(value, indent=2, ensure_ascii=False)
 
 
 def extract_urls(step_input: StepInput) -> str:
@@ -105,7 +127,9 @@ def json_to_csv(step_input: StepInput) -> StepOutput:
     """Convert a JSON array of objects from the previous step's output into a downloadable data.csv file artifact.
 
     Columns are the union of the objects' keys in first-appearance order; nested values are
-    JSON-encoded in their cell. Errors when the previous step holds no JSON array of objects.
+    JSON-encoded in their cell. The CSV is also the step's content, so a following step —
+    csv_to_markdown_table, say — receives the data rather than a summary of it. Returns
+    `Error: ...` when the previous step holds no JSON array of objects.
     """
     value = _first_json_value(_step_text(step_input))
     if isinstance(value, dict):
@@ -113,8 +137,8 @@ def json_to_csv(step_input: StepInput) -> StepOutput:
         arrays = [item for item in value.values() if isinstance(item, list)]
         if len(arrays) == 1:
             value = arrays[0]
-    if not isinstance(value, list) or not value or not all(isinstance(row, dict) for row in value):
-        raise ValueError("expected a JSON array of objects in the previous step's output")
+    if value is _NO_JSON or not isinstance(value, list) or not value or not all(isinstance(r, dict) for r in value):
+        return StepOutput(content=_error("expected a JSON array of objects in the previous step's output"))
     header: list[str] = []
     for row in value:
         for key in row:
@@ -127,16 +151,23 @@ def json_to_csv(step_input: StepInput) -> StepOutput:
         writer.writerow({key: _cell(row.get(key)) for key in header})
     data = buffer.getvalue()
     return StepOutput(
-        content=f"data.csv: {len(value)} rows, columns: {', '.join(header)}",
+        content=data,
         files=[File(content=data.encode(), mime_type="text/csv", filename="data.csv")],
     )
 
 
 def csv_to_markdown_table(step_input: StepInput) -> str:
-    """Render CSV text from the previous step's output as a markdown table (capped at 50 data rows)."""
-    rows = [row for row in csv.reader(io.StringIO(_step_text(step_input))) if row]
+    """Render CSV text from the previous step's output as a markdown table (capped at 50 data rows).
+
+    Pairs with json_to_csv. Returns `Error: ...` when the input is not CSV with a header
+    row and at least one data row, and passes an upstream `Error: ` through unchanged.
+    """
+    text = _step_text(step_input)
+    if text.startswith(_ERROR_PREFIX):
+        return text  # a failure upstream stays one failure, not two
+    rows = [row for row in csv.reader(io.StringIO(text)) if row]
     if len(rows) < 2:
-        raise ValueError("expected CSV with a header row and at least one data row")
+        return _error("expected CSV with a header row and at least one data row")
 
     def line(cells: list[str]) -> str:
         return "| " + " | ".join(cell.replace("|", "\\|").strip() for cell in cells) + " |"
@@ -157,7 +188,7 @@ def content_to_file(step_input: StepInput) -> StepOutput:
     """
     text = _step_text(step_input)
     if not text.strip():
-        raise ValueError("previous step produced no content to save")
+        return StepOutput(content=_error("previous step produced no content to save"))
     return StepOutput(
         content=text,
         files=[File(content=text.encode(), mime_type="text/markdown", filename="output.md")],

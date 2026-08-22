@@ -12,6 +12,9 @@ from agno.utils.log import log_info, log_warning
 
 from db import get_postgres_db
 
+_SCHEDULE_PAGE_SIZE = 100
+_MAX_SCHEDULE_PAGES = 50
+
 
 def env_flag(name: str, default: bool) -> bool:
     """Read a boolean env var, accepting 1/true/yes (any casing) as true."""
@@ -65,6 +68,33 @@ def _register(
             log_info(f"schedules: registered '{name}'")
 
 
+def _platform_schedules(manager: ScheduleManager) -> dict[str, Schedule]:
+    """The unowned bucket — the same rows `create()` addresses.
+
+    The two lookups disagree about `user_id=None`: `get_schedule_by_name` reads it as
+    "user_id IS NULL" (this platform's own schedule), while `get_schedules` treats it as
+    no filter at all and returns every owner's. Listing unscoped would let a user's
+    schedule of the same name decide `preexisting` and receive the toggle meant for ours
+    — so boot could flip a schedule it does not own, ENABLE_DEPLOY_CHECK could silently
+    fail, and a shadowed name would leave run-evals enabled. Paging matters as much as
+    the filter: past one page our own row falls off the listing, and a `preexisting`
+    that reads False would disable a schedule the user deliberately enabled.
+    """
+    rows: dict[str, Schedule] = {}
+    for page in range(1, _MAX_SCHEDULE_PAGES + 1):
+        batch = manager.list(limit=_SCHEDULE_PAGE_SIZE, page=page)
+        for schedule in batch:
+            if schedule.user_id is None:
+                rows.setdefault(schedule.name, schedule)
+        if len(batch) < _SCHEDULE_PAGE_SIZE:
+            return rows
+    log_warning(
+        f"schedules: stopped paging after {_MAX_SCHEDULE_PAGES * _SCHEDULE_PAGE_SIZE} rows; "
+        "a platform schedule beyond that is invisible to this boot"
+    )
+    return rows
+
+
 def _sync_enabled(manager: ScheduleManager, row: Schedule | None, *, enabled: bool) -> None:
     """Point an existing schedule's toggle at the desired state (idempotent)."""
     if row is None or row.enabled == enabled:
@@ -96,7 +126,7 @@ def register_schedules() -> None:
 
     try:
         manager = ScheduleManager(get_postgres_db())
-        existing = {s.name: s for s in manager.list(limit=100)}
+        existing = _platform_schedules(manager)
     except Exception as exc:
         log_warning(f"schedules: could not initialize ScheduleManager: {exc}")
         return

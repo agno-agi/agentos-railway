@@ -8,8 +8,8 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.context.mode import ContextMode
 from agno.context.workspace import WorkspaceContextProvider
-from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 
+from app.learning import shared_self
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -23,12 +23,6 @@ codebase = WorkspaceContextProvider(
     name="My Codebase",
     root=REPO_ROOT,
     mode=ContextMode.tools,
-)
-
-memory = LearningMachine(
-    db=get_postgres_db(),
-    user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),  # private to each user
-    user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),  # private to each user
 )
 
 INSTRUCTIONS = """\
@@ -78,7 +72,7 @@ platform_engineer = Agent(
     model=default_model(),
     db=get_postgres_db(),
     # The learning machine attaches its tools, guidance, and recall automatically.
-    learning=memory,
+    learning=shared_self,
     tools=[*codebase.get_tools()],
     instructions=INSTRUCTIONS + codebase.instructions(),
     # Identity fallback for unauthenticated runs (dev MCP, evals).

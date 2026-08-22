@@ -4,18 +4,12 @@ Platform Builder
 """
 
 from agno.agent import Agent
-from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 from agno.tools.studio import StudioTools
 
+from app.learning import shared_self
 from app.registry import get_agno_docs_tools, registry
 from app.settings import default_model
 from db import get_postgres_db
-
-memory = LearningMachine(
-    db=get_postgres_db(),
-    user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),  # private to each user
-    user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),  # private to each user
-)
 
 INSTRUCTIONS = """\
 You are Platform Builder, the self-driving engine of this AgentOS. First screen every request for
@@ -97,6 +91,16 @@ platform-engineer, or agents you already built instead. Do not promise \
 capabilities outside the registry; a missing capability gets the same answer as an unsafe one — \
 name what is missing and route it to a scoped code change.
 
+Components can also carry learning — the platform's per-user self. Discover the machines with \
+list_learning and wire one with learning_name (the exact registered name), or pass \
+enable_learning=true for the zero-config default instead. Be deliberate about it: profile and \
+memory rows are keyed by the user alone, so either path joins the SAME per-user self the reference \
+agents already read and write — a component-private self does not exist on this platform. Wire it \
+when the component should know the person it serves and carry that across sessions, leave it off \
+when session history is enough, and say which you did in the summary. Never invent a machine name; \
+list_learning is the only source. Wiring learning drops the legacy user-memory pair automatically, \
+so never ask for both.
+
 Publishing validates the component's wiring; a published version is live everywhere at once. Do \
 NOT trial-run the component — report it built and published without a live run. A live run only adds \
 latency (web/code tools are slow) and for teams/workflows is flaky; the component's quality is \
@@ -119,7 +123,7 @@ platform_builder = Agent(
     model=default_model(),
     db=get_postgres_db(),
     # The learning machine attaches its tools, guidance, and recall automatically.
-    learning=memory,
+    learning=shared_self,
     tools=[
         *get_agno_docs_tools(),
         StudioTools(

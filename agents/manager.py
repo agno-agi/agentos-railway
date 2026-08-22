@@ -9,19 +9,13 @@ from typing import Any, cast
 
 from agno.agent import Agent
 from agno.db.base import SessionType
-from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 from agno.tools.agentos import AgentOSTools
 
+from app.learning import shared_self
 from app.settings import default_model
 from db import get_postgres_db
 
 _db = get_postgres_db()
-
-memory = LearningMachine(
-    db=_db,
-    user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),  # private to each user
-    user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),  # private to each user
-)
 
 
 def _iso(timestamp: Any) -> Any:
@@ -140,7 +134,7 @@ platform_manager = Agent(
     model=default_model(),
     db=_db,
     # The learning machine attaches its tools, guidance, and recall automatically.
-    learning=memory,
+    learning=shared_self,
     tools=[
         AgentOSTools(db=_db),
         get_deployment_check_report,

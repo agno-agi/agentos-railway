@@ -13,6 +13,7 @@ from agno.utils.log import log_info
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
+from app.knowledge import platform_knowledge
 from app.registry import registry
 from app.schedules import register_schedules
 from db import get_postgres_db
@@ -97,6 +98,9 @@ agent_os = AgentOS(
     mcp_auth=mcp_auth,
     lifespan=lifespan,
     db=get_postgres_db(),
+    # Mounts the Knowledge page and the /knowledge routes — the load path for the
+    # one base app/knowledge.py declares. Agents read it; people put documents in.
+    knowledge=[platform_knowledge],
     agents=[platform_builder, platform_manager, platform_engineer],
     teams=[agno_team],
     workflows=[deployment_check, run_evals],
