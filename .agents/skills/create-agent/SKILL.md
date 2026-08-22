@@ -21,6 +21,24 @@ If it isn't reachable, ask the user to run `docker compose up -d --build` and wa
 
 Use the coding agent's structured user-input control when available (Claude Code's `AskUserQuestion`, Codex's user-input tool, or an equivalent) for the choice-shaped questions below. Use plain prompts for free-form answers.
 
+### First: is this a source file, or is it Platform Builder's?
+
+This platform builds agents two ways, and only one of them is yours. **Lane 1 is a source file in `agents/`, governed by git — that's this skill.** Lane 2 is a component Platform Builder composes at runtime from the safe registry, stored in the database and versioned through the Studio catalog. A runnable id on this platform may have no source file at all.
+
+Take lane 1 when the agent needs something the registry doesn't carry: a toolkit not in [`app/registry.py`](../../../app/registry.py), a custom Python function, a context provider, an MCP server, code the user should own and review. That's the common case, and it's why a coding agent is here.
+
+Hand it to Platform Builder instead when the whole thing composes from blocks the registry already has — registry toolkits, the shared self, the platform knowledge base, the deterministic step functions. Say so plainly and stop: "This one's registry blocks end to end — ask Agno to build it and it's live in a minute, no rebuild, no restart." A file is the heavier instrument; don't reach for it out of habit.
+
+**One exception, and it's absolute: the first agent of a [`setup-platform`](../setup-platform/SKILL.md) run is always a file**, however cleanly it would have composed. That moment is the user watching their own code appear in their own repo and go live — routing it to the runtime builder trades the thing they came for against a minute of build time. Offer lane 2 later, once they have one file they own.
+
+**Then check the id is free, before you write anything.** Both lanes land in the same id space, and the code half wins: `/agents` excludes any database component whose id a registered agent holds, so a file with a taken id doesn't collide loudly — it makes the runtime component disappear from the listing and from Agno's dispatch, with its rows still sitting in the database.
+
+```bash
+curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\t\(.is_component)"'
+```
+
+`is_component: true` marks the Studio-built ones. If your slug is taken there, pick a different slug — and if the user's ask was really "change that agent", it's a Platform Builder job, not a file that shadows it. (Same check on `/teams` and `/workflows` when the target is one of those.)
+
 ### If they already named an agent
 
 "Build me a GitHub PR reviewer" is a complete brief. **Ask nothing.** Design it (Step 2), then state what you're building in one message and start:
@@ -56,15 +74,15 @@ Build what makes *their* week easier. Resist the demo classics (news digest, gen
 | **Pattern** | **Direct tools** (the required structure in Step 3; [`agents/manager.py`](../../../agents/manager.py) shows it live — ignore its `learning=` extras) when the agent uses ≤2 toolkits — this is the common case. **Context provider** (mirror the `codebase` wiring in [`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source — a single `query_<thing>` tool by default, or the provider's direct read tools in `ContextMode.tools` as the engineer does. Pick one and mention it in a clause; never make the user choose. |
 | **Slug** | Derive it from the purpose (`pr-reviewer`, `linear-triager`). Kebab-case. State it, don't ask for sign-off. |
 | **Model** | `default_model()` — already `gpt-5.6-sol`. Override only if the user asks. |
-| **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer keyless toolkits (HackerNews, ArXiv, Wikipedia, DuckDuckGo via `WebSearchTools`) when they'd serve just as well — a keyless agent works on the first try. |
-| **Memory / history** | The defaults in the template pattern. Don't ask. |
+| **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer what is already in this image and needs no key — the keyless Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, an agent `FileSystem` for state. Every toolkit beyond that set costs the user a rebuild or a key before their agent answers, and an unverified import costs them the whole platform: check it in the container (Step 2). |
+| **Memory / history** | **Wire `learning=shared_self`** ([`app/learning.py`](../../../app/learning.py)) whenever the agent should know the person it works for across sessions — which is most agents worth keeping. It's one import and one line, and it's what joins the new agent to the same self Agno and the three platform agents already carry, instead of starting cold. Leave it off only when the agent's durable state isn't per-user — a ledger, a shared corpus, anything a scheduled run with no user id has to read (see Step 3). History defaults come from the template pattern. Don't ask either way; say which you did. |
 
 ### Stop only for this
 
 An API key that the chosen toolkit **requires** and that isn't in `.env`. Check `.env` yourself first — don't ask the user what's in a file you can read. If a key is genuinely missing, say which toolkit needs it and offer the two real choices:
 
 - add the key to `.env` now (they paste it in; never read or print it), or
-- swap to a keyless toolkit — or a keyless variant of the idea — and build right now. (Some jobs have no keyless route; then the key is the only real choice, so say so plainly.)
+- swap to a toolkit that's keyless *and already in the image* — or a variant of the idea that is — and build right now. Keyless alone isn't enough: a substitute that needs a package this image lacks trades a missing key for a rebuild, so verify the import (Step 2) before you offer it. (Some jobs have no such route; then the key is the only real choice, so say so plainly.)
 
 Everything else — proceed and report.
 
@@ -82,16 +100,40 @@ For each toolkit, capture four things:
 - **Required env vars** — check them against `.env` yourself. Only stop for the user if a required key is missing (Step 1, **Stop only for this**).
 - **Pip dependencies** — some toolkits need extra packages (`exa-py`, `anthropic`, `jina`, `yfinance`, …). The toolkit's `Prerequisites` section lists them. Capture now, then add them to `pyproject.toml` before generating `requirements.txt` in Step 6.
 
-If the toolkit's docs page has no `Prerequisites` or `Authentication` section, the toolkit is keyless and needs no env vars or extra pip deps (e.g. HackerNews, ArXiv, Wikipedia, DuckDuckGo).
-
 Don't guess any of the four. Skip this step entirely if the agent is chat-only with no tools.
+
+### The image decides dependencies, not the docs page
+
+**Verify the import in the container before you write it.** Most agno toolkits import their third-party package at module scope and raise `ImportError` right there when it's missing — 84 toolkit modules in this image do exactly that today, a clear majority of the ones that need a third-party package at all. A missing package is not a degraded agent, it's a dead platform: `app/main.py` imports every registered agent at module scope, so the `ImportError` propagates out of `app.main`, uvicorn's reload fails, and **nothing serves** — including the agents that worked a minute ago.
+
+```bash
+docker exec agentos-api python -c 'from agno.tools.exa import ExaTools'
+```
+
+Silence means it's there. An `ImportError` names the package: either add it to `pyproject.toml` and take the rebuild path in Step 6, or pick a different toolkit. Never register an agent whose imports you haven't run in the container.
+
+Absence of a `Prerequisites` section on the docs page proves nothing about this image, so don't read it as "keyless, therefore safe" — `ArxivTools` (`arxiv`, `pypdf`), `WikipediaTools` (`wikipedia`), and `WebSearchTools` / `DuckDuckGoTools` (`ddgs`) all take a key-free docs page and still fail to import here. Of the usual keyless suspects only `HackerNewsTools` is actually in the image.
+
+**For web search there is exactly one route that needs neither a key nor a rebuild** — the keyless Parallel MCP this platform already runs on ([`teams/lead.py`](../../../teams/lead.py), [`app/registry.py`](../../../app/registry.py)):
+
+```python
+from agno.tools.mcp import MCPTools
+
+# Keyless. AgentOS connects and closes MCP servers as part of its lifespan.
+# timeout_seconds: web_fetch page extraction regularly exceeds the 10s MCP default.
+web_tools = MCPTools(
+    url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
+)
+```
+
+It exposes two tools, `web_search` and `web_fetch`. Reach for this whenever the agent needs the web. (`ParallelTools()` is the SDK path the same two files switch to when `PARALLEL_API_KEY` is set — worth mirroring only if the user has that key.)
 
 ## 3. Generate the agent file
 
 Create `agents/<slug>.py` (replacing `-` with `_` for the filename: `agents/linear_agent.py`). Follow the closest reference pattern:
 
-- **Direct tools** → follow the required structure below ([`agents/manager.py`](../../../agents/manager.py) is the live example; skip its `learning=` wiring unless the new agent needs durable state across sessions).
-- **Context provider** → mirror the `codebase` part of [`agents/engineer.py`](../../../agents/engineer.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions. Skip its `learning=` wiring unless the new agent also needs durable state.
+- **Direct tools** → follow the required structure below. [`agents/manager.py`](../../../agents/manager.py) is the live example, `learning=` included.
+- **Context provider** → mirror the `codebase` part of [`agents/engineer.py`](../../../agents/engineer.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions. A toolkit's own `instructions()` is not optional decoration — mounting the tools without it leaves the agent holding tools nobody explained.
 - **Studio builder** → mirror [`agents/builder.py`](../../../agents/builder.py) when the agent should create or refine AgentOS components through StudioTools.
 
 Required structure:
@@ -104,6 +146,7 @@ Required structure:
 
 from agno.agent import Agent
 
+from app.learning import shared_self
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -117,6 +160,13 @@ it should follow when answering>
     name="<DisplayName>",
     model=default_model(),
     db=get_postgres_db(),
+    # One self per human, platform-wide: the same profile and memory Agno and the
+    # three platform agents carry. The machine attaches its own tools and recall.
+    learning=shared_self,
+    # Identity fallback for unauthenticated runs (dev MCP, evals). It pairs with
+    # learning: in agentic mode the profile and memory tools are not registered
+    # at all on a run carrying no user id, so without this they vanish silently.
+    user_id="anonymous-user",
     tools=[...],                     # or context_provider.get_tools()
     instructions=INSTRUCTIONS,
     add_datetime_to_context=True,
@@ -128,6 +178,7 @@ it should follow when answering>
 
 Notes:
 
+- **Drop the `learning=` / `user_id` pair only for a deliberate reason, and comment the reason in the file.** Per-user is the wrong shape when the agent's durable state belongs to the platform rather than to a person — a ledger of what it has already reported, a queue, anything a scheduled run has to read back. Profile and memory rows are keyed by user id alone, so state filed there is invisible to the next user and to any run without one. Reach for an agent `FileSystem` for that kind of state, and keep learning for what the agent knows about its human.
 - Don't add a `if __name__ == "__main__":` smoke block — the platform-driven workflow is the smoke test.
 - If the agent uses an `MCPTools` instance, pass it through `tools=[mcp_tools]` directly. AgentOS connects/closes MCP servers automatically — don't manage the lifecycle yourself.
 - If a context provider needs a model, reuse `default_model()` so the model id stays in one place.
@@ -145,6 +196,8 @@ agent_os = AgentOS(
     ...
 )
 ```
+
+This list does more than mount REST routes. Agno discovers every component the OS registers, and its runner is wired to dispatch the code-defined ones — so this line is also what puts the new agent on the team lead's roster, runnable by name ("Agno, have radar scan the week") from the AgentOS UI, Slack, or any MCP client. An agent that never lands here is reachable only by the id you give people.
 
 ## 5. Manifest entry
 
@@ -227,7 +280,7 @@ Iterate at most 2-3 times on the prompt before stopping and asking the user.
 
 When the smoke test passes:
 
-1. **Show them their agent working.** Lead with the answer it just gave in the smoke test — that's their idea, alive, in their own words. Then the slug, and where to reach it: `https://os.agno.com` — hit **Refresh** (top right) and it's in the Agents list next to the built-in ones, or `http://localhost:8000` directly if their OS isn't connected. It's also exposed through the AgentOS MCP endpoint at `/mcp` (`run_agent` tool).
+1. **Show them their agent working.** Lead with the answer it just gave in the smoke test — that's their idea, alive, in their own words. Then the slug, and where to reach it: `https://os.agno.com` — hit **Refresh** (top right) and it's in the Agents list next to the built-in ones, or `http://localhost:8000` directly if their OS isn't connected. It's also exposed through the AgentOS MCP endpoint at `/mcp` (`run_agent` tool). And it's on Agno's roster now (Step 4), so they can just ask the team lead for it by name — that's the one worth saying out loud, because it means their agent is part of the platform rather than a file in it.
 2. **Hand them the loop.** The agent they just built is a first draft, and both ways to sharpen it are already in this session:
    - [`/extend-agent`](../extend-agent/SKILL.md) — they drive: add a tool or source, teach it a new trick, fix something it got wrong.
    - [`/improve-agent`](../improve-agent/SKILL.md) — you drive: probe it against its own `INSTRUCTIONS`, judge, edit, re-probe until it's reliable. No input needed from them.

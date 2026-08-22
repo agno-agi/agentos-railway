@@ -14,20 +14,46 @@ Add a case below, tag it (`smoke`, `release`, `live`), then run:
 """
 
 import asyncio
+import time
 from os import getenv
 from typing import Any
 
 from agno.eval import Case, CaseResult
+from agno.run.base import RunStatus
 from agno.scheduler.manager import ScheduleManager
 
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
+from app.notes import notes
 from db import get_postgres_db
-from teams.lead import agno_team, notes
+from teams.lead import agno_team
 
 # Eval DB instance (where results are stored)
 eval_db = get_postgres_db()
+
+
+# Every sweep below reads the DB the instant the case ends, and cancelling a run does not
+# stop a sync tool already executing in its worker thread — the write commits after the
+# read and leaks a component, a schedule, or a learning row. `result.timed_out` is too
+# narrow a trigger to wait on: the runner sets it only in its `asyncio.TimeoutError`
+# branch, so a terminal Ctrl-C (CancelledError is a BaseException that branch never
+# catches) and a server-side cancel_run (which ends the stream with status=CANCELLED)
+# both reach teardown with it False — the two aborts most likely to leave a create
+# mid-flight. So the grace keys on how the run ended instead, which also drops it for the
+# case that completed and then only ran out of clock in the judge.
+_COMMIT_GRACE_SECONDS = 10
+
+
+async def _let_inflight_writes_land(result: CaseResult) -> None:
+    """Wait out an in-flight write before sweeping, whenever the run was cut short.
+
+    The cost is a pause on abort — Ctrl-C during a builder case takes this long to quit —
+    and it buys back the leak that pause prevents: a published component nobody swept, or
+    a case-created schedule that then fires daily."""
+    if result.response is not None and result.response.status == RunStatus.completed:
+        return
+    await asyncio.sleep(_COMMIT_GRACE_SECONDS)
 
 
 def snapshot_component_ids() -> set[str]:
@@ -60,11 +86,7 @@ async def cleanup_new_components(pre_run_ids: set[str], result: CaseResult) -> N
     """`teardown` hook for cases whose run may create Studio components (create/edit/
     publish are ungated, so components really land in the DB). The runner invokes it
     on pass, fail, error, and timeout alike, with the `setup` snapshot as context."""
-    if result.timed_out:
-        # Cancelling the run does not stop a sync Studio tool already executing in
-        # its worker thread; give an in-flight create a moment to commit so the
-        # sweep below sees it instead of leaking it.
-        await asyncio.sleep(10)
+    await _let_inflight_writes_land(result)
     await asyncio.to_thread(delete_new_components, pre_run_ids)
 
 
@@ -72,17 +94,44 @@ def snapshot_learning_state() -> dict[str, set[str]]:
     """`setup` hook for cases probing a component with learning stores (agno,
     platform-builder, platform-manager, platform-engineer): the learning ids (entities,
     profiles, memories) and note paths present before the case runs, so the teardown
-    can delete only what the case created."""
+    can delete only what the case created.
+
+    `taken_at` is the cutoff the teardown's refusal rests on: epoch seconds, the same
+    clock and the same truncation the learnings table's own `created_at` is written with
+    (`int(time.time())`, in the process that runs the agent — the eval runner's own, in
+    both sanctioned paths). It rides in a one-element set so the whole snapshot stays a
+    dict of string sets: the improve-agent skill round-trips this through JSON with
+    `sorted()` on the way out and `set()` on the way back."""
+    # The cutoff is read before the rows, never after — a row written between the two
+    # would otherwise look older than the snapshot and trip the refusal for nothing.
+    taken_at = int(time.time())
     return {
+        "taken_at": {str(taken_at)},
         "learning_ids": {str(row["learning_id"]) for row in eval_db.get_learnings()},
         "note_paths": {meta.path for meta in notes.list()},
     }
 
 
-# One case writes a handful of learning rows. Far more new rows means the snapshot the
-# diff rests on is not trustworthy — get_learnings swallows DB errors into an empty list,
-# so a transient failure during `setup` makes every pre-existing row look new.
+# Second line of defence behind the predating-row refusal in delete_new_learning_state:
+# one case writes a handful of learning rows, so far more than this is worth a human look
+# even when every new row does postdate the snapshot — a capture loop that ran away, or a
+# second writer on the platform during the case window.
 _MAX_SWEPT_LEARNINGS = 25
+
+
+def _snapshot_cutoff(pre_run: dict[str, set[str]]) -> int:
+    """The `taken_at` epoch second out of a learning snapshot.
+
+    A snapshot without exactly one is hand-built or from an older shape, and cannot carry
+    the refusal below. Say so rather than sweeping with the guard silently disabled."""
+    stamps = pre_run.get("taken_at") or set()
+    if len(stamps) != 1:
+        raise RuntimeError(
+            "refusing to sweep learning rows: this snapshot carries no single 'taken_at' cutoff, "
+            "so a row cannot be told apart from one that predates the case. Re-take it with "
+            "snapshot_learning_state()."
+        )
+    return int(next(iter(stamps)))
 
 
 def delete_new_learning_state(pre_run: dict[str, set[str]], max_swept: int | None = None) -> None:
@@ -90,34 +139,47 @@ def delete_new_learning_state(pre_run: dict[str, set[str]], max_swept: int | Non
     before the case ran. Also used standalone by the improve-agent skill to bracket
     probe loops against learning-store agents (uncapped there — a probe campaign
     legitimately creates many rows)."""
+    # Read before anything is deleted, so a snapshot of the wrong shape refuses first.
+    taken_at = _snapshot_cutoff(pre_run)
     # Notes first: their snapshot cannot be silently empty (notes.list() raises on DB
     # failure, failing the setup), so they are safe to sweep even when the learnings
     # guard below refuses.
     for meta in notes.list():
         if meta.path not in pre_run["note_paths"]:
             notes.delete(meta.path)
-    new_ids = [
-        str(row["learning_id"])
-        for row in eval_db.get_learnings()
-        if str(row["learning_id"]) not in pre_run["learning_ids"]
-    ]
-    if max_swept is not None and len(new_ids) > max_swept:
+    new = [row for row in eval_db.get_learnings() if str(row["learning_id"]) not in pre_run["learning_ids"]]
+    # The guard that matters, and the reason it is structural rather than a count: this is
+    # the only path in the repo that hard-deletes user data, and get_learnings swallows DB
+    # errors into an empty list, so one transient failure during `setup` makes every
+    # pre-existing row read as new. A row created before the snapshot was taken cannot be a
+    # row this case created, so one appearing here is proof the snapshot missed rows — and
+    # that proof shows up at any platform size, which a count never does: at a dozen rows —
+    # a platform a few conversations old — `12 > 25` is False, no cap fires, and every user
+    # profile, memory, and shared entity goes. A NULL created_at counts as predating too:
+    # unattributable is precisely what the refusal is for.
+    predating = sorted(str(row["learning_id"]) for row in new if int(row.get("created_at") or 0) < taken_at)
+    if predating:
         raise RuntimeError(
-            f"refusing to sweep {len(new_ids)} learning rows (cap {max_swept}): the pre-case "
-            "snapshot looks incomplete, so these rows are not safely attributable to the case. "
+            f"refusing to sweep learning rows: {len(predating)}/{len(new)} rows missing from the "
+            f"pre-case snapshot were created before it was taken (e.g. {predating[0]}) — the "
+            "snapshot is incomplete, so none of them are safely attributable to the case. Inspect "
+            "them and delete by hand: eval_db.delete_learning(<id>)."
+        )
+    if max_swept is not None and len(new) > max_swept:
+        raise RuntimeError(
+            f"refusing to sweep {len(new)} learning rows (cap {max_swept}): that is far more than a "
+            "case writes, so these rows are not safely attributable to it. "
             "Inspect them and delete by hand: eval_db.delete_learning(<id>)."
         )
-    for learning_id in new_ids:
-        eval_db.delete_learning(learning_id)
+    for row in new:
+        eval_db.delete_learning(str(row["learning_id"]))
 
 
 async def cleanup_new_learning_state(pre_run: dict[str, set[str]], result: CaseResult) -> None:
     """`teardown` hook for cases whose run may write to the learning stores (capture is
     ungated, so entities, memories, and notes really land in the DB). The runner invokes it
     on pass, fail, error, and timeout alike, with the `setup` snapshot as context."""
-    if result.timed_out:
-        # Give an in-flight write a moment to commit so the sweep sees it.
-        await asyncio.sleep(10)
+    await _let_inflight_writes_land(result)
     await asyncio.to_thread(delete_new_learning_state, pre_run, _MAX_SWEPT_LEARNINGS)
 
 
@@ -200,9 +262,7 @@ def delete_new_builder_state(pre_run: dict[str, Any]) -> None:
 async def cleanup_new_builder_state(pre_run: dict[str, Any], result: CaseResult) -> None:
     """`teardown` hook for builder cases: sweeps new components, schedules, and learning
     rows alike. The runner invokes it on pass, fail, error, and timeout alike."""
-    if result.timed_out:
-        # Give an in-flight create or write a moment to commit so the sweep sees it.
-        await asyncio.sleep(10)
+    await _let_inflight_writes_land(result)
     await asyncio.to_thread(delete_new_builder_state, pre_run)
 
 

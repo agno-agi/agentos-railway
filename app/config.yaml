@@ -2,21 +2,21 @@ manifest:
   # --- Agents ---
 
   platform-builder:
-    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
+    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio, wired from a safe registry of tools, knowledge, and shared notes."
     quick_prompts:
       - "What can you build for me?"
-      - "Build an agent that tracks AI news and writes a daily brief"
+      - "Build an agent that tracks AI news and files a daily brief in the shared notebook"
       - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
-    description: "Monitors and explains what this AgentOS is doing: usage patterns, run activity, deployment checks."
+    description: "Monitors and explains what this AgentOS is doing: usage and tokens, run and tool activity, eval history, schedules, deployment checks. Read-only."
     quick_prompts:
       - "How healthy is the platform right now?"
-      - "Share some usage patterns"
+      - "How many runs and tokens over the last 7 days?"
       - "Which agent is slowest, and is anything failing?"
 
   platform-engineer:
-    description: "Knows how this AgentOS is built: reads the source and explains the wiring, grounded in real files."
+    description: "Knows how this AgentOS is built: reads the source, explains the wiring grounded in real files, and routes source changes to a coding-agent skill."
     quick_prompts:
       - "Tell me about this AgentOS"
       - "How is the MCP endpoint wired?"
@@ -34,11 +34,13 @@ manifest:
   # --- Workflows ---
 
   deployment-check:
-    description: "Run a deployment check to verify the AgentOS is running correctly."
+    description: "Checks this platform's readiness: database, credentials, auth, scheduler URL, MCP, Slack, schedules, and component wiring. No model calls."
     quick_prompts:
       - "Run the deployment check"
 
   run-evals:
-    description: "Run a subset of the eval suite."
+    # The step never reads its input — the tag comes from EVALS_TAG (workflows/run_evals.py),
+    # so a prompt naming a tag would promise a selection the workflow cannot make.
+    description: "Runs the eval cases tagged by EVALS_TAG (default: smoke); the prompt is ignored. Spends model calls, so the daily schedule ships disabled."
     quick_prompts:
-      - "Run the smoke evals"
+      - "Run the eval suite (spends model calls)"

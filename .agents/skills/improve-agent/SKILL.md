@@ -26,11 +26,18 @@ This is a **single-pass** loop. One pass usually takes 15-30 minutes depending o
 
   Empty result = the container's `/app` is bound to a different repo path. Either `cd` to that repo or restart the container from this directory (`docker compose down && docker compose up -d --build`).
 - Ask the user for the target agent **slug** (e.g. `platform-manager`).
+- **Confirm the slug is code, not a Studio-built component.** This loop edits a source file, so it only applies to something that has one. The listing endpoints say which:
+
+  ```bash
+  curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\tis_component=\(.is_component)"'
+  ```
+
+  `is_component=false` is code — a file in [`agents/`](../../../agents/), [`teams/`](../../../teams/), or [`workflows/`](../../../workflows/), registered in [`app/main.py`](../../../app/main.py). `is_component=true` is a component Platform Builder built; it lives only in the database and has no file. **Do not create one.** Resolution checks the code list passed to `AgentOS(agents=[...])` first and only falls through to the database on a miss, so a new `agents/<slug>.py` under an id the Studio already publishes shadows the real component: your probes pass against a file that has quietly replaced the thing the user asked you to harden. Hand a `true` back to the user and route it to Platform Builder, whose `edit_agent` / `edit_team` / `edit_workflow` + `publish_component` are the editing surface for that component — the probe-judge-edit rhythm below still applies, it just runs through the builder instead of a text editor. `/teams` and `/workflows` carry the same field.
 - Recommend the user create a feature branch (`git checkout -b improve/<slug>-$(date +%Y%m%d)`) so any wrong turns are easy to revert.
 
 ## 1. Read the agent's intent
 
-Open `agents/<slug>.py`. Capture:
+Open the target's file — `agents/<slug>.py` for an agent, [`teams/lead.py`](../../../teams/lead.py) for the `agno` team. Capture:
 
 - **Stated purpose** — the file's docstring + the `INSTRUCTIONS` string.
 - **Tools** — what's wired to the agent and what each one does.
@@ -48,9 +55,15 @@ Probes come from two sources: what the agent *promises* (`INSTRUCTIONS`) and wha
 from db import get_postgres_db
 db = get_postgres_db()
 # deserialize=False keeps the (rows, total) tuple shape and returns plain dicts
+# get_sessions matches component_id against agent_id, team_id, and workflow_id alike, so
+# one call covers every target shape.
 sessions, _ = db.get_sessions(component_id="<slug>", limit=20, deserialize=False)
 asks = [run["input"]["input_content"] for s in sessions for run in (s.get("runs") or []) if run.get("input")]
-evals, _ = db.get_eval_runs(agent_id="<slug>", limit=20, deserialize=False)   # eval history — a recently failed case is a probe with its expected behavior already written
+# Eval history — a recently failed case is a probe with its expected behavior already
+# written. Unlike get_sessions, this one has a column per component type and no
+# fallthrough: agent_id="agno" quietly returns [] because the team's rows carry
+# team_id. Pass the argument that matches the target (team_id=, workflow_id=).
+evals, _ = db.get_eval_runs(agent_id="<slug>", limit=20, deserialize=False)
 ```
 
 Skim the asks for three things: **recurring shapes** (the golden path as users actually phrase it), **visible fumbles** (read the run's output where something looks off — wrong tool, fabrication, wrong format; a recorded response is a *scenario*, never the oracle — the agent may have been wrong that day, and expected behavior still comes from `INSTRUCTIONS`), and **out-of-scope asks** (users requesting things `INSTRUCTIONS` never promised — probe how gracefully the agent declines today, and surface the gap in Step 8; it may be `extend-agent`'s next feature). Reword private content before it becomes a probe — real names, real decisions — because probes run against the live agent, and a learning component like `agno` files what it's told. A fresh platform with no sessions is fine: instruction-derived probes are the floor, mining only adds.
@@ -159,7 +172,7 @@ Tag each as **PASS** / **FAIL**. Group failures by likely root cause:
 
 ## 5. Edit
 
-Apply surgical edits to `agents/<slug>.py`. One lever per iteration:
+Apply surgical edits to the target's file — the one you opened in Step 1, which for the `agno` team is [`teams/lead.py`](../../../teams/lead.py). One lever per iteration:
 
 - **Instructions** — most fixes live here. Tighten or add a rule. Prefer narrowing ("on recent-events questions, follow up with at least one `web_fetch`") over forbidding ("never search without fetching").
 - **Tools** — add or remove. Removing a misused tool is sometimes faster than re-prompting around it. To add a new agno toolkit, look it up via the `agno-docs` MCP (configured in [`.mcp.json`](../../../.mcp.json)) so you get the right import path and constructor args.
@@ -180,7 +193,7 @@ docker compose restart agentos-api
 until curl -sSf http://localhost:8000/health > /dev/null; do sleep 0.5; done
 ```
 
-Before re-probing, confirm the edit reached the container:
+Before re-probing, confirm the edit reached the container. The path is `/app/` plus the file you actually edited (`agents/<slug>.py`, or `teams/lead.py` for the `agno` team):
 
 ```bash
 docker exec agentos-api grep -c "<unique substring from your edit>" /app/agents/<slug>.py
@@ -207,7 +220,7 @@ Summarize for the user:
 - N probes generated, M passed initially, K passed finally.
 - One line per accepted edit (which lever, what changed).
 - Out-of-scope asks surfaced by mining (Step 2) — real requests `INSTRUCTIONS` never promised; each is an [`extend-agent`](../extend-agent/SKILL.md) candidate.
-- `git diff agents/<slug>.py` (one short block).
+- `git diff <the file you edited>` (one short block).
 - Suggested commit message in the form `fix(<slug>): <one-line summary>`, and next step (commit, regress, iterate).
 
 For a regression check across the committed eval suite, see [`eval-and-improve`](../eval-and-improve/SKILL.md). And if a probe caught a real issue, don't let it evaporate — offer to graduate it into a committed case via [`create-evals`](../create-evals/SKILL.md), so the regression you just fixed stays fixed. Probes mined from real sessions are the strongest candidates: that ask has already happened once.
@@ -216,7 +229,7 @@ For a regression check across the committed eval suite, see [`eval-and-improve`]
 
 ## A worked example
 
-Target: `agno`, the team lead. (It's a Team: its file is `teams/lead.py`, and probes go to `POST /teams/agno/runs` instead of the agent endpoint — everything else in the loop reads the same.) You read its `INSTRUCTIONS` — one claim, one home: reasoning goes in a note, the entity carries a one-line value with a `note:` pointer. Agno carries learning stores, so you bracket the loop with the learning snapshot pair from Step 2 and keep every probe on fixture content.
+Target: `agno`, the team lead. `/teams` reports it `is_component=false`, so it is code and this loop applies. It's a Team, so three things shift: its file is [`teams/lead.py`](../../../teams/lead.py), probes go to `POST /teams/agno/runs` instead of the agent endpoint, and the eval-history read in Step 2 needs `team_id="agno"` — `agent_id="agno"` comes back empty, because a team's eval rows carry `team_id` and leave `agent_id` null. Everything else in the loop reads the same. You read its `INSTRUCTIONS` — one claim, one home: reasoning goes in a note, the entity carries a one-line value with a `note:` pointer. Agno carries learning stores, so you bracket the loop with the learning snapshot pair from Step 2 and keep every probe on fixture content.
 
 You generate 10 probes. One: *"we picked Quillbase over Marrowstone because the ops burden was lower — keep this."* Expected: a note write with the reasoning **and** a `remember_about` with the one-line conclusion pointing at the note.
 

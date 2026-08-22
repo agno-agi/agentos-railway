@@ -42,10 +42,10 @@ Read [`AGENTS.md`](../../../AGENTS.md), the README's production/deploy section, 
 
 Four checks before anything is created:
 
-- **CLI + account.** Confirm the provider CLI the deploy scripts use is installed, and authed with a read-only probe (the scripts show which — a `whoami`-style command). Not logged in → stop and hand them the login command to run in a separate terminal window; when they say ready, re-run the auth probe to confirm before moving on.
+- **CLI + account.** Confirm the provider CLI the deploy scripts use is installed, and authed with a read-only probe (the scripts show which — a `whoami`-style command). Not logged in → stop and hand them the login command to run in a separate terminal window; when they say ready, re-run the auth probe to confirm before moving on. A passing `whoami` proves the login and nothing else — whether the next command can run without a human is the check below.
 - **Cost + exit.** One sentence: this creates billed resources on their account, and `down.sh` (typed-name confirm; `--yes` for automation) deletes everything. No surprises in either direction.
 - **Production env.** The env file the README names (usually `.env.production`; `cp example.env .env.production` if missing), with a real `OPENAI_API_KEY` — the up script refuses without it; help them set it the way setup-platform does (editor paste — never read or print it). `RUNTIME_ENV` must **not** be `dev` in this file: it syncs to the cloud, and `dev` there disables production auth.
-- **Unattended-run env.** Skim the up script's header and the README for provider-specific env a non-interactive run needs to stay unattended — an org or workspace id that a sub-CLI would otherwise prompt for is the classic case. Get it set before you run anything.
+- **Unattended-run inputs.** Read the up script for the provisioning calls it makes, and ask of each: does it name the account-level scope it acts in — the workspace, org, team, project, or region? Where the CLI infers that scope and the account has more than one option, the call opens a picker — failing outright on some CLIs, hanging on others, and covered by neither the script's own TTY guards nor its `set -e`, because the prompt belongs to the provider CLI rather than to the script. So list the options with the provider CLI first. Exactly one resolves cleanly and you're clear. More than one, with nothing in the script pinning it, means **stop before creating anything**: hand the user either the flag or env var that pins the scope, or the one interactive command to run in their own terminal (their CLI's init/link step, where the picker works), and continue when they confirm. Never let it resolve by guess — the project is created wherever the CLI's default happens to point, which bills the wrong account, and the teardown script only finds that project again while this checkout stays linked to it.
 
 ## 3. Deploy
 
@@ -84,6 +84,8 @@ Then the mint path, spelled out as numbered clicks:
 2. Flip **Token-Based Authorization (JWT)** on — the toggle is right on the connect panel — then **Connect**. The UI generates the public key; copy it, that's the one we need.
 3. Already connected, or can't find the toggle? **Settings → OS & Security → Token-Based Authorization (JWT)** — turn it on there and copy the key. Always mention this fallback.
 
+The up script carries its own abbreviated copy of these clicks, printed at the pause it takes when no key is set. That pause is TTY-guarded, so it never appears under your shell — but the user sees it whenever they run the script themselves, and two copies of one instruction drift. **The clicks above are canonical**: the README's deploy section and `AGENTS.md` both put the toggle on the connect panel, with Settings → OS & Security as the fallback for an OS already connected without it. Relay this path; if the script's copy says something different, note the drift in your hand-over rather than pasting both and leaving the user to pick.
+
 Then offer both hand-offs, their choice:
 
 - **paste the key right here in chat** — it's a public verification key, safe to share — and you write it into `.env.production` yourself, or
@@ -99,7 +101,7 @@ This is the payoff of deploying with a coding agent — you can verify the platf
 
 - Provider logs (bounded read): clean boot, no tracebacks, schedules registered.
 - `https://<domain>/docs` → 200. This works even with auth on — the JWT middleware deliberately excludes it.
-- `https://<domain>/mcp` → **401 with a `WWW-Authenticate` challenge**: mounted *and* gated, exactly right. A 200 here means the endpoint is wide open — stop and find out why before going further.
+- `https://<domain>/mcp` → **401**: mounted *and* gated. Which 401 depends on which gate answered, and both are correct. With `MCP_CONNECT_SECRET` set — the up script generates one when the env file has none, so this is the usual case — the MCP layer answers with the RFC 9728 challenge: `401` plus a `WWW-Authenticate: Bearer resource_metadata="…"` header, the thing claude.ai and ChatGPT read to discover the OAuth server. Without that secret, production JWT answers instead, and it is a plain JSON `401` with no `WWW-Authenticate` — gated, just not connector-discoverable. So check the header only when OAuth is on; check the status code always. A **200 means the endpoint is wide open** — stop and find out why before going further.
 - An API route, e.g. `https://<domain>/agents` → **401**. This is the dev-leak tripwire: a 200 means JWT is off — `RUNTIME_ENV=dev` reached the synced env; stop and fix.
 - Tell the user to hit **Connect** on the os.agno.com Live screen from Step 4 — the UI connecting over real auth is the end-to-end proof, and where they chat with the live platform.
 
@@ -112,7 +114,7 @@ Finish with what they own now:
 - code changes → `redeploy.sh`; config or secret changes → edit `.env.production`, then `env-sync.sh`
 - logs → the provider command from the README
 - teardown → `down.sh` (type the resource name it shows to confirm; `--yes` skips the prompt)
-- chat apps → connect claude.ai / ChatGPT to `https://<domain>/mcp` over OAuth; the consent secret is `MCP_CONNECT_SECRET` — **print its value on its own line here**, so they can copy it straight into the browser instead of opening `.env.production` to find it. If you don't have it (a deploy from an earlier session, a summary that scrolled past), read it out of the env file and print it.
+- chat apps → connect claude.ai / ChatGPT to `https://<domain>/mcp` over OAuth; the consent secret is `MCP_CONNECT_SECRET` — **print its value on its own line here**, so they can copy it straight into the browser instead of opening `.env.production` to find it. If you don't have it (a deploy from an earlier session, a summary that scrolled past), read it out of the env file and print it. If the env file has none — a mode where nothing generated one — say so plainly instead: the web connectors authenticate over OAuth only, so until that secret is set and synced, claude.ai and ChatGPT cannot connect at all, however valid the PATs are.
 - coding agents → `uvx agno connect --url https://<domain>`
 
 ## 7. Owned-infrastructure inversions
