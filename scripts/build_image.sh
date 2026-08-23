@@ -5,7 +5,7 @@
 #    Agno Docker Image Builder
 #
 #    Usage:
-#      ./scripts/build_image.sh                                  # agnohq/agentos:latest
+#      ./scripts/build_image.sh
 #      IMAGE_NAME=you/agentos IMAGE_TAG=3.0.0 ./scripts/build_image.sh
 #
 #    Prerequisites:
@@ -19,16 +19,7 @@ set -e
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS_ROOT="$(dirname "${CURR_DIR}")"
-# Anchored to the repo, not to $PWD — the build context already is, and -f resolving
-# against the caller's directory made the script work only from the repo root.
 DOCKER_FILE="${OS_ROOT}/Dockerfile"
-# Same IMAGE_NAME/IMAGE_TAG pair compose.yaml reads, so one export retags everywhere.
-# The default carries a namespace on purpose: a bare name resolves to
-# docker.io/library/<name>, Docker Hub's official-images namespace, which no account
-# can push to — the multi-arch build would run for minutes and only then be denied.
-# This script is portable core, so every agentos-* sibling defaults to the same
-# coordinate: name the repo in IMAGE_NAME (or the sibling in IMAGE_TAG) when more
-# than one of them publishes.
 IMAGE_NAME="${IMAGE_NAME:-agnohq/agentos}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 

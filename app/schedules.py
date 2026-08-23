@@ -69,17 +69,6 @@ def _register(
 
 
 def _platform_schedules(manager: ScheduleManager) -> dict[str, Schedule]:
-    """The unowned bucket — the same rows `create()` addresses.
-
-    The two lookups disagree about `user_id=None`: `get_schedule_by_name` reads it as
-    "user_id IS NULL" (this platform's own schedule), while `get_schedules` treats it as
-    no filter at all and returns every owner's. Listing unscoped would let a user's
-    schedule of the same name decide `preexisting` and receive the toggle meant for ours
-    — so boot could flip a schedule it does not own, ENABLE_DEPLOY_CHECK could silently
-    fail, and a shadowed name would leave run-evals enabled. Paging matters as much as
-    the filter: past one page our own row falls off the listing, and a `preexisting`
-    that reads False would disable a schedule the user deliberately enabled.
-    """
     rows: dict[str, Schedule] = {}
     for page in range(1, _MAX_SCHEDULE_PAGES + 1):
         batch = manager.list(limit=_SCHEDULE_PAGE_SIZE, page=page)

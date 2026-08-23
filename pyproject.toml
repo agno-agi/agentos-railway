@@ -9,10 +9,6 @@ authors = [{ name = "Agno", email = "hello@agno.com" }]
 
 dependencies = [
   "agno[os,mcp,slack,pgvector,psycopg]==3.0.0a3",
-  # Condition, Router, and Loop end-conditions built at runtime are CEL expressions:
-  # the Studio passes any non-identifier string straight through to the evaluator, and
-  # without this every condition silently evaluates False and every loop runs to
-  # max_iterations. See app/functions.py.
   "cel-python",
   "openai",
   "parallel-web",

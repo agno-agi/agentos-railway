@@ -29,9 +29,6 @@ echo ""
 
 failed=0
 
-# The format gate lives here rather than in a CI step of its own, so this script is
-# the single definition of "validated" and running it locally is the superset of CI —
-# a formatting-only red build can't survive a clean local run.
 echo -e "${DIM}> ruff format --check ${REPO_ROOT}${NC}"
 if ! ruff format --check "${REPO_ROOT}"; then
   echo -e "${RED}Fix with:${NC} ${BOLD}./scripts/format.sh${NC}"

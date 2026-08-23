@@ -93,17 +93,7 @@ def _check_runtime() -> CheckResult:
 
 
 def _check_openai_key() -> CheckResult:
-    """The one env var whose absence every other check survives.
-
-    Nothing reads it at import time: the model class only reads it when it builds a
-    client, the PgVector embedder only when it embeds, and `get_media_tools()` returns
-    an empty list rather than raising (OpenAITools raises in __init__ without a key,
-    which is exactly what that guard is there to swallow). So a platform missing this
-    key boots, serves /docs, and answers this very check — while every model call fails
-    and the registry Platform Builder builds from is quietly two tools smaller than the
-    one the docs describe. A fork that swapped `default_model()` still needs it: the
-    knowledge embedder and the media tools are OpenAI either way.
-    """
+    """The one env var whose absence every other check survives."""
     if getenv("OPENAI_API_KEY"):
         return _pass("OpenAI key", "Set — models, knowledge embeddings, and the registry's media tools.")
     return _fail(

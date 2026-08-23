@@ -5,7 +5,7 @@ Eval Hooks
 The setup/teardown machinery behind `evals/cases.py`: pre-case snapshots and
 post-case sweeps of Studio components, schedules, learning rows, and notes.
 Capture and create/edit/publish are ungated, so a case's rows really land in
-the shared stores — these hooks remove only what the case created, and refuse
+the shared stores — these hooks remove what the case created, and refuse
 rather than guess when a snapshot looks incomplete.
 
 Cases take the ready-made pairs:

@@ -9,9 +9,8 @@ Each case is an `agno.eval.Case`
 
 Two rules when adding a case (machinery and guards: `evals/hooks.py`):
 
-- Hooks: `**BUILDER_HOOKS` on any case that can reach the builder's ungated
-  create/edit/publish tools (every `platform-builder` case, and any `agno` case one
-  delegation away from a build); `**LEARNING_HOOKS` on every other case probing a
+- Hooks: add `**BUILDER_HOOKS` on any case that can reach the builder's ungated
+  create/edit/publish tools; add `**LEARNING_HOOKS` on every other case probing a
   learning-store component (`agno`, `platform-manager`, `platform-engineer`). The
   teardown hard-deletes what the case created, even on timeout.
 - Fixtures: use names no real team would have on file — the sweep removes rows the
@@ -31,8 +30,7 @@ from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
 
-# Re-exported: the hooks live in evals/hooks.py; the names stay importable from
-# evals.cases for the skills and entrypoints that address them here.
+# Re-exported for skills and entrypoints
 from evals.hooks import (  # noqa: F401
     BUILDER_HOOKS,
     LEARNING_HOOKS,

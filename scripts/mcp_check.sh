@@ -4,7 +4,7 @@
 #
 #    MCP Smoke Check
 #
-#    Proves the AgentOS MCP endpoint end to end: handshake, tool surface,
+#    Runs the AgentOS MCP endpoint end to end: handshake, tool surface,
 #    then one run_agent call. The default question tells the agent to skip
 #    its tools, so the whole check finishes in seconds. Runs the client
 #    inside the container.
