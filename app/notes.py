@@ -2,21 +2,7 @@
 Shared Notes
 ============
 
-The platform's shared notebook: one `FileSystem` namespace (`brain`) that Agno
-manages and everything else can contribute to.
-
-Agno carries the full toolkit — it owns the notebook, so it reads, writes,
-edits, and retires files there. What the registry offers built components is
-narrower and deliberately not a second file system: five plainly named
-functions, so a built agent can file what it finds where the team will see it
-without competing with its own private store.
-
-Two names for the same seven operations would not survive the same agent anyway.
-agno's tool namespace is flat, so mounting a second `FileSystem` toolkit
-collapses `read_file`, `list_files`, and `search_content` onto whichever toolkit
-the tools list holds first, and the loser is silently unreachable — verified.
-Purpose-named functions sidestep that collision, which is what lets a built agent
-carry `agent_files` and these together.
+A shared notebook for the platform's components
 """
 
 from agno.fs import FileSystem
@@ -24,10 +10,8 @@ from agno.tools import Toolkit
 
 from db import get_postgres_db
 
-NOTES_NAMESPACE = "brain"
+NOTES_NAMESPACE = "shared-notes"
 
-# Declared once and imported by both readers: teams/lead.py mounts the full
-# toolkit on Agno, app/registry.py exposes the scoped functions below.
 notes = FileSystem(get_postgres_db(), namespace=NOTES_NAMESPACE)
 
 

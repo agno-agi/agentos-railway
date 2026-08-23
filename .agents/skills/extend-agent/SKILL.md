@@ -7,11 +7,11 @@ description: User-driven loop to change an existing agent in this AgentOS — ad
 
 > _**Coding-agent workflow** — a `/slash-command` your coding agent (Claude Code, Codex, others) runs while developing this repo. Invoke it by name (e.g. `/extend-agent`) or describe the task and it triggers automatically._
 
-You are recursively extending a target agent **with the user in the driver's seat**. Each iteration: the user names a change, you implement it with an Agno-aware eye (using the `agno-docs` MCP for any toolkit / API research), the change is verified against the live agent, then you ask if there's more to do. Stop when the user says they're done.
+You are recursively extending a target agent **with the user in the driver's seat**. Each iteration: the user names a change, you implement it, verify it against the live agent, then ask if there's more to do. Stop when the user says they're done.
 
-This is the user-driven half of the iteration loop. The autonomous half lives in [`improve-agent`](../improve-agent/SKILL.md) — Claude derives probes from the agent's `INSTRUCTIONS` and recorded usage, and hardens behavior with no user input. Run it afterward to confirm nothing else regressed.
+This is the user-driven half of the iteration loop. The autonomous half lives in [`improve-agent`](../improve-agent/SKILL.md) — run it afterward to confirm nothing else regressed.
 
-The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`). Compose runs uvicorn with a scoped `--reload`, so code edits are picked up automatically; restart `agentos-api` for dependency changes or a guaranteed-clean state — Step 5 covers this.
+The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`). Compose runs uvicorn with a scoped `--reload`, so code edits hot-reload; Step 5 covers restarts.
 
 ## 0. Preconditions
 
@@ -28,26 +28,26 @@ The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`). Compose runs uvi
 
 ## 1. Read the agent first
 
-**First, confirm the slug has a file at all.** A runnable id on this platform is either code (a file in `agents/`, `teams/`, or `workflows/`, registered in `app/main.py`) or a Studio-built component that lives only in the database. The listing endpoints label which:
+**First, confirm the slug has a file at all.** A runnable id is either code (a file in `agents/`, `teams/`, or `workflows/`, registered in `app/main.py`) or a Studio-built component that lives only in the database. The listing endpoints label which (`/teams` and `/workflows` carry the same field):
 
 ```bash
 curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\tis_component=\(.is_component)"'
 ```
 
-`is_component=true` means there is no source file to open. Resolution checks the code list passed to `AgentOS(agents=[...])` first and only falls through to the database on a miss, so a new `agents/<slug>.py` registered in [`app/main.py`](../../../app/main.py) under an id the Studio already publishes *shadows* the runtime component rather than editing it — every run goes to your file while the user's actual component sits untouched behind it, and it looks like it worked. Route that ask to Platform Builder instead (`edit_agent` / `edit_team` / `edit_workflow`, then `publish_component`), and stay in this skill only if the user's real intent is to *replace* the built component with a code one, which starts by archiving it. `/teams` and `/workflows` carry the same field.
+`is_component=true` means there is no source file to open. Resolution checks the code list passed to `AgentOS(agents=[...])` before the database, so a new `agents/<slug>.py` registered in [`app/main.py`](../../../app/main.py) under an id the Studio already publishes *shadows* the runtime component — every run goes to your file while the user's component sits untouched behind it, and it looks like it worked. Route that ask to Platform Builder (`edit_agent` / `edit_team` / `edit_workflow`, then `publish_component`); stay in this skill only if the user means to *replace* the built component with a code one, which starts by archiving it.
 
 Then open the component's file — `agents/<slug>.py` for user-built agents; the reference components map ids to files: `platform-builder` → [`agents/builder.py`](../../../agents/builder.py), `platform-manager` → [`agents/manager.py`](../../../agents/manager.py), `platform-engineer` → [`agents/engineer.py`](../../../agents/engineer.py), the `agno` team → [`teams/lead.py`](../../../teams/lead.py). Capture:
 
 - **Stated purpose** — the file's docstring + the `INSTRUCTIONS` string.
 - **Tools** — what's wired and what each one does.
-- **Pattern** — direct tools (like the notes toolkit in [`teams/lead.py`](../../../teams/lead.py), which also composes a `learning=` machine), context provider (the `WorkspaceContextProvider` wiring in [`agents/engineer.py`](../../../agents/engineer.py), run in tools mode for direct reads), or a mix (Platform Manager pairs the read-only `AgentOSTools` runtime toolkit with the deployment-check functions; Platform Builder is the Studio-tools pattern).
+- **Pattern** — direct tools plus a `learning=` machine ([`teams/lead.py`](../../../teams/lead.py)), context provider (the `WorkspaceContextProvider` in [`agents/engineer.py`](../../../agents/engineer.py), tools mode), Studio tools (Platform Builder), or a mix (Platform Manager: read-only `AgentOSTools` plus the deployment-check functions).
 - **Existing levers** — `learning=` (which LearningMachine, and which stores on it), `num_history_runs`, `knowledge=`, model id.
 
-Restate the agent's purpose to the user in 1-2 sentences before asking what to change. This catches "I thought it did X but actually it does Y" upfront.
+Restate the agent's purpose to the user in 1-2 sentences before asking what to change.
 
 ## 2. Ask what to improve
 
-Use the coding agent's structured user-input control when available (for example Claude Code's `AskUserQuestion`) with these branches. If no structured control is available, ask the same choices in concise plain text. Multi-select is fine if the user wants multiple changes in one pass — handle them sequentially in Steps 3-6, then loop:
+Use the coding agent's structured user-input control when available (for example Claude Code's `AskUserQuestion`), otherwise plain text, with these branches. Multi-select is fine — handle the changes sequentially through Steps 3-6, then loop:
 
 - **Add a tool** — new MCP server, agno toolkit, or function tool.
 - **Add a capability** — knowledge base (RAG), learning / memory, sub-agent / context provider, scheduled task.
@@ -56,7 +56,7 @@ Use the coding agent's structured user-input control when available (for example
 - **Fix a bug** — user has a specific failing prompt or wrong behavior in mind.
 - **Something else** — free-form; let the user describe.
 
-"Grow the registry" is worth offering unprompted when the ask sounds like a *platform* capability rather than one agent's tool — "agents should be able to send Slack messages." Wiring that onto one agent file leaves every Studio-built component without it.
+Offer "Grow the registry" unprompted when the ask sounds like a *platform* capability rather than one agent's tool — "agents should be able to send Slack messages." Wiring that onto one agent file leaves every Studio-built component without it.
 
 If the user picked "Fix a bug" or "Something else," ask a follow-up free-form question for the specifics (the failing prompt, the observed behavior, what they want instead).
 
@@ -77,8 +77,8 @@ docker exec agentos-api python -c 'from agno.tools.exa import ExaTools'
 Per branch, the parts the docs can't tell you because they're about this repo:
 
 - **Add a tool** — the toolkit's `Prerequisites` section lists deps and auth. Its absence proves nothing about this image, so run the import anyway.
-- **Learning / memory** — the lever is `learning=`. `enable_user_memories` was removed in 3.0 (`TypeError`), and `enable_agentic_memory` must stay off wherever a LearningMachine is wired: both register `update_user_memory`, the first name registered wins, and the store's own tool is dropped. For "it should remember me too", pass `learning=shared_self` ([`app/learning.py`](../../../app/learning.py)) — a join, not a copy, since rows key on user id alone; it is registered as `user-self`, which is how a built component wires the same self. Declare a new machine only when the store set genuinely differs, and give it `db=` and `model=` explicitly. Entities are Agno's claim — it declares `entity_memory` on namespace `global` ([`teams/lead.py`](../../../teams/lead.py)) — so a second component indexing them duplicates the index. `add_history_to_context` is a different lever — it replays the current session and persists nothing.
-- **Knowledge** — the platform already has one base, [`app/knowledge.py`](../../../app/knowledge.py); wire `knowledge=[platform_knowledge]` rather than declaring a second corpus to keep current.
+- **Learning / memory** — the lever is `learning=`. `enable_user_memories` was removed in 3.0 (`TypeError`), and `enable_agentic_memory` must stay off wherever a LearningMachine is wired: both register `update_user_memory`, the first name registered wins, and the store's own tool is dropped. For "it should remember me too", pass `learning=shared_learning` ([`app/learning.py`](../../../app/learning.py)) — a join, not a copy, since rows key on user id alone; it is registered as `shared-learning`, which is how a built component wires the same self. Declare a new machine only when the store set genuinely differs, and give it `db=` and `model=` explicitly. Entities are Agno's claim — it declares `entity_memory` on namespace `global` ([`teams/lead.py`](../../../teams/lead.py)) — so a second component indexing them duplicates the index. `add_history_to_context` is a different lever — it replays the current session and persists nothing.
+- **Knowledge** — the platform already has one base, [`app/knowledge.py`](../../../app/knowledge.py); wire `knowledge=[shared_knowledge]` rather than declaring a second corpus to keep current.
 - **Sub-agent / context provider** — mirror [`agents/engineer.py`](../../../agents/engineer.py): spread `provider.get_tools()` into `tools=`, append `provider.instructions()` to `INSTRUCTIONS`. `ContextMode.tools` mounts the provider's read tools directly; the default gives the parent one `query_<thing>` tool backed by a sub-agent.
 - **Scheduled task** — [agno scheduler docs](https://docs.agno.com/agent-os/scheduler), and the `scheduler=True` line in [`app/main.py`](../../../app/main.py).
 - **Grow the registry** — [`app/registry.py`](../../../app/registry.py) is the membrane: Platform Builder composes only what it declares. The bucket you declare into decides how a built component references the block (`tool_names`, `model_id`, `knowledge_name`, `learning_name`, `function_name`). Declared entries are buildable; the wiring the framework discovers from registered components at boot resolves but is refused in a build with `tool_not_allowed`. Tool names are global to an agent, so two toolkits exposing `read_file` silently drop the second — `agent_files` already claims `read_file`, `list_files`, and `search_content`, so check first and wrap collisions in plainly named functions under their own `Toolkit(name=..., add_instructions=True)`. That flag is not optional: a built component's instructions are written by a model, so it is the only channel your usage guidance has.
@@ -105,7 +105,7 @@ Then edit. Files in scope:
 - [`app/config.yaml`](../../../app/config.yaml) — update the agent's manifest entry: refresh the `description` if the job changed, and add or update `quick_prompts` to exercise the new capability.
 - [`pyproject.toml`](../../../pyproject.toml) — only if a toolkit needs new pip deps.
 
-Keep edits surgical. One change per iteration of this loop — if the user asked for three things, do them one at a time so each can be smoke-tested independently.
+Keep edits surgical: one change per iteration of this loop, so each can be smoke-tested on its own.
 
 ## 5. Restart
 
@@ -138,9 +138,9 @@ docker exec agentos-api grep -c "<unique substring from your edit>" /app/agents/
 
 ## 6. Smoke test the change
 
-Pick a prompt that **exercises the change you just made**. For "Add a tool," the prompt should force the new tool to fire. For "Fix a bug," reuse the failing prompt the user described. For "Refine instructions," pick a prompt the rule was meant to handle. (Targeting the `agno` team? Swap `/agents/<slug>/runs` below for `/teams/agno/runs` — same flags.)
+Pick a prompt that **exercises the change you just made**: one that forces the new tool to fire, the failing prompt the user described, or one the refined rule was meant to handle. (Targeting the `agno` team? Swap `/agents/<slug>/runs` below for `/teams/agno/runs` — same flags.)
 
-A registry change gets one extra check first, because "the block is declared" and "a build can wire it" are different facts. Ask `platform-builder` to list the palette and read the row:
+A registry change gets one extra check first — "declared" and "buildable" are different facts. Ask `platform-builder` for the palette row:
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/platform-builder/runs \
@@ -148,11 +148,11 @@ curl -sS -X POST http://localhost:8000/agents/platform-builder/runs \
   -F "user_id=claude-extend-agent" -F "stream=false" | jq -r '.content // .'
 ```
 
-`buildable: true` with `source: declared` means your declaration landed. `source: discovered` means the name is reaching the registry through the boot fold rather than through `app/registry.py`, and a build wiring it will be refused with `tool_not_allowed`. Only then is the real smoke test worth running: a small build that actually wires the block, under the `platform-builder` bracket below.
+`buildable: true` with `source: declared` means your declaration landed. `source: discovered` means the name reaches the registry through boot discovery rather than `app/registry.py`, and a build wiring it is refused with `tool_not_allowed`. Then the real smoke test: a small build that wires the block, inside the `platform-builder` bracket below.
 
-> **Warning — smoke tests against `platform-builder` mutate the DB.** Its create / edit / publish Studio tools execute immediately (create/edit produce drafts, but the builder's instructions make `publish=true` the default completion — only `archive_component` / `delete_version` / `delete_schedule` pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component, and can create a schedule that keeps firing daily. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or snapshot state before the run and hard-delete anything new afterward — `snapshot_builder_state()` then `delete_new_builder_state(pre)` from [`evals/cases.py`](../../../evals/cases.py) (components plus schedules plus learning rows — the builder carries the shared per-user profile/memory stores; the `cleanup_new_*` names beside them are the async eval hooks, which take a `CaseResult`). The same applies when reproducing a bug on `platform-builder` in Step 3.
+> **Warning — smoke tests against `platform-builder` mutate the DB.** Its create / edit / publish Studio tools execute immediately (only `archive_component` / `delete_version` / `delete_schedule` pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component, and can create a schedule that keeps firing daily. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or bracket the run: `snapshot_builder_state()` before, `delete_new_builder_state(pre)` after, from [`evals/cases.py`](../../../evals/cases.py) — it hard-deletes new components, schedules, and learning rows alike (the `cleanup_new_*` names beside them are the async eval hooks, which take a `CaseResult`). The same applies when reproducing a bug on `platform-builder` in Step 3.
 
-> **Warning — smoke tests against a learning component write durable rows.** `agno`, `platform-manager`, `platform-engineer`, and anything else carrying `learning=` capture ungated: a prompt that tells the agent something files it, and Agno's notes and entities are shared by everyone on the platform. Two rules: make every fixture something no real team would have on file (invented names, invented projects), and never smoke with a real decision or a real person's details, because the diff below removes rows a run *created* and cannot undo an edit *inside* a row that already existed. The bracket, around the whole session rather than each prompt:
+> **Warning — smoke tests against a learning component write durable rows.** `agno`, `platform-manager`, `platform-engineer`, and anything else carrying `learning=` capture ungated: a prompt that tells the agent something files it, and Agno's notes and entities are shared by everyone on the platform. Make every fixture something no real team would have on file (invented names, invented projects), and never smoke with a real decision or a real person's details: the diff below removes rows a run *created* and cannot undo an edit *inside* a row that already existed. The bracket, around the whole session rather than each prompt:
 >
 > ```bash
 > source .venv/bin/activate
@@ -172,7 +172,7 @@ curl -sS -X POST http://localhost:8000/agents/platform-builder/runs \
 > delete_new_learning_state({k: set(v) for k, v in json.load(open('/tmp/pre-extend-learning.json')).items()})"
 > ```
 >
-> Skip this pair when the target is `platform-builder` — its bracket above already sweeps learning state. And do not run the delete side at all if someone else is talking to Agno while you work: the diff is by row identity, so a note a teammate files during your session looks new and gets swept. On a busy platform, either smoke-test in a window you own, or leave the rows in place and tell the user in Step 8 exactly what the smoke prompts filed, so they can retire it themselves.
+> Skip this pair when the target is `platform-builder` — its bracket above already sweeps learning state. Never run the delete side while someone else is talking to Agno: the diff is by row identity, so a note a teammate files during your session looks new and gets swept. On a busy platform, either smoke-test in a window you own, or leave the rows in place and tell the user in Step 8 exactly what the smoke prompts filed, so they can retire it themselves.
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
@@ -215,8 +215,6 @@ Summarize for the user:
 - Suggested commit message — `feat(<slug>): <one-line>` for new tools/capabilities, `fix(<slug>): <one-line>` for bug fixes, `chore(<slug>): refine instructions` for prompt-only edits. Combine if multiple types in one session.
 - **Recommended next step** — run [`improve-agent`](../improve-agent/SKILL.md) to autonomously verify the agent still does what its `INSTRUCTIONS` say it does.
 
-A simple change (one tool, one prompt refinement) takes 5-10 minutes. A capability addition (knowledge base, sub-agent) usually 15-30.
-
 ---
 
 ## Worked example
@@ -225,11 +223,11 @@ Target: the `agno` team ([`teams/lead.py`](../../../teams/lead.py)). The user wa
 
 **Step 2** — user picks "Add a tool."
 
-**Step 3** — search the agno-docs MCP for "PDF" and "fetch." Find that Agno's existing Parallel web tools already cover fetching HTML pages, but PDF parsing isn't included. Find `agno.tools.jina` (Jina Reader turns any URL, PDF, or HTML into clean markdown) — capture import, env var (`JINA_API_KEY`, optional — it works keyless, a key just raises the rate ceiling), pip dep (`jina`).
+**Step 3** — search the agno-docs MCP for "PDF" and "fetch." Find `agno.tools.jina` (`JinaReaderTools`: any URL or PDF to clean markdown) — capture the import, the env var (`JINA_API_KEY`, optional: keyless works, a key raises the rate ceiling), and that it needs no extra package. The import check in the container passes.
 
-**Step 4** — propose: *"Add `JinaReaderTools` so `agno` can fetch and parse the links you hand it before filing them. Needs `jina` in `pyproject.toml`; works keyless, set `JINA_API_KEY` for higher limits. Add a quick prompt that exercises a PDF URL."* User says yes.
+**Step 4** — propose: *"Add `JinaReaderTools` so `agno` can fetch and parse the links you hand it before filing them. No new dependency; works keyless, set `JINA_API_KEY` for higher limits. Add a quick prompt that exercises a PDF URL."* User says yes.
 
-Edit `teams/lead.py` to import `JinaReaderTools` and add it to `tools=[notes.tools(), web_tools, studio_runners, JinaReaderTools()]`. Check the new toolkit's tool names against what Agno already carries — the leader is already holding a `FileSystem` toolkit, and a name that collides gets dropped with a `Duplicate tool name` warning rather than an error. Add `jina` to `pyproject.toml` (and optionally `JINA_API_KEY=` to [`example.env`](../../../example.env)). Add a quick prompt to the team's manifest entry in `app/config.yaml`:
+Edit `teams/lead.py` to import `JinaReaderTools` and add it to `tools=[notes.tools(), web_tools, studio_runners, JinaReaderTools()]`. Check its tool name (`read_url`) against what the leader already carries — a name that collides gets dropped with a `Duplicate tool name` warning rather than an error. Optionally add `JINA_API_KEY=` to [`example.env`](../../../example.env). Add a quick prompt to the team's manifest entry in `app/config.yaml`:
 
 ```yaml
 manifest:
@@ -238,26 +236,26 @@ manifest:
       - "Read https://arxiv.org/pdf/2501.12948 and file what matters"
 ```
 
-**Step 5** — pip deps changed: `./scripts/generate_requirements.sh && docker compose up -d --build`. Poll `/health`.
+**Step 5** — no new pip deps: `docker compose restart agentos-api`, then poll `/health`.
 
-**Step 6** — this smoke test ends in a note write, and the notebook is shared, so take the learning snapshot from Step 6's second warning first. Then cURL the team (`POST /teams/agno/runs`) with the quick prompt. Logs show `Running: read_url(` against the arxiv URL, then a note write with the distilled content. Run the delete side of the bracket afterward so the platform's notebook goes back to what the team actually filed.
+**Step 6** — the prompt ends in a write to the shared notebook, so take the learning snapshot first. Then cURL the team (`POST /teams/agno/runs`) with the quick prompt. Logs show `Running: read_url(` against the arxiv URL, then a note write with the distilled content. Run the delete side of the bracket afterward.
 
 **Step 7** — user says "no, that's it."
 
-**Step 8** — diff summary, commit `feat(agno): add JinaReaderTools for URL and PDF capture`, recommend the `improve-agent` skill to harden the broader behavior.
+**Step 8** — diff summary, commit `feat(agno): add JinaReaderTools for URL and PDF capture`, recommend the `improve-agent` skill.
 
 ## A second worked example: growing the registry
 
-Target: the platform, not an agent. The user says *"agents you build should be able to leave notes where the rest of the team can see them."* Today only Agno can write to the shared notebook, and a built agent's `agent_files` store is private to it.
+Target: the platform, not an agent — this is the change that produced [`app/notes.py`](../../../app/notes.py). The user said *"agents you build should be able to leave notes where the rest of the team can see them."* At the time only Agno could write to the shared notebook, and a built agent's `agent_files` store is private to it.
 
 **Step 2** — "Grow the registry." The tell is the plural: *agents you build*, not *this agent*.
 
-**Step 3** — the block is a tool. The obvious move — declare a second `FileSystem` toolkit over the `brain` namespace — fails on the flat namespace: `agent_files` already claims `read_file`, `list_files`, and `search_content`, so an agent carrying both would silently lose one set. Confirm it rather than assume it: `docker exec agentos-api python -c "from app.registry import registry; print(registry.tool_is_declared('read_file'))"` returns `True`. So the shape is purpose-named functions instead — and the rename buys a narrower surface for free: create and append, no replace and no delete.
+**Step 3** — the block is a tool. The obvious move — declare a second `FileSystem` toolkit over the shared notebook's namespace — fails on the flat tool namespace: `agent_files` already claims `read_file`, `list_files`, and `search_content`, so an agent carrying both would silently lose one set. Step 3's `tool_is_declared('read_file')` check returns `True`. So the shape is purpose-named functions instead — and the rename buys a narrower surface for free: create and append, no replace and no delete.
 
-**Step 4** — propose: *"A new `app/notes.py` that declares the `brain` FileSystem once, plus five named functions — `read_shared_note`, `write_shared_note`, `append_shared_note`, `list_shared_notes`, `search_shared_notes` — wrapped in a `shared_notes` toolkit with `add_instructions=True`. `teams/lead.py` imports the FileSystem from there instead of declaring its own; `app/registry.py` exposes the toolkit. A built agent can then carry `agent_files` and `shared_notes` together."* User says yes. Write the module, spread `*get_shared_notes_tools()` into the registry's `tools=[...]`, repoint `teams/lead.py` at the shared declaration.
+**Step 4** — propose: *"A new `app/notes.py` that declares the shared FileSystem once, plus five named functions — `read_shared_note`, `write_shared_note`, `append_shared_note`, `list_shared_notes`, `search_shared_notes` — in a `shared_notes` toolkit with `add_instructions=True`. `teams/lead.py` imports the FileSystem from there; `app/registry.py` exposes the toolkit. A built agent can then carry `agent_files` and `shared_notes` together."* User says yes. Write the module, spread `*get_shared_notes_tools()` into the registry's `tools=[...]`, repoint `teams/lead.py` at the shared declaration.
 
 **Step 5** — no new pip deps, so `docker compose restart agentos-api` and poll `/health`.
 
-**Step 6** — the palette check first: ask `platform-builder` for the `list_tools` row and confirm `shared_notes` comes back `buildable: true`, `source: declared`. Then, inside the builder bracket, one real build that wires both stores and a run that files something under a fixture name. Both toolkits' tools appear in the logs; nothing is dropped.
+**Step 6** — the palette check first: `shared_notes` comes back `buildable: true`, `source: declared`. Then, inside the builder bracket, one build that wires both stores and a run that files something under a fixture name. Both toolkits' tools appear in the logs; nothing is dropped.
 
-**Step 8** — commit `feat(registry): expose the shared notebook to built components`. The follow-up is not `improve-agent` this time — nothing about an existing agent changed. It is a line in [`AGENTS.md`](../../../AGENTS.md)'s registry inventory, because the membrane's contents are documented there.
+**Step 8** — commit `feat(registry): expose the shared notebook to built components`. The follow-up is not `improve-agent` — nothing about an existing agent changed — but a line in [`AGENTS.md`](../../../AGENTS.md)'s registry inventory, because the membrane's contents are documented there.

@@ -6,7 +6,7 @@ Platform Builder
 from agno.agent import Agent
 from agno.tools.studio import StudioTools
 
-from app.learning import shared_self
+from app.learning import shared_learning
 from app.offload import result_store
 from app.registry import get_agno_docs_tools, registry
 from app.settings import default_model
@@ -109,7 +109,7 @@ declaration is fair game — including `agent_files`, an agent's own private fil
 resolves to the wielding agent's id, so every agent that carries it gets an isolated space; wire it \
 freely whenever an agent should keep notes, logs, or collected material). A component can also carry \
 `shared_notes`, the platform's \
-shared notebook: create, append, read, list, search over the same `brain` namespace Agno keeps, so \
+shared notebook: create, append, read, list, search over the same `shared-notes` namespace Agno keeps, so \
 what a built agent files is what the team reads. The two file surfaces answer different questions — \
 `agent_files` is the component's own workspace, `shared_notes` is everyone's — and a component may \
 carry both. Neither replaces nor deletes: those retire a colleague's work and stay with Agno. \
@@ -181,11 +181,9 @@ platform_builder = Agent(
     name="Platform Builder",
     model=default_model(),
     db=get_postgres_db(),
-    # Big tool results become searchable stored files rather than context —
-    # a registry listing or a stored component can outgrow a turn. See app/offload.py.
     offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
-    learning=shared_self,
+    learning=shared_learning,
     tools=[
         *get_agno_docs_tools(),
         StudioTools(

@@ -9,8 +9,6 @@ description: Repo-wide drift sweep for public-readiness — diff docs against co
 
 You are sweeping the whole repo for public-consumption readiness — docs accuracy, every agent reachable, scripts that actually do what the docs claim, no stale env vars, format + validate clean. Most drift is mechanical (renamed file, missing entry in `example.env`, new agent not in the architecture diagram) and you fix it in place. The rest is a punch list you surface to the user.
 
-This is a **recurring sweep** — meant to be re-run regularly.
-
 [`AGENTS.md`](../../../AGENTS.md) is the source of truth for repo conventions; [`CLAUDE.md`](../../../CLAUDE.md) is a symlink to it — edit once, both update.
 
 ## What you auto-fix vs. what you flag
@@ -37,7 +35,6 @@ This is a **recurring sweep** — meant to be re-run regularly.
 ## 0. Preconditions
 
 - Live container reachable: `curl -sSf http://localhost:8000/health` returns 200. If not, ask the user to `docker compose up -d --build` first — Step 4 needs a live container. (`docker compose ps` is unreliable from worktrees or alternate clones — trust the health probe.)
-- If multiple worktrees of this repo exist on disk, only one container can bind to localhost:8000 — Step 4 will reflect whichever repo last brought the container up, not necessarily this worktree's `app/main.py`.
 - Recommend a feature branch so auto-fixes are easy to revert: `git checkout -b review/$(date +%Y%m%d)`.
 
 ## 1. Scope check
@@ -45,7 +42,7 @@ This is a **recurring sweep** — meant to be re-run regularly.
 Restate the surface area in 4-5 lines so the user can redirect before you read everything:
 
 - Top-level docs: [`README.md`](../../../README.md) (including its setup prompt), [`AGENTS.md`](../../../AGENTS.md), and [`example.env`](../../../example.env).
-- Coding-agent skills: [`.agents/skills/*/SKILL.md`](../../../.agents/skills/) (frontmatter `name` matches the folder; `description` is trigger-rich; relative links resolve from two levels deep, i.e. `../../../`).
+- Coding-agent skills: [`.agents/skills/*/SKILL.md`](../../../.agents/skills/).
 - Code: [`app/`](../../../app/), [`agents/`](../../../agents/), [`teams/`](../../../teams/), [`workflows/`](../../../workflows/), [`db/`](../../../db/), [`evals/`](../../../evals/), [`scripts/`](../../../scripts/).
 - Configs: [`compose.yaml`](../../../compose.yaml), [`Dockerfile`](../../../Dockerfile), [`pyproject.toml`](../../../pyproject.toml), [`railway.json`](../../../railway.json).
 
@@ -59,12 +56,12 @@ Read every file in scope. Build a mental model of:
 
 - **Registered agents + team** — what's imported in `app/main.py`'s `agents=[...]` and `teams=[...]`? This is the whole population this sweep is responsible for. Components the Studio built at runtime have no source file, no manifest entry, and no place in a docs diff.
 - **Agent and team files on disk** — what's in [`agents/`](../../../agents/) and [`teams/`](../../../teams/)?
-- **Registry blocks** — what [`app/registry.py`](../../../app/registry.py) declares (tools, functions, knowledge, learning, models, dbs, agents), and which modules it imports them from ([`app/knowledge.py`](../../../app/knowledge.py), [`app/learning.py`](../../../app/learning.py), [`app/notes.py`](../../../app/notes.py), [`app/functions.py`](../../../app/functions.py)). Its inventory is documented in `AGENTS.md` and drifts the same way a Key Files table does.
+- **Registry blocks** — what [`app/registry.py`](../../../app/registry.py) declares (tools, functions, knowledge, learning, models, dbs, agents), and which modules it imports them from ([`app/knowledge.py`](../../../app/knowledge.py), [`app/learning.py`](../../../app/learning.py), [`app/notes.py`](../../../app/notes.py), [`app/functions.py`](../../../app/functions.py)).
 - **Env vars actually read** — grep `os.environ`, `os.getenv`, `getenv(`, plus settings/config modules.
 - **Manifest** — what's in [`app/config.yaml`](../../../app/config.yaml) under `manifest` (description + quick prompts per component)?
 - **Eval cases** — what's in [`evals/cases.py`](../../../evals/cases.py)?
 - **Registered workflows** — what's imported into [`app/main.py`](../../../app/main.py) and passed to `AgentOS(workflows=[...])`? Workflow files on disk in [`workflows/`](../../../workflows/)?
-- **Schedules** — what `register_schedules()` ([`app/schedules.py`](../../../app/schedules.py)) registers: the env gate where one exists (`ENABLE_DEPLOY_CHECK`), and run-evals' ships-disabled posture (its enabled bit is user-owned via the AgentOS UI after first creation). Every schedule `endpoint` should map to a real workflow `id`.
+- **Schedules** — what `register_schedules()` ([`app/schedules.py`](../../../app/schedules.py)) registers: the env gate where one exists (`ENABLE_DEPLOY_CHECK`), and run-evals' ships-disabled posture (its enabled bit is user-owned via the AgentOS UI after first creation).
 - **Scripts** — for each file in [`scripts/`](../../../scripts/), what does it actually do? (Headers and the first few lines are usually enough.)
 
 Don't write anything yet — read first, fix once.
@@ -79,13 +76,13 @@ The bulk of the work. Diff each pair below; auto-fix per the rules at the top.
 | Every registered agent, team + workflow has a manifest entry | `app/main.py` ↔ `app/config.yaml` | Component added without description/prompts |
 | Every env var in code is documented | code grep ↔ `AGENTS.md` env table + `example.env` | New var added without entries |
 | Every var in `example.env` is read somewhere | `example.env` ↔ code grep | Stale var nobody reads |
-| Every path mentioned in docs exists | `README.md`, `AGENTS.md`, `docs/*.md`, `.agents/skills/*/SKILL.md` ↔ filesystem | Renamed or deleted file |
+| Every path mentioned in docs exists | `README.md`, `AGENTS.md`, `.agents/skills/*/SKILL.md` ↔ filesystem | Renamed or deleted file |
 | Every script mentioned in docs is real + does what's claimed | docs ↔ `scripts/` | Renamed or behavior drifted |
 | Architecture diagrams match registered agents + workflows | `README.md`, `AGENTS.md` Architecture sections | New agent or workflow missing from the tree |
 | Eval cases reference real agents + tools | `evals/cases.py` ↔ `agents/`, `teams/` | Slug renamed or tool removed |
 | Every workflow file is registered | [`workflows/`](../../../workflows/) ↔ `app/main.py` `workflows=[...]` | New workflow not imported/registered |
 | Every schedule hits a real workflow | `app/schedules.py` `endpoint` ↔ workflow `id`s | Endpoint points at a renamed/removed workflow |
-| The registry inventory in the docs matches the code | `app/registry.py` ↔ `AGENTS.md`'s registry paragraph + `README.md` | A block added or removed without the prose catching up — the membrane is the one surface a user cannot discover by reading agent files |
+| The registry inventory in the docs matches the code | `app/registry.py` ↔ `AGENTS.md`'s registry paragraph + `README.md` | A block added or removed without the prose catching up |
 | `Key Files` table in `AGENTS.md` matches reality | `AGENTS.md` ↔ filesystem | Renamed file, deleted file, new file not listed |
 | Skill frontmatter + links resolve | `.agents/skills/*/SKILL.md` ↔ folder name + `../../../` link targets | name≠folder, broken `../../../` path, dead cross-skill link |
 | `.claude/skills` symlink resolves | `.claude/skills` → `../.agents/skills` | Symlink missing or dangling |
@@ -102,11 +99,9 @@ curl -s http://localhost:8000/agents | jq -r '.[] | select(.is_component == fals
 curl -s http://localhost:8000/teams  | jq -r '.[] | select(.is_component == false) | .id' | sort
 ```
 
-If *that* list doesn't match the slugs in `agents=[...]` / `teams=[...]`, flag it — the rest of Step 4 would be testing the wrong code. Common causes: the container is bound to a different repo path, or `docker compose restart` is needed. Stop and surface to the user.
+If *that* list doesn't match the slugs in `agents=[...]` / `teams=[...]`, stop and surface it to the user — the rest of Step 4 would be testing the wrong code. Common causes: the container was brought up from another worktree or clone of this repo (only one can bind localhost:8000), or `docker compose restart` is needed.
 
-Runtime-built components are **not** drift and never block the sweep. Drop them from the comparison (they have no source file to be consistent with), note the count in the report if it's interesting, and carry on.
-
-Then smoke each **code** component with one of its `quick_prompts` from `app/config.yaml` — every agent in `agents=[...]` **and** the team in `teams=[...]`. The team is not optional: `agno` is the front door every chat interface routes to. Agents use `/agents/<slug>/runs`; the team uses `/teams/agno/runs` with the same flags:
+Then smoke each **code** component with one of its `quick_prompts` from `app/config.yaml` — every agent in `agents=[...]` **and** the team in `teams=[...]`. Agents use `/agents/<slug>/runs`; the team uses `/teams/agno/runs` with the same flags:
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
@@ -119,12 +114,12 @@ curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
 jq -r '.content // .' < /tmp/review-<slug>.json | head -20
 ```
 
-Registered workflows stay out of the live smoke: `deployment-check` already runs on its own daily cron, and `run-evals` spends real model budget for minutes. Step 3 — registered, schedules pointing at real ids — is the coverage this sweep wants. Run `deployment-check` by hand for a readiness report if you want, but do not count it as smoke coverage of an agent.
+Workflows stay out of the live smoke: `deployment-check` already runs on its daily cron, and `run-evals` spends real model budget. Step 3 — registered, schedules pointing at real ids — is their coverage.
 
-Two components need the prompt chosen for them rather than taken off the manifest:
+Two components need more than a manifest prompt:
 
-- **`platform-builder` — do not use its build prompts.** Two of its three quick prompts are "Build …" asks, and the builder passes `publish=true` to finish a build, so smoking with one would create and publish a real, dispatchable component and leave it live on the platform. Its first quick prompt — "What can you build for me?" — is plan-only and safe, so use that one. If a create fires anyway, sweep the new state: `snapshot_builder_state()` then `delete_new_builder_state(pre)` from [`evals/cases.py`](../../../evals/cases.py) (they sweep new schedules and learning rows too, since the builder can create schedules and carries the shared per-user profile/memory stores). Nest that inside the learning bracket below rather than instead of it — the outer bracket is uncapped where the builder helper refuses past 25 rows.
-- **`agno` — its filing prompts write to shared state.** The team's quick prompts include a deliberate capture example, and Agno files what it is told: notes and entities are shared by everyone on the platform. `platform-manager` and `platform-engineer` carry the shared profile/memory stores too, so the same applies to them at a smaller radius. Bracket the whole smoke step, once around all the components rather than per prompt:
+- **`platform-builder` — use its first quick prompt only.** "What can you build for me?" is plan-only. The other two are "Build …" asks, and the builder passes `publish=true` to finish a build, so smoking with one would create and publish a real, dispatchable component and leave it live. If a create fires anyway, `delete_new_builder_state(pre)` removes it — so take `pre = snapshot_builder_state()` before the builder's call (both from [`evals/cases.py`](../../../evals/cases.py); they sweep new components, schedules, and learning rows). Nest that inside the learning bracket below rather than instead of it — the outer bracket is uncapped where the builder helper refuses past 25 rows.
+- **`agno` — capture is ungated.** Its quick prompts are read-only questions, but the learning machine decides for itself what to file on any run: per-user profile and memory on all four components, plus notes and entities — shared by everyone on the platform — on the team. Bracket the whole smoke step, once around all the components rather than per prompt:
 
   ```bash
   source .venv/bin/activate
@@ -144,7 +139,7 @@ Two components need the prompt chosen for them rather than taken off the manifes
   delete_new_learning_state({k: set(v) for k, v in json.load(open('/tmp/review-learning.json')).items()})"
   ```
 
-  The diff works on row identity, so it removes what the sweep created and cannot undo an edit *inside* a row that already existed — and a note a teammate files while you sweep looks new and gets swept. On a platform people are actively using, either run Step 4 in a window you own or tell the user you are skipping the filing prompt and smoke `agno` with a read-only one ("What's up Agno?") instead. A recurring sweep that quietly edits the team's memory every time it runs is worse drift than anything it is checking for.
+  The diff works on row identity: it removes what the sweep created, cannot undo an edit *inside* a row that already existed, and sweeps a note a teammate files while you run. On a platform people are actively using, run Step 4 in a window you own, or tell the user you are skipping the delete and leaving whatever the smoke filed in place.
 
 Pass = HTTP 200, non-empty content, no errors in the container logs:
 
@@ -152,7 +147,7 @@ Pass = HTTP 200, non-empty content, no errors in the container logs:
 docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40
 ```
 
-(`Running: <tool>(` is the tool-call line shape agno emits when `AGNO_DEBUG=True`, which compose sets for dev. Without `AGNO_DEBUG` expect no matches — `HTTP 200` and a non-empty body are then your only signal.)
+(`Running: <tool>(` is agno's tool-call log line under `AGNO_DEBUG=True`, which compose sets for dev. Without it expect no matches — `HTTP 200` and a non-empty body are then your only signal.)
 
 Then smoke the MCP interface (`mcp_server=True` in `app/main.py`):
 
@@ -172,15 +167,15 @@ source .venv/bin/activate  # if not already active
 ./scripts/validate.sh
 ```
 
-`format.sh` auto-fixes. `validate.sh` reports, and it gates on formatting as well as lint and types, so run them in this order — a sweep that skips `format.sh` will fail validate on its own edits. If validate fails, surface the errors verbatim: type and lint errors usually point at real bugs introduced since the last sweep, not noise to suppress.
+`format.sh` auto-fixes. `validate.sh` gates on formatting as well as lint and types, so keep that order — a sweep that skips `format.sh` fails validate on its own edits. If validate fails, surface the errors verbatim; don't suppress them.
 
 ## 6. Evals (ask before running)
 
-`python -m evals --tag release` hits OpenAI — costs money and takes a few minutes. Ask before running:
+The release tag hits OpenAI, so ask first:
 
 > Run `python -m evals --tag release` to confirm no agent regressed? (Hits OpenAI; takes 1-3 minutes.)
 
-If yes, run `python -m evals --tag release`. If any case fails, add it to "Needs your call" with [`eval-and-improve`](../eval-and-improve/SKILL.md) as the recommended follow-up. If the user declines, skip this step entirely — it does not affect the rest of the report.
+If any case fails, add it to "Needs your call" with [`eval-and-improve`](../eval-and-improve/SKILL.md) as the recommended follow-up. If the user declines, skip this step.
 
 ## 7. Report
 
@@ -200,5 +195,3 @@ git diff --stat
 
 - Suggested commit message — `chore: review-and-improve sweep` plus one short bullet per fix bucket.
 - Recommended follow-up — usually [`improve-agent`](../improve-agent/SKILL.md) (if a live agent looked off) or [`eval-and-improve`](../eval-and-improve/SKILL.md) (if evals failed).
-
-A clean sweep takes 3-5 minutes (10+ if the venv needs to be created). A dirty one is 15-30, mostly because live smoke surfaces agent regressions you have to triage.

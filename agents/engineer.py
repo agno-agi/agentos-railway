@@ -9,7 +9,7 @@ from agno.agent import Agent
 from agno.context.mode import ContextMode
 from agno.context.workspace import WorkspaceContextProvider
 
-from app.learning import shared_self
+from app.learning import shared_learning
 from app.offload import result_store
 from app.settings import default_model
 from db import get_postgres_db
@@ -17,7 +17,6 @@ from db import get_postgres_db
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Use ContextMode.tools for direct tools access (read_file, list_files, search_content)
-# instead of the default ContextMode.agent.
 # The engineer orchestrates its own multi-file reads, so answers cite real paths
 # without a nested-agent round-trip per question.
 codebase = WorkspaceContextProvider(
@@ -25,12 +24,6 @@ codebase = WorkspaceContextProvider(
     name="Platform Source",
     root=REPO_ROOT,
     mode=ContextMode.tools,
-    # These bound a whole-file read, and offloading changed what they are for.
-    # They used to protect the context window: a file over the cap was refused, and
-    # the agent had to page it by line range. Now a big read is stored and searched
-    # instead (app/offload.py), so the cap only needs to stay under the store's own
-    # 8MB per-result limit — past that the write is refused and the agent gets a
-    # head-and-tail envelope rather than something it can search.
     max_file_lines=50_000,
     max_file_length=4_000_000,
 )
@@ -94,14 +87,13 @@ platform_engineer = Agent(
     name="Platform Engineer",
     model=default_model(),
     db=get_postgres_db(),
-    # Big tool results become searchable stored files rather than context —
-    # reads whole files back page by page instead of failing on a big one. See app/offload.py.
     offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
-    learning=shared_self,
+    learning=shared_learning,
+    # Add the tools from the codebase context provider.
     tools=[*codebase.get_tools()],
-    # Blank line between the two, or the provider's line runs on from the last
-    # sentence of INSTRUCTIONS as if it were part of it.
+    # Blank line between two instructions, or the codebase context provider's
+    # instructions are added to the last sentence of INSTRUCTIONS
     instructions=f"{INSTRUCTIONS}\n\n{codebase.instructions()}",
     # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",

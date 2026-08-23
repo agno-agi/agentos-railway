@@ -24,11 +24,9 @@ from app.functions import (
     extract_json,
     extract_urls,
     json_to_csv,
-    route_component_type,
-    score_eval_status,
 )
-from app.knowledge import platform_knowledge
-from app.learning import shared_self
+from app.knowledge import shared_knowledge
+from app.learning import shared_learning
 from app.notes import get_shared_notes_tools
 from app.settings import default_model
 from db import get_postgres_db
@@ -88,8 +86,7 @@ def get_media_tools() -> list[OpenAITools]:
     Generated media come back as run artifacts (bytes on the RunResponse), so they
     persist in Postgres and survive ephemeral container filesystems. Transcription
     stays off: transcribe_audio reads server-local file paths, which agents on this
-    platform never have. The toolkit's default image model is the deprecated
-    dall-e-3; gpt-image-2 is current.
+    platform never have.
     """
     # OpenAITools raises without the key; the registry import must not.
     if not getenv("OPENAI_API_KEY"):
@@ -98,21 +95,7 @@ def get_media_tools() -> list[OpenAITools]:
 
 
 def get_file_generation_tools() -> list[FileGenerationTools]:
-    """Downloadable files (JSON, CSV, TXT, HTML, code) as in-memory run artifacts.
-
-    PDF and DOCX stay off by choice, not for missing deps. Artifacts are carried as
-    bytes on the run and persist in the Postgres run row, where a base64-encoded
-    binary does not compress at all — it costs its full size plus the 33% base64
-    expansion, and every session read returns it inline. The text/* formats (CSV,
-    TXT, HTML, code) are stored as raw UTF-8 in the same column and compress ~100x;
-    JSON's application/json mime makes it the one text format that rides base64
-    like a binary. HTML covers the formatted-document case at text cost.
-
-    reportlab / python-docx stay pinned so flipping either flag is a one-line change
-    on a platform that decides the storage cost is worth it. Nothing warns when they
-    are absent: the import guard logs at debug level, and the constructor's warning is
-    gated on the very flags this call sets to False.
-    """
+    """Downloadable files (JSON, CSV, TXT, HTML, code) as in-memory run artifacts."""
     return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
 
@@ -126,29 +109,20 @@ registry = Registry(
         *get_slack_tools(),
         *get_media_tools(),
         *get_file_generation_tools(),
-        # Structured ask-the-user questions: pauses the run, resumes via the
-        # same HITL surfaces as Platform Builder's archive gate.
+        # Structured ask-the-user questions
         UserFeedbackTools(),
         CalculatorTools(),
     ],
     models=[default_model()],
     dbs=[get_postgres_db()],
-    # Deterministic workflow-step executors — see app/functions.py for the contract.
     functions=[
-        route_component_type,
-        score_eval_status,
         extract_json,
         extract_urls,
         json_to_csv,
         csv_to_markdown_table,
         content_to_file,
     ],
-    # The per-user self every reference agent carries, offered to built components
-    # by name (learning_name). One declaration, one configuration — see app/learning.py.
-    learning=[shared_self],
-    # The platform's one knowledge base — see app/knowledge.py. It ships empty;
-    # documents go in through the AgentOS UI's Knowledge page, and components
-    # reference it by name (knowledge_name).
-    knowledge=[platform_knowledge],
+    learning=[shared_learning],
+    knowledge=[shared_knowledge],
     agents=[platform_manager],
 )

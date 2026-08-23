@@ -201,7 +201,7 @@ def _check_reference_components() -> CheckResult:
 def _check_registry_resources() -> CheckResult:
     """The registry entries built components hold by NAME rather than by reference.
 
-    A Studio-built component stores `{"name": "user-self"}` and resolves the live object
+    A Studio-built component stores `{"name": "shared-learning"}` and resolves the live object
     out of the registry on every load, so the name is the wiring. The run routes resolve
     strict: a name that stopped being registered is a 422 on every run of every component
     wired to it, and the lenient paths (history reads, cancel) are worse — they drop the
@@ -212,17 +212,17 @@ def _check_registry_resources() -> CheckResult:
     """
     try:
         from app.knowledge import KNOWLEDGE_NAME
-        from app.learning import SHARED_SELF_NAME
+        from app.learning import SHARED_LEARNING_NAME
         from app.registry import registry
     except Exception as exc:
         return _fail("Registry", f"Could not import the registry and its named resources: {exc}")
 
     missing: list[str] = []
     ambiguous: list[str] = []
-    if registry.get_learning(SHARED_SELF_NAME) is None:
-        missing.append(f"learning {SHARED_SELF_NAME!r}")
-    elif registry.learning_name_is_ambiguous(SHARED_SELF_NAME):
-        ambiguous.append(f"learning {SHARED_SELF_NAME!r}")
+    if registry.get_learning(SHARED_LEARNING_NAME) is None:
+        missing.append(f"learning {SHARED_LEARNING_NAME!r}")
+    elif registry.learning_name_is_ambiguous(SHARED_LEARNING_NAME):
+        ambiguous.append(f"learning {SHARED_LEARNING_NAME!r}")
     if registry.get_knowledge(KNOWLEDGE_NAME) is None:
         missing.append(f"knowledge {KNOWLEDGE_NAME!r}")
     elif registry.knowledge_name_is_ambiguous(KNOWLEDGE_NAME):
@@ -240,7 +240,7 @@ def _check_registry_resources() -> CheckResult:
             f"Two distinct instances claim {', '.join(ambiguous)}; a strict load refuses the "
             "reference rather than bind the wrong one. Give them distinct names.",
         )
-    return _pass("Registry", f"Named resources resolve: {SHARED_SELF_NAME!r}, {KNOWLEDGE_NAME!r}.")
+    return _pass("Registry", f"Named resources resolve: {SHARED_LEARNING_NAME!r}, {KNOWLEDGE_NAME!r}.")
 
 
 def _relative(epoch: int | None, now: int) -> str:

@@ -1,25 +1,11 @@
 """
-Workflow Step Functions
-=======================
+Workflow Functions
+==================
 
 Deterministic building blocks for Studio-built workflows, registered in the
 Studio registry's `functions` slot (app/registry.py). Each function is a step
 executor: the runtime calls it as `func(step_input)` with a `StepInput`, and it
-returns a string (the step's content) or a `StepOutput` when the step attaches
-a downloadable file artifact. No model calls, no tokens, no side effects — a
-function step's behavior is exactly its code.
-
-Platform Builder discovers these through `list_functions`, which surfaces each
-function's name, docstring, and signature. The docstring is the contract a
-builder relies on, so keep its first line precise about input and output.
-
-Failures are returned, never raised. A raised exception is retried four times
-identically and then kills the whole workflow run, which is the wrong shape for a
-deterministic step that simply got input it cannot use. Each function instead
-returns a string starting with `Error: `, so the run survives and a Condition can
-branch on it with a CEL expression:
-
-    previous_step_content.startsWith("Error: ")
+returns a string (the step's content) or a `StepOutput`.
 """
 
 import csv
@@ -30,6 +16,7 @@ from typing import Any
 
 from agno.media import File
 from agno.workflow import StepInput, StepOutput
+from pydantic import BaseModel
 
 _URL_PATTERN = re.compile(r"https?://[^\s<>\"')\]]+")
 _TABLE_ROW_CAP = 50
@@ -43,24 +30,38 @@ def _error(message: str) -> str:
 
 def _step_text(step_input: StepInput) -> str:
     """The text a function step operates on: the previous step's output, else the workflow input."""
-    if step_input.previous_step_content is not None:
-        return str(step_input.previous_step_content)
-    return step_input.get_input_as_string() or ""
+    content = step_input.previous_step_content
+    if content is None:
+        return step_input.get_input_as_string() or ""
+    if isinstance(content, BaseModel):
+        return content.model_dump_json(indent=2, exclude_none=True)
+    if isinstance(content, (dict, list)):
+        return json.dumps(content, indent=2, default=str, ensure_ascii=False)
+    return str(content)
 
 
 _NO_JSON = object()
 
 
-def _first_json_value(text: str) -> Any:
-    """Decode the first JSON object or array found in text; `_NO_JSON` when none decodes."""
+def _json_payload(text: str) -> Any:
+    """Decode the largest JSON object or array in text; `_NO_JSON` when none decodes.
+
+    Largest, not first: a gathering agent's `[1]` citations and `[ ]` checkboxes decode too.
+    """
     decoder = json.JSONDecoder()
+    best_span, best_value, skip_until = 0, _NO_JSON, 0
     for match in re.finditer(r"[\[{]", text):
+        start = match.start()
+        if start < skip_until:  # inside a value already decoded
+            continue
         try:
-            value, _ = decoder.raw_decode(text, match.start())
+            value, end = decoder.raw_decode(text, start)
         except json.JSONDecodeError:
             continue
-        return value
-    return _NO_JSON
+        if end - start > best_span:
+            best_span, best_value = end - start, value
+        skip_until = end
+    return best_value
 
 
 def _cell(value: Any) -> str:
@@ -71,55 +72,37 @@ def _cell(value: Any) -> str:
     return str(value)
 
 
-def route_component_type(step_input: StepInput) -> str:
-    """Suggest agent, team, or workflow for the request in the previous step's output (or the workflow input)."""
-    lower = _step_text(step_input).lower()
-    if any(word in lower for word in ("daily", "schedule", "pipeline", "approval", "steps", "workflow")):
-        return "workflow"
-    if any(word in lower for word in ("team", "specialists", "debate", "reviewers", "coordinate")):
-        return "team"
-    return "agent"
-
-
-def score_eval_status(step_input: StepInput) -> str:
-    """PASS when the eval report in the previous step's output shows every case passed, FAIL otherwise.
-
-    Reads JSON `passed`/`total` keys, or an `N/M passed` line like the run-evals report emits.
-    A report it cannot read scores FAIL, so this gate fails closed: never treat FAIL alone
-    as proof that a case failed.
-    """
-    text = _step_text(step_input)
-    passed = total = None
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        data = None
-    if isinstance(data, dict) and isinstance(data.get("passed"), int) and isinstance(data.get("total"), int):
-        passed, total = data["passed"], data["total"]
-    else:
-        match = re.search(r"(\d+)\s*/\s*(\d+)\s*passed", text)
-        if match:
-            passed, total = int(match.group(1)), int(match.group(2))
-    if passed is None or total is None or total <= 0:
-        return "FAIL"
-    return "PASS" if passed == total else "FAIL"
+def _table_cell(cell: str) -> str:
+    return cell.strip().replace("|", "\\|").replace("\r\n", "\n").replace("\n", "<br>")
 
 
 def extract_json(step_input: StepInput) -> str:
-    """Return the first JSON object or array found in the previous step's output, validated and pretty-printed.
+    """Return the largest JSON object or array in the previous step's output, validated and pretty-printed.
 
     Returns `Error: ...` when the previous step produced no parseable JSON — put this
-    step between a gathering agent and any step that needs structured input.
+    step between a gathering agent and any step that needs structured input. An upstream
+    `Error: ` passes through unchanged.
     """
-    value = _first_json_value(_step_text(step_input))
+    text = _step_text(step_input)
+    if text.startswith(_ERROR_PREFIX):
+        return text
+    value = _json_payload(text)
     if value is _NO_JSON:
         return _error("no valid JSON object or array in the previous step's output")
     return json.dumps(value, indent=2, ensure_ascii=False)
 
 
 def extract_urls(step_input: StepInput) -> str:
-    """Return the URLs found in the previous step's output, deduplicated in order, one per line."""
-    urls = dict.fromkeys(url.rstrip(".,;:!?") for url in _URL_PATTERN.findall(_step_text(step_input)))
+    """Return the URLs found in the previous step's output, deduplicated in order, one per line.
+
+    Returns `Error: ...` when it holds no URL. An upstream `Error: ` passes through unchanged.
+    """
+    text = _step_text(step_input)
+    if text.startswith(_ERROR_PREFIX):
+        return text
+    urls = dict.fromkeys(url.rstrip(".,;:!?`*") for url in _URL_PATTERN.findall(text))
+    if not urls:
+        return _error("no URLs in the previous step's output")
     return "\n".join(urls)
 
 
@@ -129,9 +112,14 @@ def json_to_csv(step_input: StepInput) -> StepOutput:
     Columns are the union of the objects' keys in first-appearance order; nested values are
     JSON-encoded in their cell. The CSV is also the step's content, so a following step —
     csv_to_markdown_table, say — receives the data rather than a summary of it. Returns
-    `Error: ...` when the previous step holds no JSON array of objects.
+    `Error: ...` when the previous step holds no JSON array of objects; an upstream `Error: `
+    passes through unchanged. Place it at the workflow's top level: the file is dropped when
+    this step runs inside a condition, loop, or parallel step, though the content still flows.
     """
-    value = _first_json_value(_step_text(step_input))
+    text = _step_text(step_input)
+    if text.startswith(_ERROR_PREFIX):
+        return StepOutput(content=text)
+    value = _json_payload(text)
     if isinstance(value, dict):
         # Tolerate a single-array wrapper like {"rows": [...]}.
         arrays = [item for item in value.values() if isinstance(item, list)]
@@ -170,7 +158,7 @@ def csv_to_markdown_table(step_input: StepInput) -> str:
         return _error("expected CSV with a header row and at least one data row")
 
     def line(cells: list[str]) -> str:
-        return "| " + " | ".join(cell.replace("|", "\\|").strip() for cell in cells) + " |"
+        return "| " + " | ".join(_table_cell(cell) for cell in cells) + " |"
 
     header, data = rows[0], rows[1:]
     lines = [line(header), "| " + " | ".join("---" for _ in header) + " |"]
@@ -184,9 +172,14 @@ def content_to_file(step_input: StepInput) -> StepOutput:
     """Attach the previous step's output unchanged as a downloadable output.md file artifact.
 
     The content also flows through as the step's output, so this works as a final
-    "publish the result" step without breaking the chain.
+    "publish the result" step without breaking the chain. Returns `Error: ...` when the
+    previous step produced no content; an upstream `Error: ` passes through unchanged, with
+    no file. Place it at the workflow's top level: the file is dropped when this step runs
+    inside a condition, loop, or parallel step, though the content still flows.
     """
     text = _step_text(step_input)
+    if text.startswith(_ERROR_PREFIX):
+        return StepOutput(content=text)
     if not text.strip():
         return StepOutput(content=_error("previous step produced no content to save"))
     return StepOutput(

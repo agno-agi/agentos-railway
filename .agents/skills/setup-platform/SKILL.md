@@ -68,30 +68,30 @@ This table is a hard checkpoint: it gets written before anything from Step 6 hap
 
 ## 6. Build their first agent
 
-In the same message, directly below the connection table and its one line of direction, say let's build your first agent (they can always run `/create-agent` later for more), and start [`create-agent`](../create-agent/SKILL.md): if they've hinted at an idea anywhere in the session, propose that; otherwise offer **one** recommendation, carrying that skill's discovery question as its fallback. Keep it plain text — no structured choice control here, even though create-agent's own instructions offer one. (The override is for this kickoff message only — once they answer, that skill's guidance applies as written.) The recommendation goes in the message like this:
+In the same message, below the connect direction, say let's build your first agent (they can always run `/create-agent` later for more), and start [`create-agent`](../create-agent/SKILL.md): if they've hinted at an idea anywhere in the session, propose that; otherwise offer **one** recommendation, carrying that skill's discovery question as its fallback. Keep it plain text — no structured choice control here, even though create-agent's own instructions offer one. (The override is for this kickoff message only — once they answer, that skill's guidance applies as written.) The recommendation goes in the message like this:
 
 > Here's the one I'd build for you: **Radar**: a quick brief on what the AI labs and agent frameworks shipped. Five items max, one line each, every one with a link, no hype. It keeps a ledger of what it's already sent you, so every brief is only what's new — and it learns what you care about, so "stop showing me funding rounds" sticks.
 >
 > Or something from your own week instead — issue triage, release notes, your weekly update. Say it in your own words and I'll build that.
 
-The recommendation is calibration, not a menu — whatever they type is their first discovery answer, and create-agent's follow-up dig still applies when the answer leaves the design open (a complete brief builds immediately, per that skill). Your live-and-connect message runs platform-up (MCP answer quoted) → connection table → connect direction → build kickoff, and closes with the first build move — the recommendation, or your build proposal if they've already hinted at an idea — never with "ready?" or "connected yet?".
+The recommendation is calibration, not a menu — whatever they type is their first discovery answer, and create-agent's follow-up dig still applies when the answer leaves the design open (a complete brief builds immediately, per that skill). The message closes with the first build move — never with "ready?" or "connected yet?".
 
 ### The Radar brief
 
 If they take it, this is what you hand create-agent — a spec for you, never pasted to the user. It's a complete brief, so that skill builds immediately without asking anything.
 
-- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`, and the one this platform already runs on (`teams/lead.py`, `app/registry.py`). Do not reach for `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving instead of Radar degrading. Searches the web for what the major AI labs and agent frameworks released or announced.
+- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`. Not `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving. Searches the web for what the major AI labs and agent frameworks released or announced.
 - Max 5 items, one line each, every item with a source link. No hype adjectives — what happened, not how exciting it is.
 - **The delta comes from a ledger, not a clock.** Two plain functions over an agent `FileSystem`: one checks whether items were already reported, one records them. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
 - Nothing new is one line that says since when ("nothing new since Tuesday"). Never pad the brief.
-- **Two answer modes.** "What's new?" → the delta-filtered brief. "What's going on with X?" → answer it from search, no suppression; recording happens either way. The ledger filters the brief, never a direct question — otherwise a real question gets a "nothing new" that is technically true and useless.
+- **Two answer modes.** "What's new?" → the delta-filtered brief. "What's going on with X?" → answer it from search, no suppression; recording happens either way. The ledger filters the brief, never a direct question.
 - Preferences live in a file it reads every run, so a standing rule binds on any run from any surface, and the user can open and edit it.
 
 Three things the code has to get right:
 
-- **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's. Profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing. The ledger also wants exact membership, not judged recall — "have I already sent this URL" is a string match, and `contains()` answers it exactly. Layering learning on top would only give preferences a second home to disagree with the file.
-- **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is also a Python method rather than one of the seven tools `fs.tools()` mounts, which is why the two wrapper functions exist at all: they are the only way the membership check reaches the model. A title or date on that line breaks the match, and sharing a directory with the preferences file makes membership checks collide with unrelated lines.
-- **Each brief is filed as its own note** (`briefs/<date>.md`). That's where "nothing new since Tuesday" comes from — `list()` over that directory — and it gives "show me last week's briefs" for free, without the delta ever depending on a timestamp.
+- **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's: profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing.
+- **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is a Python method, not one of the seven tools `fs.tools()` mounts, which is why the two wrapper functions exist: they are the only way the membership check reaches the model.
+- **Each brief is filed as its own note** (`briefs/<date>.md`). That's where "nothing new since Tuesday" comes from — `list()` over that directory — and it gives "show me last week's briefs" for free.
 
 Wire it the way [`teams/lead.py`](../../../teams/lead.py) does — same file system, same keyless search, same two-part instructions:
 
@@ -115,7 +115,7 @@ radar = Agent(
 )
 ```
 
-Both halves of `instructions` matter: `fs.instructions()` is how the agent learns the file toolkit's own conventions. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web". The instructions say the ledger is only ever touched through the two functions.
+`fs.instructions()` is how the agent learns the file toolkit's own conventions. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web". The instructions say the ledger is only ever touched through the two functions.
 
 Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer, then land the two places it now lives — say both in the same breath as the answer:
 

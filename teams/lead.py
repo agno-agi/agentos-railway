@@ -47,7 +47,7 @@ else:
     )
 
 # Agno holds the world as well as the self, so it composes its own machine: the same
-# per-user pair app/learning.py declares (shared_self), plus the shared entity store.
+# per-user pair app/learning.py declares (shared_learning), plus the shared entity store.
 memory = LearningMachine(
     db=get_postgres_db(),
     user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),  # private to each user
