@@ -46,7 +46,7 @@ Shared:
 | [`app/notes.py`](app/notes.py) | The shared `shared-notes` notebook, declared once: Agno mounts the full toolkit, the registry offers built components the scoped `shared_notes` toolkit (read, append, list, search, check_lines). |
 | [`app/functions.py`](app/functions.py) | Deterministic step functions for Studio-built workflows — each takes the runtime's `StepInput` and returns text or a downloadable file artifact, no model calls. |
 | [`app/config.yaml`](app/config.yaml) | UI manifest per component (keyed by `id`): description + quick prompts. |
-| [`teams/lead.py`](teams/lead.py) | Agno — the platform speaking for itself, and the front door: a `Team` with LearningMachine (profile, memory, entities in agentic mode) + FileSystem notes + web tools + the `studio_runners` dispatch toolkit (StudioRunnerTools) on the leader, and the three platform agents as members; runs every Studio-built component on demand — and, under `include_all_components=True`, every code-defined agent registered in `app/main.py`, so an agent a coding agent writes is reachable by name from the one front door. Code-defined *teams* stay out: boot discovery puts this team in the registry and the runner has no self-dispatch guard. The Slack default. |
+| [`teams/lead.py`](teams/lead.py) | Agno — the platform speaking for itself, and the front door: a `Team` with LearningMachine (profile, memory, entities in agentic mode) + FileSystem notes + web tools + the `studio_runners` dispatch toolkit (StudioRunnerTools) on the leader, and the three platform agents as members; runs every Studio-built component on demand — and, under `include_all_components=True`, every code-defined agent registered in `app/main.py`, so an agent a coding agent writes is reachable by name from the one front door. Code-defined teams are admitted too, this team included, so Agno can run Agno; its prompt holds that to one level, since the runner has no depth guard. The Slack default. |
 | [`agents/builder.py`](agents/builder.py) | Platform Builder — creates, edits, publishes, and schedules agents, teams, and workflows through StudioTools; builds end published, and archive/delete pause for HITL confirmation. Wires the shared per-user profile/memory stores. |
 | [`agents/manager.py`](agents/manager.py) | Platform Manager — the runtime lens: agno's `AgentOSTools` read-only ops toolkit + deployment-check reports with an on-demand diagnostic run. Wires the shared per-user profile/memory stores. |
 | [`agents/engineer.py`](agents/engineer.py) | Platform Engineer — the source lens: read-only workspace tools over the repo (read/list/search), answers grounded in real paths; owns the onboarding tour and the coding-agent skill routing. Wires the shared per-user profile/memory stores. |
@@ -112,8 +112,13 @@ from app.settings import default_model
 from db import get_postgres_db
 
 INSTRUCTIONS = """\
-<one short paragraph: what the agent does, which tools it uses, the
-rules to follow when answering>
+You are <Name>: <what the agent does, in one line>.
+
+How you speak:
+- <one rule per line>
+
+How you <work>:
+- <one rule per line; a sequence is a numbered list>\
 """
 
 my_agent = Agent(

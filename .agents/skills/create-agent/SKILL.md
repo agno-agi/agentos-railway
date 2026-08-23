@@ -145,8 +145,14 @@ from app.settings import default_model
 from db import get_postgres_db
 
 INSTRUCTIONS = """\
-<one short paragraph describing the agent's job, tools, and the rules
-it should follow when answering>
+You are <DisplayName>: <the agent's job, in one line>.
+
+How you speak:
+- <one rule per line: tone, length, what to confirm>
+
+How you <work>:
+- <one rule per line: which tool for what, what to refuse, what to hand off>
+- <a sequence is a numbered list; no rationale, no examples longer than a clause>\
 """
 
 <slug_underscore> = Agent(
