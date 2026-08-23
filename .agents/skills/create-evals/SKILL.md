@@ -28,7 +28,7 @@ Read the agent's file — or, for a Studio-built component, its published config
 
 The check that decides the hooks: **can this run reach the ungated create/edit/publish Studio tools?** Look for `StudioTools` in the component's tools, directly or transitively through team members; in this repo that's `platform-builder`, and the `agno` team through it. For the builder itself the answer is always yes, so every builder case carries the builder hooks (shown in Step 5). For a team that merely *fronts* a builder, the prompt decides: a case whose ask is one delegation away from a build takes the builder hooks (`agno_dispatch_honest_roster` does — "have X run its job" against a name nobody built invites exactly that), and a case that only files or recalls takes the learning hooks (`agno_captures_project_fact` does). When the two readings are close, take the builder hooks — they are a strict superset: components, schedules, *and* learning state.
 
-A second check: does the component carry **learning stores** (`learning=` — all four reference components do, and so does any Studio-built component with learning wired, by `learning_name` or `enable_learning`)? Those cases take the learning hooks.
+A second check: does the component carry **learning stores** (`learning=` — all four reference components do, and so does any Studio-built component with learning wired, by `learning_name` or `enable_learning`), or the **`shared_notes`** toolkit (it writes the same shared notebook the hooks snapshot and sweep)? Those cases take the learning hooks.
 
 ## 3. Mine the platform
 
@@ -66,7 +66,8 @@ Case(
     # mandatory — both live in this file:
     # setup=snapshot_builder_state,
     # teardown=cleanup_new_builder_state,
-    # Not a builder, but carries learning stores (`learning=` — platform-manager, platform-engineer)?
+    # Not a builder, but carries learning stores (`learning=` — platform-manager,
+    # platform-engineer) or the `shared_notes` toolkit (Step 2)?
     # setup=snapshot_learning_state,
     # teardown=cleanup_new_learning_state,
 )

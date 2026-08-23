@@ -90,10 +90,10 @@ If they take it, this is what you hand create-agent — a spec for you, never pa
 Three things the code has to get right:
 
 - **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's: profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing.
-- **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is a Python method, not one of the seven tools `fs.tools()` mounts, which is why the two wrapper functions exist: they are the only way the membership check reaches the model.
+- **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is not one of the seven tools `fs.tools()` mounts by default (the framework's `check_lines` tool exposes it, opt-in by name through `include_tools`), which is why the two wrapper functions exist: they are how the membership check reaches the model, with the ledger's directory pinned.
 - **Each brief is filed as its own note** (`briefs/<date>.md`). That's where "nothing new since Tuesday" comes from — `list()` over that directory — and it gives "show me last week's briefs" for free.
 
-Wire it the way [`teams/lead.py`](../../../teams/lead.py) does — same file system, same keyless search, same two-part instructions:
+Wire it the way [`teams/lead.py`](../../../teams/lead.py) does — same `FileSystem` wiring on a namespace of its own (the lead's is the shared notebook from `app/notes.py`), same keyless search, same two-part instructions:
 
 ```python
 from agno.fs import FileSystem

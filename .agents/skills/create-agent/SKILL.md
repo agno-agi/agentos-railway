@@ -67,7 +67,7 @@ Skip the demo classics (news digest, generic web researcher) unless that's what 
 |---|---|
 | **Pattern** | **Direct tools** (the required structure in Step 3; [`agents/manager.py`](../../../agents/manager.py) shows it live) when the agent uses ≤2 toolkits — the common case. **Context provider** (mirror the `codebase` wiring in [`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source — a single `query_<thing>` tool by default, or the provider's direct read tools in `ContextMode.tools` as the engineer does. Pick one and mention it in a clause. |
 | **Slug** | Derive it from the purpose (`pr-reviewer`, `linear-triager`). Kebab-case. State it. |
-| **Model** | `default_model()` — already `gpt-5.6-sol`. Override only if the user asks. |
+| **Model** | `default_model()` — already `gpt-5.6`. Override only if the user asks. |
 | **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer what is already in this image and needs no key — the keyless Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, an agent `FileSystem` for state. Anything beyond that set costs a rebuild or a key, and an unverified import takes down the platform — check it in the container (Step 2). |
 | **Memory / history** | **Wire `learning=shared_learning`** ([`app/learning.py`](../../../app/learning.py)) whenever the agent should know the person it works for across sessions — most agents worth keeping. It joins the new agent to the same per-user self Agno and the three platform agents carry. Leave it off only when the agent's durable state isn't per-user (Step 3 notes). History defaults come from the template pattern. Don't ask either way; say which you did. |
 
@@ -98,7 +98,7 @@ Don't guess any of the four. Skip this step entirely if the agent is chat-only w
 
 ### The image decides dependencies, not the docs page
 
-**Verify the import in the container before you write it.** 84 toolkit modules in this image import their third-party package at module scope and raise `ImportError` when it's missing. That is not a degraded agent, it's a dead platform: `app/main.py` imports every registered agent at module scope, so the `ImportError` propagates out of `app.main`, uvicorn's reload fails, and **nothing serves** — including the agents that worked a minute ago.
+**Verify the import in the container before you write it.** 85 toolkit modules in this image import their third-party package at module scope and raise `ImportError` when it's missing. That is not a degraded agent, it's a dead platform: `app/main.py` imports every registered agent at module scope, so the `ImportError` propagates out of `app.main`, uvicorn's reload fails, and **nothing serves** — including the agents that worked a minute ago.
 
 ```bash
 docker exec agentos-api python -c 'from agno.tools.exa import ExaTools'
@@ -191,7 +191,7 @@ agent_os = AgentOS(
 )
 ```
 
-This line also puts the agent on Agno's roster: the team lead's runner dispatches every code-defined component the OS registers, so people can ask for it by name ("Agno, have radar scan the week") from the AgentOS UI, Slack, or any MCP client.
+This line also puts the agent on Agno's roster: the team lead's runner dispatches every code-defined agent the OS registers, so people can ask for it by name ("Agno, have radar scan the week") from the AgentOS UI, Slack, or any MCP client.
 
 ## 5. Manifest entry
 

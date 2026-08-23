@@ -107,7 +107,7 @@ For each probe, write a one-line **expected behavior** describing what "good" lo
 > })"
 > ```
 >
-> Unlike the standalone learning sweep below (uncapped — a probe campaign legitimately creates many rows), this sweep keeps the eval suite's refusal caps (5 schedules, 25 learning rows). A campaign long enough to trip one errors with the by-hand delete path instead of guessing; bracket it in shorter batches.
+> Unlike the standalone learning sweep below (uncapped — a probe campaign legitimately creates many rows), this sweep keeps the eval suite's refusal caps (5 schedules, 25 learning rows). A campaign long enough to trip one stops with an error naming the by-hand delete path instead of guessing; bracket it in shorter batches.
 
 > **If the target carries learning stores (`agno`, `platform-manager`, `platform-engineer`, or any component wired with `learning=`): probes leave durable rows.** Capture is ungated — notes, entities, and memories written during a probe land in the same stores real teammates read back. Bracket the loop with the eval suite's learning snapshot pair (skip this for `platform-builder` — the builder bracket above already sweeps learning state):
 >
