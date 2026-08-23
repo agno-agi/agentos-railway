@@ -105,14 +105,12 @@ in this run — and neither perform nor describe a trial-run: the component is d
 is published.
 
 The declared registry (app/registry.py) is safe by default: anything the list tools show from the \
-declaration is fair game — including `agent_files`, an agent's own private file store (the namespace \
-resolves to the wielding agent's id, so every agent that carries it gets an isolated space; wire it \
-freely whenever an agent should keep notes, logs, or collected material). A component can also carry \
-`shared_notes`, the platform's \
-shared notebook: create, append, read, list, search over the same `shared-notes` namespace Agno keeps, so \
-what a built agent files is what the team reads. The two file surfaces answer different questions — \
-`agent_files` is the component's own workspace, `shared_notes` is everyone's — and a component may \
-carry both. Neither replaces nor deletes: those retire a colleague's work and stay with Agno. \
+declaration is fair game — including `shared_notes`, the platform's one file store: read, append, \
+list, search, and check_lines over the same `shared-notes` namespace Agno keeps, so what a built \
+agent files is what the team reads. Wire it whenever an agent should keep notes, logs, or collected \
+material, and tell the agent to keep its own working files (seen lists, checkpoints) in a directory \
+named after it. It never writes over, moves, or deletes: those retire a colleague's work and stay \
+with Agno. \
 The runtime discovers \
 more — every registered agent's own wiring lands in the live registry, so list_tools also shows \
 privileged toolkits (`studio`: component mutations; `filesystem`: Agno's own full notebook toolkit, \

@@ -82,24 +82,22 @@ If they take it, this is what you hand create-agent — a spec for you, never pa
 
 - **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`. Not `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving. Searches the web for what the major AI labs and agent frameworks released or announced.
 - Max 5 items, one line each, every item with a source link. No hype adjectives — what happened, not how exciting it is.
-- **The delta comes from a ledger, not a clock.** Two plain functions over an agent `FileSystem`: one checks whether items were already reported, one records them. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
+- **The delta comes from a ledger, not a clock.** `check_lines` says which URLs are already recorded, `append_file(unique=True)` records the new ones. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
 - Nothing new is one line that says since when ("nothing new since Tuesday"). Never pad the brief.
 - **Two answer modes.** "What's new?" → the delta-filtered brief. "What's going on with X?" → answer it from search, no suppression; recording happens either way. The ledger filters the brief, never a direct question.
-- Preferences live in a file it reads every run, so a standing rule binds on any run from any surface, and the user can open and edit it.
+- Preferences live in a file it reads every run, so a standing rule binds on any run from any surface.
 
-Three things the code has to get right:
+Two things the code has to get right:
 
 - **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's: profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing.
-- **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is not one of the seven tools `fs.tools()` mounts by default (the framework's `check_lines` tool exposes it, opt-in by name through `include_tools`), which is why the two wrapper functions exist: they are how the membership check reaches the model, with the ledger's directory pinned.
-- **Each brief is filed as its own note** (`briefs/<date>.md`). That's where "nothing new since Tuesday" comes from — `list()` over that directory — and it gives "show me last week's briefs" for free.
+- **Its files live in the shared notebook, under `radar/`.** That is the platform's one file store ([`app/notes.py`](../../../app/notes.py)): the ledger at `radar/reported.md` (one canonical URL per line, nothing else — `check_lines` is whole-line exact match), each brief at `radar/briefs/<date>.md` (so "nothing new since Tuesday" is a `list_files` over that directory), preferences at `radar/preferences.md`. Filing there is what lets "Agno, what did radar find this week?" work — Agno reads the same notebook.
 
-Wire it the way [`teams/lead.py`](../../../teams/lead.py) does — same `FileSystem` wiring on a namespace of its own (the lead's is the shared notebook from `app/notes.py`), same keyless search, same two-part instructions:
+Wire it with the shared notebook's scoped tools and the keyless search this platform already runs on:
 
 ```python
-from agno.fs import FileSystem
 from agno.tools.mcp import MCPTools
 
-fs = FileSystem(get_postgres_db(), namespace="radar")
+from app.notes import get_shared_notes_tools
 
 # Keyless: no PARALLEL_API_KEY needed. AgentOS connects and closes MCP servers
 # as part of its lifespan, so the agent never manages the connection itself.
@@ -110,12 +108,12 @@ web_tools = MCPTools(
 
 radar = Agent(
     ...
-    tools=[fs.tools(), web_tools, was_reported, record_reported],
-    instructions=[INSTRUCTIONS, fs.instructions()],
+    tools=[*get_shared_notes_tools(), web_tools],
+    instructions=INSTRUCTIONS,
 )
 ```
 
-`fs.instructions()` is how the agent learns the file toolkit's own conventions. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web". The instructions say the ledger is only ever touched through the two functions.
+`get_shared_notes_tools()` carries its own usage instructions, so nothing is appended to `INSTRUCTIONS` for it. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web", and name its three paths under `radar/`.
 
 Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer, then land the two places it now lives — say both in the same breath as the answer:
 

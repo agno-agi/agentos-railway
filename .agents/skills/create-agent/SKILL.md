@@ -67,8 +67,8 @@ Skip the demo classics (news digest, generic web researcher) unless that's what 
 |---|---|
 | **Pattern** | **Direct tools** (the required structure in Step 3; [`agents/manager.py`](../../../agents/manager.py) shows it live) when the agent uses ≤2 toolkits — the common case. **Context provider** (mirror the `codebase` wiring in [`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source — a single `query_<thing>` tool by default, or the provider's direct read tools in `ContextMode.tools` as the engineer does. Pick one and mention it in a clause. |
 | **Slug** | Derive it from the purpose (`pr-reviewer`, `linear-triager`). Kebab-case. State it. |
-| **Model** | `default_model()` — already `gpt-5.6`. Override only if the user asks. |
-| **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer what is already in this image and needs no key — the keyless Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, an agent `FileSystem` for state. Anything beyond that set costs a rebuild or a key, and an unverified import takes down the platform — check it in the container (Step 2). |
+| **Model** | `default_model()` (`gpt-5.6`). Override only if the user asks. |
+| **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer what is already in this image and needs no key — the keyless Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, the shared notebook's scoped tools (`get_shared_notes_tools()`, [`app/notes.py`](../../../app/notes.py)) for files and state. Anything beyond that set costs a rebuild or a key, and an unverified import takes down the platform — check it in the container (Step 2). |
 | **Memory / history** | **Wire `learning=shared_learning`** ([`app/learning.py`](../../../app/learning.py)) whenever the agent should know the person it works for across sessions — most agents worth keeping. It joins the new agent to the same per-user self Agno and the three platform agents carry. Leave it off only when the agent's durable state isn't per-user (Step 3 notes). History defaults come from the template pattern. Don't ask either way; say which you did. |
 
 ### Stop only for this
@@ -130,7 +130,7 @@ Create `agents/<slug>.py` (replacing `-` with `_` for the filename: `agents/line
 - **Context provider** → mirror the `codebase` part of [`agents/engineer.py`](../../../agents/engineer.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions — without it the agent holds tools nobody explained.
 - **Studio builder** → mirror [`agents/builder.py`](../../../agents/builder.py) when the agent should create or refine AgentOS components through StudioTools.
 
-Required structure:
+Required structure (no `offload_tool_results` — result offloading is for the four platform agents only; a new agent does not get it):
 
 ```python
 """
@@ -172,7 +172,7 @@ it should follow when answering>
 
 Notes:
 
-- **Drop the `learning=` / `user_id` pair only for a deliberate reason, and comment the reason in the file.** Per-user is the wrong shape when the agent's durable state belongs to the platform rather than to a person — a ledger of what it has already reported, a queue, anything a scheduled run has to read back: profile and memory rows are keyed by user id alone, so state filed there is invisible to the next user and to any run without one. Use an agent `FileSystem` for that state, and keep learning for what the agent knows about its human.
+- **Drop the `learning=` / `user_id` pair only for a deliberate reason, and comment the reason in the file.** Per-user is the wrong shape when the agent's durable state belongs to the platform rather than to a person — a ledger of what it has already reported, a queue, anything a scheduled run has to read back: profile and memory rows are keyed by user id alone, so state filed there is invisible to the next user and to any run without one. File that state in the shared notebook, the platform's one file store ([`app/notes.py`](../../../app/notes.py)): `tools=[*get_shared_notes_tools(), ...]` mounts `read_file`, `append_file`, `list_files`, `search_content`, and `check_lines` over the `shared-notes` namespace and carries its own usage instructions (append nothing to `INSTRUCTIONS` for it); the agent keeps its working files in a directory named after it (`<slug>/`). Keep learning for what the agent knows about its human.
 - Don't add a `if __name__ == "__main__":` smoke block — the platform-driven workflow is the smoke test.
 - If the agent uses an `MCPTools` instance, pass it through `tools=[mcp_tools]` directly — AgentOS manages the connect/close lifecycle.
 - If a context provider needs a model, reuse `default_model()` so the model id stays in one place.

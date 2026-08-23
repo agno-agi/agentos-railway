@@ -45,7 +45,7 @@ Four checks before anything is created:
 - **CLI + account.** Confirm the provider CLI the deploy scripts use is installed, and authed with a read-only probe (the scripts show which — a `whoami`-style command). Not logged in → stop, hand them the login command for a separate terminal window, and re-run the probe when they say ready.
 - **Cost + exit.** One sentence: this creates billed resources on their account, and `down.sh` (typed-name confirm; `--yes` for automation) deletes everything.
 - **Production env.** The env file the README names (usually `.env.production`; `cp example.env .env.production` if missing), with a real `OPENAI_API_KEY` — the up script refuses without it; help them set it the way setup-platform does (editor paste — never read or print it). `RUNTIME_ENV` must **not** be `dev` in this file: it syncs to the cloud, and `dev` there disables production auth.
-- **Unattended-run inputs.** Read the up script for the provisioning calls it makes, and ask of each: does it name the account-level scope it acts in — the workspace, org, team, project, or region? Where the CLI infers that scope and the account has more than one option, the call opens a picker — failing outright on some CLIs, hanging on others — and a guard in the script, where it has one, can prove a prompt is coming but not that one isn't. So list the options with the provider CLI first. Exactly one resolves cleanly and you're clear. More than one, with nothing in the script pinning it, means **stop before creating anything**: hand the user either the flag or env var that pins the scope, or the one interactive command to run in their own terminal (their CLI's init/link step, where the picker works), and continue when they confirm. Never let it resolve by guess — the project lands wherever the CLI's default points, bills that account, and the teardown script only finds it while this checkout stays linked to it.
+- **Unattended-run inputs.** Read the up script for the provisioning calls it makes, and ask of each: does it name the account-level scope it acts in — the workspace, org, team, project, or region? Where the CLI infers that scope and the account has more than one option, the call opens a picker — failing outright on some CLIs, hanging on others. So list the options with the provider CLI first. Exactly one resolves cleanly and you're clear. More than one, with nothing in the script pinning it, means **stop before creating anything**: hand the user either the flag or env var that pins the scope, or the one interactive command to run in their own terminal (their CLI's init/link step, where the picker works), and continue when they confirm. Never let it resolve by guess — the project lands wherever the CLI's default points, bills that account, and the teardown script only finds it while this checkout stays linked to it.
 
 ## 3. Deploy
 
@@ -97,7 +97,7 @@ And name the one honest alternative in the same message, clearly not recommended
 
 ## 5. Prove it live
 
-Every probe goes to the **public domain**, never localhost (deployed MCP once broke while every localhost check passed):
+Every probe goes to the **public domain**, never localhost — a localhost check can pass while the deployed endpoint is broken:
 
 - Provider logs (bounded read): clean boot, no tracebacks, schedules registered.
 - `https://<domain>/docs` → 200. This works even with auth on — the JWT middleware deliberately excludes it.
