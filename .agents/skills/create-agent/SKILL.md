@@ -21,23 +21,29 @@ If it isn't reachable, ask the user to run `docker compose up -d --build` and wa
 
 Use the coding agent's structured user-input control when available (Claude Code's `AskUserQuestion`, Codex's user-input tool, or an equivalent) for the choice-shaped questions below. Use plain prompts for free-form answers.
 
-### First: is this a source file, or is it Platform Builder's?
+### This skill is the main route — build it here
 
-This platform builds agents two ways, and only one of them is yours. **Lane 1 is a source file in `agents/`, governed by git — that's this skill.** Lane 2 is a component Platform Builder composes at runtime from the safe registry, stored in the database and versioned through the Studio catalog. A runnable id on this platform may have no source file at all.
+This platform builds agents two ways, and the difference is who is doing the building. **Lane 1 is a source file in `agents/`, governed by git — that's this skill, and it is the default.** Lane 2 is a component Platform Builder composes at runtime from the safe registry, versioned through the Studio catalog: the no-code route, for the people on the team who are never going to open an editor. Someone with a coding agent already running is not that person. They came here for code they own, in their repo, under review.
 
-Take lane 1 when the agent needs something the registry doesn't carry: a toolkit not in [`app/registry.py`](../../../app/registry.py), a custom Python function, a context provider, an MCP server, code the user should own and review. That's the common case, and it's why a coding agent is here.
+So when the user asks for an agent, **build the file**. Don't stop to offer the runtime builder, and don't hand the job back.
 
-Hand it to Platform Builder instead when the whole thing composes from blocks the registry already has — registry toolkits, the shared self, the platform knowledge base, the deterministic step functions. Say so plainly and stop: "This one's registry blocks end to end — ask Agno to build it and it's live in a minute, no rebuild, no restart." A file is the heavier instrument; don't reach for it out of habit.
+Lane 1 isn't only the default — it's the only lane that can do any of this, so recognise the work and stay:
 
-**One exception, and it's absolute: the first agent of a [`setup-platform`](../setup-platform/SKILL.md) run is always a file**, however cleanly it would have composed. That moment is the user watching their own code appear in their own repo and go live — routing it to the runtime builder trades the thing they came for against a minute of build time. Offer lane 2 later, once they have one file they own.
+- a toolkit, MCP server, or context provider the registry doesn't carry
+- custom Python: a tool function, a reader, a deterministic step function
+- a new dependency — `pyproject.toml`, then the rebuild path in Step 6
+- **growing [`app/registry.py`](../../../app/registry.py)** so lane 2 gains a block it lacks. That's [`/extend-agent`](../extend-agent/SKILL.md)'s registry branch, and it's the only way the no-code lane ever gets new capability — every block Platform Builder composes from got there by a code change like this one
+- a new coding-agent skill, or anything else in the repo
 
-**Then check the id is free, before you write anything.** Both lanes land in the same id space, and the code half wins: `/agents` excludes any database component whose id a registered agent holds, so a file with a taken id doesn't collide loudly — it makes the runtime component disappear from the listing and from Agno's dispatch, with its rows still sitting in the database.
+Lane 2 is worth one sentence at the *end*, and only when it's true: an agent that happens to compose entirely from registry blocks can also be rebuilt at runtime by asking Agno, which is how a teammate without a checkout would get one. That's a footnote to what you built — never a reason not to build it.
+
+**Check the id is free before you write anything.** Both lanes land in the same id space and the code half wins: `/agents` excludes any database component whose id a registered agent holds. So a file with a taken id doesn't collide loudly — it makes the runtime component disappear from the listing and from Agno's dispatch, with its rows still sitting in the database. This is a collision check, not a routing decision.
 
 ```bash
 curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\t\(.is_component)"'
 ```
 
-`is_component: true` marks the Studio-built ones. If your slug is taken there, pick a different slug — and if the user's ask was really "change that agent", it's a Platform Builder job, not a file that shadows it. (Same check on `/teams` and `/workflows` when the target is one of those.)
+`is_component: true` marks the Studio-built ones. If your slug is taken there, pick a different slug. (Same check on `/teams` and `/workflows` when the target is one of those.) There is exactly one case where the job isn't yours: the user's ask was really "change *that* agent" and that agent is a runtime component — there's no file to edit, so editing it belongs to Platform Builder.
 
 ### If they already named an agent
 
