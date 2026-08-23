@@ -51,7 +51,7 @@ Offer 2–3 capabilities, grounded in the map and the mining: for each, a one-li
 
 ## 5. Write the case
 
-Inside the `CASES` tuple of [`evals/cases.py`](../../../evals/cases.py), before its closing paren — add the marker comment there if this is the first: `# --- Your cases — authored by /create-evals ---`. Case names must be unique across the file (grep for yours first — duplicates run without error and muddy the shared history). The shape:
+Inside the `CASES` tuple of [`evals/cases.py`](../../../evals/cases.py) — after the marker the file already carries near the end of the tuple, `# --- Your cases — authored by /create-evals ---` (add it if missing). Case names must be unique across the file (grep for yours first — duplicates run without error and muddy the shared history). The shape:
 
 ```python
 Case(
@@ -62,14 +62,12 @@ Case(
     timeout_seconds=90,
     criteria="<what a correct answer contains — specific, falsifiable>",
     expected_tool_calls=("<tool>",),
-    # Reaches the ungated create/edit/publish Studio tools (Step 2)? These two lines are
-    # mandatory — both live in this file:
-    # setup=snapshot_builder_state,
-    # teardown=cleanup_new_builder_state,
+    # Reaches the ungated create/edit/publish Studio tools (Step 2)? This line is
+    # mandatory (defined in evals/hooks.py):
+    # **BUILDER_HOOKS,
     # Not a builder, but carries learning stores (`learning=` — platform-manager,
     # platform-engineer) or the `shared_notes` toolkit (Step 2)?
-    # setup=snapshot_learning_state,
-    # teardown=cleanup_new_learning_state,
+    # **LEARNING_HOOKS,
 )
 ```
 
@@ -100,4 +98,4 @@ Then loop to Step 4 for the next capability, or finish.
 
 Close with what changed: the new cases by name and tag, `git diff evals/cases.py`, a suggested commit message (`eval(<agent>): <what's covered now>`). Then the watch: `smoke`-tagged cases run on the run-evals schedule, results land in eval history at os.agno.com, and when a scheduled run goes red, [`/eval-and-improve`](../eval-and-improve/SKILL.md) picks it up from there.
 
-The schedule ships disabled, so enabling it is the user's call — hand it over with the condition attached. Smoke includes learning-store cases, and a scheduled run is unattended by definition: the teardown sweeps every learning row and note that appeared during the case window, so a run that fires while somebody is filing something with Agno deletes what they just filed. Pick an hour nobody is on the platform, or leave the schedule off on a busy one and run the suite deliberately instead.
+The schedule ships disabled, so enabling it is the user's call — hand it over with the only-writer condition attached (AGENTS.md, Scheduler: an unattended run's teardown sweeps whatever was filed during the case window).

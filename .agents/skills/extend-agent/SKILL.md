@@ -81,10 +81,10 @@ Per branch, the parts the docs can't tell you because they're about this repo:
 - **Knowledge** — the platform already has one base, [`app/knowledge.py`](../../../app/knowledge.py); wire `knowledge=shared_knowledge` (one object — the list form belongs to `AgentOS(...)` in `app/main.py`; an agent given a list accepts it and then searches nothing) rather than declaring a second corpus someone then has to keep current.
 - **Sub-agent / context provider** — mirror [`agents/engineer.py`](../../../agents/engineer.py): spread `provider.get_tools()` into `tools=`, append `provider.instructions()` to `INSTRUCTIONS`. `ContextMode.tools` mounts the provider's read tools directly; the default gives the parent one `query_<thing>` tool backed by a sub-agent.
 - **Scheduled task** — [agno scheduler docs](https://docs.agno.com/agent-os/scheduler), and the `scheduler=True` line in [`app/main.py`](../../../app/main.py).
-- **Grow the registry** — [`app/registry.py`](../../../app/registry.py) is the membrane: Platform Builder composes only what it declares. The bucket you declare into decides how a built component references the block (`tool_names`, `model_id`, `knowledge_name`, `learning_name`, `function_name`). Declared entries are buildable; the wiring the framework discovers from registered components at boot resolves but is refused in a build with `tool_not_allowed`. Tool names are global to an agent, so two toolkits exposing `read_file` silently drop the second — `shared_notes` is the registry's one file-like toolkit, so a second `FileSystem` or `Workspace` cannot join it; check first with `registry.tool_is_declared(name)` (answers for a toolkit name and a member alike), and give any new toolkit `add_instructions=True`. That flag is not optional: a built component's instructions are written by a model, so it is the only channel your usage guidance has.
+- **Grow the registry** — [`app/registry.py`](../../../app/registry.py) is the membrane: Platform Builder composes only what it declares. The bucket you declare into decides how a built component references the block (`tool_names`, `model_id`, `knowledge_name`, `learning_name`, `function_name`). Declared entries are buildable; the wiring the framework discovers from registered components at boot resolves but is refused in a build with `tool_not_allowed`. Tool names are global to an agent, so two toolkits exposing `read_file` silently drop the second — `shared_notes` is the registry's one file-like toolkit, so a second `FileSystem` or `Workspace` cannot join it; check first which declared toolkit already claims the name (non-empty means collision), and give any new toolkit `add_instructions=True`. That flag is not optional: a built component's instructions are written by a model, so it is the only channel your usage guidance has.
 
   ```bash
-  docker exec agentos-api python -c "from app.registry import registry; print(registry.tool_is_declared('read_file'))"
+  docker exec agentos-api python -c "from app.registry import registry; print([t.name for t in registry.tools if 'read_file' in t.functions])"
   ```
 
 - **Refine instructions** — no docs needed. Read the current `INSTRUCTIONS` and propose a minimal diff, narrowing ("on recent-events questions, follow up with a `web_fetch`") rather than forbidding.
@@ -150,29 +150,9 @@ curl -sS -X POST http://localhost:8000/agents/platform-builder/runs \
 
 `buildable: true` with `source: declared` means your declaration landed. `source: discovered` means the name reaches the registry through boot discovery rather than `app/registry.py`, and a build wiring it is refused with `tool_not_allowed`. Then the real smoke test: a small build that wires the block, inside the `platform-builder` bracket below.
 
-> **Warning — smoke tests against `platform-builder` mutate the DB.** Its create / edit / publish Studio tools execute immediately (only `archive_component` / `delete_version` / `delete_schedule` pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component, and can create a schedule that keeps firing daily. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or bracket the run: `snapshot_builder_state()` before, `delete_new_builder_state(pre)` after, from [`evals/cases.py`](../../../evals/cases.py) — it hard-deletes new components, schedules, and learning rows alike (the `cleanup_new_*` names beside them are the async eval hooks, which take a `CaseResult`). The same applies when reproducing a bug on `platform-builder` in Step 3.
+> **Warning — smoke tests against `platform-builder` mutate the DB.** Its create / edit / publish Studio tools execute immediately (only `archive_component` / `delete_version` / `delete_schedule` pause for confirmation), so a prompt like "build an agent that…" creates and publishes a real component, and can create a schedule that keeps firing daily. Prefer a plan-only probe ("Which registry components would you pick for X? Do not create anything."), or bracket the run: `snapshot_builder_state()` before, `delete_new_builder_state(pre)` after, from [`evals/hooks.py`](../../../evals/hooks.py) — it hard-deletes new components, schedules, and learning rows alike (the `cleanup_new_*` names beside them are the async eval hooks, which take a `CaseResult`). The same applies when reproducing a bug on `platform-builder` in Step 3.
 
-> **Warning — smoke tests against a learning component write durable rows.** `agno`, `platform-manager`, `platform-engineer`, and anything else carrying `learning=` capture ungated: a prompt that tells the agent something files it, and Agno's notes and entities are shared by everyone on the platform. Make every fixture something no real team would have on file (invented names, invented projects), and never smoke with a real decision or a real person's details: the diff below removes rows a run *created* and cannot undo an edit *inside* a row that already existed. The bracket, around the whole session rather than each prompt:
->
-> ```bash
-> source .venv/bin/activate
->
-> # before the first smoke prompt
-> python -c "
-> from dotenv import load_dotenv; load_dotenv()
-> import json
-> from evals.cases import snapshot_learning_state
-> print(json.dumps({k: sorted(v) for k, v in snapshot_learning_state().items()}))" > /tmp/pre-extend-learning.json
->
-> # after the last one — removes only what the session created
-> python -c "
-> from dotenv import load_dotenv; load_dotenv()
-> import json
-> from evals.cases import delete_new_learning_state
-> delete_new_learning_state({k: set(v) for k, v in json.load(open('/tmp/pre-extend-learning.json')).items()})"
-> ```
->
-> Skip this pair when the target is `platform-builder` — its bracket above already sweeps learning state. Never run the delete side while someone else is talking to Agno: the diff is by row identity, so a note a teammate files during your session looks new and gets swept. On a busy platform, either smoke-test in a window you own, or leave the rows in place and tell the user in Step 8 exactly what the smoke prompts filed, so they can retire it themselves.
+> **Warning — smoke tests against a learning component write durable rows.** `agno`, `platform-manager`, `platform-engineer`, and anything else carrying `learning=` capture ungated: a prompt that tells the agent something files it, and Agno's notes and entities are shared by everyone on the platform. Make every fixture something no real team would have on file (invented names, invented projects), and never smoke with a real decision or a real person's details: the sweep removes rows a run *created* and cannot undo an edit *inside* a row that already existed. Bracket the whole session, rather than each prompt, with the `snapshot_learning_state` / `delete_new_learning_state` pair from [`evals/hooks.py`](../../../evals/hooks.py) — the full snippet is in [improve-agent Step 2](../improve-agent/SKILL.md). Skip the pair when the target is `platform-builder` — its bracket above already sweeps learning state. Never run the delete side while someone else is talking to Agno: the diff is by row identity, so a note a teammate files during your session looks new and gets swept. On a busy platform, either smoke-test in a window you own, or leave the rows in place and tell the user in Step 8 exactly what the smoke prompts filed, so they can retire it themselves.
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \

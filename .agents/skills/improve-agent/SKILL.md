@@ -32,7 +32,7 @@ This is a **single-pass** loop. One pass usually takes 15-30 minutes depending o
   curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\tis_component=\(.is_component)"'
   ```
 
-  `is_component=false` is code — a file in [`agents/`](../../../agents/), [`teams/`](../../../teams/), or [`workflows/`](../../../workflows/), registered in [`app/main.py`](../../../app/main.py). `is_component=true` is a component Platform Builder built; it lives only in the database and has no file. **Do not create one.** Resolution checks the code list passed to `AgentOS(agents=[...])` first and only falls through to the database on a miss, so a new `agents/<slug>.py` under an id the Studio already publishes shadows the real component: your probes pass against a file that has quietly replaced the thing the user asked you to harden. Hand a `true` back to the user and route it to Platform Builder, whose `edit_agent` / `edit_team` / `edit_workflow` + `publish_component` are the editing surface for that component — the probe-judge-edit rhythm below still applies, it just runs through the builder instead of a text editor. `/teams` and `/workflows` carry the same field.
+  `is_component=false` is code — a file in [`agents/`](../../../agents/), [`teams/`](../../../teams/), or [`workflows/`](../../../workflows/), registered in [`app/main.py`](../../../app/main.py). `is_component=true` is a component Platform Builder built; it lives only in the database and has no file. **Do not create one** — a new `agents/<slug>.py` under that id shadows the real component, and your probes pass against a file that quietly replaced the thing you were asked to harden (mechanism: [extend-agent Step 1](../extend-agent/SKILL.md)). Route the edits through Platform Builder (`edit_agent` / `edit_team` / `edit_workflow` + `publish_component`) — the probe-judge-edit rhythm below still applies, it just runs through the builder instead of a text editor. `/teams` and `/workflows` carry the same field.
 - Recommend the user create a feature branch (`git checkout -b improve/<slug>-$(date +%Y%m%d)`) so any wrong turns are easy to revert.
 
 ## 1. Read the agent's intent
@@ -86,7 +86,7 @@ For each probe, write a one-line **expected behavior** describing what "good" lo
 > python -c "
 > from dotenv import load_dotenv; load_dotenv()
 > import json
-> from evals.cases import snapshot_builder_state
+> from evals.hooks import snapshot_builder_state
 > pre = snapshot_builder_state()
 > print(json.dumps({
 >     'component_ids': sorted(pre['component_ids']),
@@ -98,7 +98,7 @@ For each probe, write a one-line **expected behavior** describing what "good" lo
 > python -c "
 > from dotenv import load_dotenv; load_dotenv()
 > import json
-> from evals.cases import delete_new_builder_state
+> from evals.hooks import delete_new_builder_state
 > raw = json.load(open('/tmp/pre-probe-builder.json'))
 > delete_new_builder_state({
 >     'component_ids': set(raw['component_ids']),
@@ -118,14 +118,14 @@ For each probe, write a one-line **expected behavior** describing what "good" lo
 > python -c "
 > from dotenv import load_dotenv; load_dotenv()
 > import json
-> from evals.cases import snapshot_learning_state
+> from evals.hooks import snapshot_learning_state
 > print(json.dumps({k: sorted(v) for k, v in snapshot_learning_state().items()}))" > /tmp/pre-probe-learning.json
 >
 > # once, after the last probe — removes only the rows the probes created
 > python -c "
 > from dotenv import load_dotenv; load_dotenv()
 > import json
-> from evals.cases import delete_new_learning_state
+> from evals.hooks import delete_new_learning_state
 > delete_new_learning_state({k: set(v) for k, v in json.load(open('/tmp/pre-probe-learning.json')).items()})"
 > ```
 >
@@ -133,7 +133,7 @@ For each probe, write a one-line **expected behavior** describing what "good" lo
 
 ## 3. Run the probes against the live agent
 
-For each probe, send a cURL request and capture both the response and the tool calls. Tag each probe with a unique `user_id` so log lines from parallel runs can be correlated:
+For each probe, send a cURL request and capture both the response and the tool calls. Tag each probe with a unique `user_id` so its learning rows stay isolated per probe:
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
@@ -152,7 +152,7 @@ Read the tool calls from the container (`Running: <tool>(` is the line shape agn
 docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40
 ```
 
-Logs are container-global. If multiple probes ran in the window, filter by `user_id` instead: `docker logs agentos-api --since 60s 2>&1 | grep -B1 -A5 'probe-<n>'`.
+Logs are container-global, and the `Running:` lines carry no `user_id`. If multiple probes ran in the window, filter by a distinctive phrase from the probe's message (debug mode logs message content), or match the `run_id` from `/tmp/probe-<n>.json`.
 
 Save each response so you can compare before vs. after.
 

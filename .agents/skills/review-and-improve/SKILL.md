@@ -118,26 +118,8 @@ Workflows stay out of the live smoke: `deployment-check` already runs on its dai
 
 Two components need more than a manifest prompt:
 
-- **`platform-builder` — use its first quick prompt only.** "What can you build for me?" is plan-only. The other two are "Build …" asks, and the builder passes `publish=true` to finish a build, so smoking with one would create and publish a real, dispatchable component and leave it live. If a create fires anyway, `delete_new_builder_state(pre)` removes it — so take `pre = snapshot_builder_state()` before the builder's call (both from [`evals/cases.py`](../../../evals/cases.py); they sweep new components, schedules, learning rows, and notes). Nest that inside the learning bracket below rather than instead of it — the outer bracket is uncapped, whereas the builder helper refuses past 25 rows.
-- **`agno` — capture is ungated.** Its quick prompts are read-only questions, but the model decides for itself what to file on any run: per-user profile and memory on all four components, plus notes and entities — shared by everyone on the platform — on the team. Bracket the whole smoke step, once around all the components rather than per prompt:
-
-  ```bash
-  source .venv/bin/activate
-
-  # before the first smoke call
-  python -c "
-  from dotenv import load_dotenv; load_dotenv()
-  import json
-  from evals.cases import snapshot_learning_state
-  print(json.dumps({k: sorted(v) for k, v in snapshot_learning_state().items()}))" > /tmp/review-learning.json
-
-  # after the last one — removes only what the sweep created
-  python -c "
-  from dotenv import load_dotenv; load_dotenv()
-  import json
-  from evals.cases import delete_new_learning_state
-  delete_new_learning_state({k: set(v) for k, v in json.load(open('/tmp/review-learning.json')).items()})"
-  ```
+- **`platform-builder` — use its first quick prompt only.** "What can you build for me?" is plan-only. The other two are "Build …" asks, and the builder passes `publish=true` to finish a build, so smoking with one would create and publish a real, dispatchable component and leave it live. If a create fires anyway, `delete_new_builder_state(pre)` removes it — so take `pre = snapshot_builder_state()` before the builder's call (both from [`evals/hooks.py`](../../../evals/hooks.py); they sweep new components, schedules, learning rows, and notes). Nest that inside the learning bracket below rather than instead of it — the outer bracket is uncapped, whereas the builder helper refuses past 25 rows.
+- **`agno` — capture is ungated.** Its quick prompts are read-only questions, but the model decides for itself what to file on any run: per-user profile and memory on all four components, plus notes and entities — shared by everyone on the platform — on the team. Bracket the whole smoke step, once around all the components rather than per prompt, with the `snapshot_learning_state` / `delete_new_learning_state` pair from [`evals/hooks.py`](../../../evals/hooks.py) — the full snippet is in [improve-agent Step 2](../improve-agent/SKILL.md).
 
   The diff works on row identity: it removes what the sweep created, cannot undo an edit *inside* a row that already existed, and sweeps a note a teammate files while you run. On a platform people are actively using, run Step 4 in a window you own, or tell the user you are skipping the delete and leaving whatever the smoke filed in place.
 

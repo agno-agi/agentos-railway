@@ -175,7 +175,7 @@ The eval suite lives in [`evals/`](evals/) and runs on agno's eval suite runner 
 
 Run with `python -m evals --tag smoke`, `python -m evals --tag release`, or `python -m evals --name <case>`. Add `--json-output out.json` when a workflow or coding agent needs machine-readable results. Results log to Postgres via `db=eval_db` so history is visible at os.agno.com.
 
-Two skills work this suite from opposite ends. To author coverage — especially for agents you build, which start with none — run [`/create-evals`](.agents/skills/create-evals/SKILL.md): it maps what an agent promises, mines real sessions from Postgres for scenarios, and writes audited cases into a marked user-cases section it adds to `evals/cases.py` on first use. To diagnose failures and fix in scope, run [`/eval-and-improve`](.agents/skills/eval-and-improve/SKILL.md).
+Two skills work this suite from opposite ends. To author coverage — especially for agents you build, which start with none — run [`/create-evals`](.agents/skills/create-evals/SKILL.md): it maps what an agent promises, mines real sessions from Postgres for scenarios, and writes audited cases into the marked user-cases section of `evals/cases.py`. To diagnose failures and fix in scope, run [`/eval-and-improve`](.agents/skills/eval-and-improve/SKILL.md).
 
 ## Reviewing the repo
 

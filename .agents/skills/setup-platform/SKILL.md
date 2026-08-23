@@ -80,7 +80,7 @@ The recommendation is calibration, not a menu — whatever they type is their fi
 
 If they take it, this is what you hand create-agent — a spec for you, never pasted to the user. It's a complete brief, so that skill builds immediately without asking anything.
 
-- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`. Not `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving. Searches the web for what the major AI labs and agent frameworks released or announced.
+- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY` (the wiring snippet and the `ddgs` import trap are in create-agent Step 2). Searches the web for what the major AI labs and agent frameworks released or announced.
 - Max 5 items, one line each, every item with a source link. No hype adjectives — what happened, not how exciting it is.
 - **The delta comes from a ledger, not a clock.** `check_lines` says which URLs are already recorded, `append_file(unique=True)` records the new ones. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
 - Nothing new is one line that says since when ("nothing new since Tuesday"). Never pad the brief.
@@ -92,19 +92,10 @@ Two things the code has to get right:
 - **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's: profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing.
 - **Its files live in the shared notebook, under `radar/`.** That is the platform's one file store ([`app/notes.py`](../../../app/notes.py)): the ledger at `radar/reported.md` (one canonical URL per line, nothing else — `check_lines` is whole-line exact match), each brief at `radar/briefs/<date>.md` (so "nothing new since Tuesday" is a `list_files` over that directory), preferences at `radar/preferences.md`. Filing there is what lets "Agno, what did radar find this week?" work — Agno reads the same notebook.
 
-Wire it with the shared notebook's scoped tools and the keyless search this platform already runs on:
+Wire it with the shared notebook's scoped tools alongside the web tools (create-agent Step 2 has the `MCPTools` snippet):
 
 ```python
-from agno.tools.mcp import MCPTools
-
 from app.notes import get_shared_notes_tools
-
-# Keyless: no PARALLEL_API_KEY needed. AgentOS connects and closes MCP servers
-# as part of its lifespan, so the agent never manages the connection itself.
-# timeout_seconds: web_fetch page extraction regularly exceeds the 10s MCP default.
-web_tools = MCPTools(
-    url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
-)
 
 radar = Agent(
     ...
