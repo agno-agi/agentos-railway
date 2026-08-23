@@ -9,7 +9,7 @@ description: Repo-wide drift sweep for public-readiness — diff docs against co
 
 You are sweeping the whole repo for public-consumption readiness — docs accuracy, every agent reachable, scripts that actually do what the docs claim, no stale env vars, format + validate clean. Most drift is mechanical (renamed file, missing entry in `example.env`, new agent not in the architecture diagram) and you fix it in place. The rest is a punch list you surface to the user.
 
-This is a **recurring sweep** — meant to be re-run regularly. On a clean repo it ends with "no diffs"; on a dirty one it brings everything back to coherent.
+This is a **recurring sweep** — meant to be re-run regularly.
 
 [`AGENTS.md`](../../../AGENTS.md) is the source of truth for repo conventions; [`CLAUDE.md`](../../../CLAUDE.md) is a symlink to it — edit once, both update.
 
@@ -22,9 +22,9 @@ This is a **recurring sweep** — meant to be re-run regularly. On a clean repo 
 - Stale entries in `example.env` for vars nothing reads — delete unless the surrounding comment block describes them as optional/future ("alternate model providers", "future feature"). Flag instead of fixing if intent is unclear.
 - Architecture diagram in `AGENTS.md` / `README.md` missing a registered agent or workflow.
 - New agent file on disk not yet imported in [`app/main.py`](../../../app/main.py) (add the import + append to `agents=[...]`).
-- Missing manifest entry in `app/config.yaml` for a component registered in `app/main.py` (draft a one-line description and three quick prompts from its `INSTRUCTIONS`; flag the new entries so the user can refine). Only code components — a Studio-built one carries its own description and belongs to the catalog, not to this file.
+- Missing manifest entry in `app/config.yaml` for a component registered in `app/main.py` (draft a one-line description and three quick prompts from its `INSTRUCTIONS`; flag the new entries so the user can refine). Only code components — a Studio-built one carries its own description.
 - Missing or wrong cross-links between docs and the coding-agent skills in [`.agents/skills/*/SKILL.md`](../../../.agents/skills/) (and between skills).
-- Single-line factual claim in one doc contradicted by another doc or by code (e.g. one doc says "hot-reload picks up new agents" while another says a restart is required) — auto-fix the doc, not the code.
+- Single-line factual claim in one doc contradicted by another doc or by code — auto-fix the doc, not the code.
 
 **Flag, don't fix** (surface for the user):
 
@@ -37,7 +37,7 @@ This is a **recurring sweep** — meant to be re-run regularly. On a clean repo 
 ## 0. Preconditions
 
 - Live container reachable: `curl -sSf http://localhost:8000/health` returns 200. If not, ask the user to `docker compose up -d --build` first — Step 4 needs a live container. (`docker compose ps` is unreliable from worktrees or alternate clones — trust the health probe.)
-- If multiple worktrees of this repo exist on disk, only one container can bind to localhost:8000 — Step 4 will reflect whichever repo last brought the container up, not necessarily this worktree's `app/main.py`. Step 4 has a cross-check for this.
+- If multiple worktrees of this repo exist on disk, only one container can bind to localhost:8000 — Step 4 will reflect whichever repo last brought the container up, not necessarily this worktree's `app/main.py`.
 - Recommend a feature branch so auto-fixes are easy to revert: `git checkout -b review/$(date +%Y%m%d)`.
 
 ## 1. Scope check
@@ -57,9 +57,9 @@ If the user has a specific concern (recent refactor, prepping a public release, 
 
 Read every file in scope. Build a mental model of:
 
-- **Registered agents + team** — what's imported in `app/main.py`'s `agents=[...]` and `teams=[...]`? This is the whole population this sweep is responsible for. Components the Studio built at runtime also appear on the API and in the UI, but they have no source file, no manifest entry, and no place in a docs diff — they are catalog state, not repo state.
+- **Registered agents + team** — what's imported in `app/main.py`'s `agents=[...]` and `teams=[...]`? This is the whole population this sweep is responsible for. Components the Studio built at runtime have no source file, no manifest entry, and no place in a docs diff.
 - **Agent and team files on disk** — what's in [`agents/`](../../../agents/) and [`teams/`](../../../teams/)?
-- **Registry blocks** — what [`app/registry.py`](../../../app/registry.py) declares (tools, functions, knowledge, learning, models, dbs, agents), and which modules it imports them from ([`app/knowledge.py`](../../../app/knowledge.py), [`app/learning.py`](../../../app/learning.py), [`app/notes.py`](../../../app/notes.py), [`app/functions.py`](../../../app/functions.py)). This is the membrane between the two lanes, so its inventory is documented in `AGENTS.md` and drifts the same way a Key Files table does.
+- **Registry blocks** — what [`app/registry.py`](../../../app/registry.py) declares (tools, functions, knowledge, learning, models, dbs, agents), and which modules it imports them from ([`app/knowledge.py`](../../../app/knowledge.py), [`app/learning.py`](../../../app/learning.py), [`app/notes.py`](../../../app/notes.py), [`app/functions.py`](../../../app/functions.py)). Its inventory is documented in `AGENTS.md` and drifts the same way a Key Files table does.
 - **Env vars actually read** — grep `os.environ`, `os.getenv`, `getenv(`, plus settings/config modules.
 - **Manifest** — what's in [`app/config.yaml`](../../../app/config.yaml) under `manifest` (description + quick prompts per component)?
 - **Eval cases** — what's in [`evals/cases.py`](../../../evals/cases.py)?
@@ -95,7 +95,7 @@ The bulk of the work. Diff each pair below; auto-fix per the rules at the top.
 
 ## 4. Live container smoke
 
-First, confirm the live container is serving *this* repo's components — not a stale clone or a different worktree. The listing endpoints return two populations: code components registered in `app/main.py` (`is_component=false`) and components Platform Builder built at runtime, which live only in the database (`is_component=true`). Only the first population is this repo's, so compare on that filter:
+First, confirm the live container is serving *this* repo's components — not a stale clone or a different worktree. The listing endpoints return two populations: code components registered in `app/main.py` (`is_component=false`) and components Platform Builder built at runtime (`is_component=true`). Only the first is this repo's, so compare on that filter:
 
 ```bash
 curl -s http://localhost:8000/agents | jq -r '.[] | select(.is_component == false) | .id' | sort
@@ -104,9 +104,9 @@ curl -s http://localhost:8000/teams  | jq -r '.[] | select(.is_component == fals
 
 If *that* list doesn't match the slugs in `agents=[...]` / `teams=[...]`, flag it — the rest of Step 4 would be testing the wrong code. Common causes: the container is bound to a different repo path, or `docker compose restart` is needed. Stop and surface to the user.
 
-Runtime-built components are **not** drift and never block the sweep. They are the platform doing its job, and any platform where someone has used Platform Builder once will list them — a sweep that stops there stops permanently. Drop them from the comparison (they have no source file to be consistent with), note the count in the report if it's interesting, and carry on. Their contents are the Studio catalog's business, not this repo's.
+Runtime-built components are **not** drift and never block the sweep. Drop them from the comparison (they have no source file to be consistent with), note the count in the report if it's interesting, and carry on.
 
-Then smoke each **code** component with one of its `quick_prompts` from `app/config.yaml` — every agent in `agents=[...]` **and** the team in `teams=[...]`. The team is not optional: `agno` is the front door every chat interface routes to, so a sweep that skips it can pass with the platform's primary surface broken. Agents use `/agents/<slug>/runs`; the team uses `/teams/agno/runs` with the same flags:
+Then smoke each **code** component with one of its `quick_prompts` from `app/config.yaml` — every agent in `agents=[...]` **and** the team in `teams=[...]`. The team is not optional: `agno` is the front door every chat interface routes to. Agents use `/agents/<slug>/runs`; the team uses `/teams/agno/runs` with the same flags:
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
@@ -119,12 +119,12 @@ curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
 jq -r '.content // .' < /tmp/review-<slug>.json | head -20
 ```
 
-Registered workflows stay out of the live smoke on purpose: `deployment-check` already runs on its own daily cron (on by default) and `platform-manager` can trigger it on demand, while `run-evals` spends real model budget for minutes. Confirming they are registered and that their schedules point at real ids (Step 3) is the coverage this sweep wants. Run `deployment-check` by hand if you want a readiness report — it is deterministic and free — but do not count it as smoke coverage of an agent.
+Registered workflows stay out of the live smoke: `deployment-check` already runs on its own daily cron, and `run-evals` spends real model budget for minutes. Step 3 — registered, schedules pointing at real ids — is the coverage this sweep wants. Run `deployment-check` by hand for a readiness report if you want, but do not count it as smoke coverage of an agent.
 
 Two components need the prompt chosen for them rather than taken off the manifest:
 
-- **`platform-builder` — do not use its build prompts.** Two of its three quick prompts are "Build …" asks, and the builder's instructions make publish the default completion of a build (create/edit produce drafts, but the builder passes `publish=true` to finish the job; only archives and hard deletes pause for confirmation), so smoking with one would create and publish a real, dispatchable component and leave it live on the platform. Its first quick prompt — "What can you build for me?" — is plan-only and safe, so use that one; a bespoke `message=Before creating anything, explain how you would build an agent that tracks AI news daily.` works equally well. If a create fires anyway, sweep the new state: `snapshot_builder_state()` then `delete_new_builder_state(pre)` from [`evals/cases.py`](../../../evals/cases.py) (they sweep new schedules and learning rows too, since the builder can create schedules and carries the shared per-user profile/memory stores). Nest that inside the learning bracket below rather than instead of it — sweeping twice is harmless, the second pass finds nothing new, and the outer bracket is uncapped where the builder helper refuses past 25 rows.
-- **`agno` — its filing prompts write to shared state.** The team's quick prompts include a deliberate capture example, and Agno files what it is told: notes and entities are shared by everyone on the platform, and a sweep is not a conversation anyone asked to keep. `platform-manager` and `platform-engineer` carry the shared profile/memory stores too, so the same applies to them at a smaller radius. Bracket the whole smoke step, once around all the components rather than per prompt:
+- **`platform-builder` — do not use its build prompts.** Two of its three quick prompts are "Build …" asks, and the builder passes `publish=true` to finish a build, so smoking with one would create and publish a real, dispatchable component and leave it live on the platform. Its first quick prompt — "What can you build for me?" — is plan-only and safe, so use that one. If a create fires anyway, sweep the new state: `snapshot_builder_state()` then `delete_new_builder_state(pre)` from [`evals/cases.py`](../../../evals/cases.py) (they sweep new schedules and learning rows too, since the builder can create schedules and carries the shared per-user profile/memory stores). Nest that inside the learning bracket below rather than instead of it — the outer bracket is uncapped where the builder helper refuses past 25 rows.
+- **`agno` — its filing prompts write to shared state.** The team's quick prompts include a deliberate capture example, and Agno files what it is told: notes and entities are shared by everyone on the platform. `platform-manager` and `platform-engineer` carry the shared profile/memory stores too, so the same applies to them at a smaller radius. Bracket the whole smoke step, once around all the components rather than per prompt:
 
   ```bash
   source .venv/bin/activate
@@ -154,7 +154,7 @@ docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40
 
 (`Running: <tool>(` is the tool-call line shape agno emits when `AGNO_DEBUG=True`, which compose sets for dev. Without `AGNO_DEBUG` expect no matches — `HTTP 200` and a non-empty body are then your only signal.)
 
-Then smoke the MCP interface — the platform's second surface (`mcp_server=True` in `app/main.py`):
+Then smoke the MCP interface (`mcp_server=True` in `app/main.py`):
 
 ```bash
 ./scripts/mcp_check.sh

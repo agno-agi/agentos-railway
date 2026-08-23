@@ -7,11 +7,11 @@ description: Set up this AgentOS from a fresh clone — confirm Docker, configur
 
 > _**Coding-agent workflow** — a `/slash-command` your coding agent (Claude Code, Codex, others) runs while developing this repo. Invoke it by name (e.g. `/setup-platform`) or describe the task and it triggers automatically._
 
-You are taking the user from a fresh clone to a running platform with their first agent live on it. The wow moment is Step 6 — watching their own agent get built and answer, minutes after cloning, then appear in the UI they connected moments earlier, reachable by name from the team lead. Everything before it is setup; everything after it is handing over the loop. Pace accordingly.
+You are taking the user from a fresh clone to a running platform with their first agent live on it. The wow moment is Step 6. Everything before it is setup; everything after it is handing over the loop. Pace accordingly.
 
 **Be self-driving:** anything you can do — open a file, open a URL, launch an app — do it. Stop when progress needs a human: typing a secret, installing software, a sign-in the flow can't continue without. When you do stop, tell the user exactly what to do. Never print or echo secret values.
 
-**Narrate the trip:** open with a quick map of what's about to happen, shaped like this — tune the words, keep the shape — then a line as each step starts and a word when it lands. Light touch: a sentence or two per step, so the user always knows where they are and what's left. The map's numbers are this skill's step numbers, so the two stay in step as you narrate; Step 0 is your own prep and never appears in it.
+**Narrate the trip:** open with a quick map of what's about to happen, shaped like this — tune the words, keep the shape — then a line as each step starts and a word when it lands. Light touch: a sentence or two per step. The map's numbers are this skill's step numbers; Step 0 is your own prep and never appears in it.
 
 ```text
 Kicking off /setup-platform. Here's the map for this trip:
@@ -51,7 +51,7 @@ Run `./scripts/mcp_check.sh` — it should print "MCP OK" and a real agent answe
 
 ## 5. Connect the AgentOS UI
 
-Their platform is live — show them how to connect to the AgentOS UI so their first agent lands somewhere they can watch. The UI is where they chat with their agents and inspect sessions, memory, and evals. Open with the news that the platform is up and it's time to connect to it on os.agno.com, then render the connection details as a table, something like this:
+The UI is where they chat with their agents and inspect sessions, memory, and evals. Open with the news that the platform is up and it's time to connect to it on os.agno.com, then render the connection details as a table, something like this:
 
 | Setting | Value |
 |---|---|
@@ -62,25 +62,25 @@ Their platform is live — show them how to connect to the AgentOS UI so their f
 
 Follow the table with one line of direction. Most users arrive from the Agno onboarding with the **Connect your OS** screen still open, showing "Awaiting connection": tell them to flip back to that tab and hit **Connect OS** (the form already matches the table). If they don't have it open: https://os.agno.com, sign in, **Connect OS**, fill the form from the table.
 
-Don't gate on the click, and never ask whether they'd rather connect or build first — the table has already told them exactly what to do, so the same message rolls straight on: after the connect direction, bridge with "now let's build your first agent" and deliver Step 6's build move. The platform connects while you're already talking about what to build; if they'd rather skip the UI, carry on — they can connect anytime.
+Don't gate on the click, and never ask whether they'd rather connect or build first: after the connect direction, bridge with "now let's build your first agent" and deliver Step 6's build move. If they'd rather skip the UI, carry on — they can connect anytime.
 
-This table is a hard checkpoint: it gets written before anything from Step 6 happens. Skipping it to get to the first-agent question is a failure mode for this skill.
+This table is a hard checkpoint: it gets written before anything from Step 6 happens.
 
 ## 6. Build their first agent
 
-Now the fun part — roll straight in. In the same message, directly below the connection table and its one line of direction, say let's build your first agent (they can always run `/create-agent` later for more), and start [`create-agent`](../create-agent/SKILL.md): if they've hinted at an idea anywhere in the session, propose that; otherwise offer **one** recommendation, carrying that skill's discovery question as its fallback — a brand-new user needs somewhere to start, and one concrete idea is easier to answer than a menu. Keep it plain text — no structured choice control here, even though create-agent's own instructions offer one: a tool-call picker breaks the flow of the message, and typing a few words is easier than picking. (The override is for this kickoff message only — once they answer, that skill's guidance applies as written.) The recommendation goes in the message like this:
+In the same message, directly below the connection table and its one line of direction, say let's build your first agent (they can always run `/create-agent` later for more), and start [`create-agent`](../create-agent/SKILL.md): if they've hinted at an idea anywhere in the session, propose that; otherwise offer **one** recommendation, carrying that skill's discovery question as its fallback. Keep it plain text — no structured choice control here, even though create-agent's own instructions offer one. (The override is for this kickoff message only — once they answer, that skill's guidance applies as written.) The recommendation goes in the message like this:
 
 > Here's the one I'd build for you: **Radar**: a quick brief on what the AI labs and agent frameworks shipped. Five items max, one line each, every one with a link, no hype. It keeps a ledger of what it's already sent you, so every brief is only what's new — and it learns what you care about, so "stop showing me funding rounds" sticks.
 >
 > Or something from your own week instead — issue triage, release notes, your weekly update. Say it in your own words and I'll build that.
 
-The recommendation is calibration, not a menu — whatever they type is their first discovery answer, create-agent's follow-up dig still applies when the answer leaves the design open (a complete brief builds immediately, per that skill), and their own words always beat Radar. Your live-and-connect message runs platform-up (MCP answer quoted) → connection table → connect direction → build kickoff, and closes with the first build move — the recommendation, or your build proposal if they've already hinted at an idea — never with "ready?" or "connected yet?".
+The recommendation is calibration, not a menu — whatever they type is their first discovery answer, and create-agent's follow-up dig still applies when the answer leaves the design open (a complete brief builds immediately, per that skill). Your live-and-connect message runs platform-up (MCP answer quoted) → connection table → connect direction → build kickoff, and closes with the first build move — the recommendation, or your build proposal if they've already hinted at an idea — never with "ready?" or "connected yet?".
 
 ### The Radar brief
 
 If they take it, this is what you hand create-agent — a spec for you, never pasted to the user. It's a complete brief, so that skill builds immediately without asking anything.
 
-- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`, and the one this platform already runs on (`teams/lead.py`, `app/registry.py`). It needs no key and no rebuild. Do not reach for `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving instead of Radar degrading. Searches the web for what the major AI labs and agent frameworks released or announced.
+- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY`, and the one this platform already runs on (`teams/lead.py`, `app/registry.py`). Do not reach for `WebSearchTools` or `DuckDuckGoTools`: both import `ddgs`, which is not in this image, and the import raises where `app/main.py` loads the agent — the platform stops serving instead of Radar degrading. Searches the web for what the major AI labs and agent frameworks released or announced.
 - Max 5 items, one line each, every item with a source link. No hype adjectives — what happened, not how exciting it is.
 - **The delta comes from a ledger, not a clock.** Two plain functions over an agent `FileSystem`: one checks whether items were already reported, one records them. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
 - Nothing new is one line that says since when ("nothing new since Tuesday"). Never pad the brief.
@@ -89,7 +89,7 @@ If they take it, this is what you hand create-agent — a spec for you, never pa
 
 Three things the code has to get right:
 
-- **No `learning=` on this one, and the reason goes in a comment.** Learning is create-agent's default and the right call for most agents — one self per human, shared with Agno and the three platform agents. Radar is the exception the default has to survive, so say why rather than letting it look like an oversight: its state is the platform's, not any one person's. Profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing. The ledger also wants exact membership, not judged recall — "have I already sent this URL" is a string match, and `contains()` answers it exactly. Layering learning on top would only give preferences a second home to disagree with the file.
+- **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's. Profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing. The ledger also wants exact membership, not judged recall — "have I already sent this URL" is a string match, and `contains()` answers it exactly. Layering learning on top would only give preferences a second home to disagree with the file.
 - **The ledger gets its own directory, and its lines are bare keys.** `contains()` is whole-line exact match scoped to a directory, not a file — so `reported/log.md` holds one canonical URL per line and nothing else. It is also a Python method rather than one of the seven tools `fs.tools()` mounts, which is why the two wrapper functions exist at all: they are the only way the membership check reaches the model. A title or date on that line breaks the match, and sharing a directory with the preferences file makes membership checks collide with unrelated lines.
 - **Each brief is filed as its own note** (`briefs/<date>.md`). That's where "nothing new since Tuesday" comes from — `list()` over that directory — and it gives "show me last week's briefs" for free, without the delta ever depending on a timestamp.
 
@@ -115,9 +115,9 @@ radar = Agent(
 )
 ```
 
-Both halves of `instructions` matter: `fs.instructions()` is how the agent learns the file toolkit's own conventions, and without it the file tools are mounted but unexplained. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web". The file tools are what let it manage the preferences file and the brief notes; the instructions say the ledger is only ever touched through the two functions.
+Both halves of `instructions` matter: `fs.instructions()` is how the agent learns the file toolkit's own conventions. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web". The instructions say the ledger is only ever touched through the two functions.
 
-Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer, then land the two places it now lives — this is the payoff of the whole trip, so say both in the same breath as the answer:
+Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer, then land the two places it now lives — say both in the same breath as the answer:
 
 - **In the UI they just connected** — a **Refresh** puts their agent in the Agents list next to the built-in ones.
 - **On Agno's roster.** Registering the agent in `app/main.py` is also what puts it in front of the team lead: Agno discovers every component this platform registers and can run it by name, so "Agno, have radar scan the week" now works — from the AgentOS UI, from Slack, from any MCP client. Their agent joined the platform, not just the repo.
@@ -128,7 +128,7 @@ If they push back or want to stop, that's fine — carry on and adapt the remain
 
 ## 7. Make it yours
 
-Their clone's `origin` still points at the public template — a repo they can't push to — so the platform they just built has no home of its own. Offer to give it one; a quick beat, not a gate:
+Their clone's `origin` still points at the public template — a repo they can't push to. Offer to give it a home of its own; a quick beat, not a gate:
 
 ```sh
 git remote rename origin upstream    # the template stays connected for updates
@@ -148,4 +148,4 @@ Finish with a short summary of what you built together and the loop the user now
 
 Mention in one line that they can also connect the platform to coding agents (like yourself) with `uvx agno connect`, and to claude.ai / ChatGPT over OAuth once the platform is deployed with a public URL — [`/deploy-platform`](../deploy-platform/SKILL.md) runs that deploy when they're ready.
 
-One more line, and only if the trip has gone smoothly enough to carry it: two shared surfaces ship empty and are theirs to fill. The **Knowledge** page in the UI takes documents — drop a handbook or a spec in and any agent can be wired to answer from it. The **shared notebook** is where Agno files what the team tells it, and where a built agent files what it finds, so the platform accumulates rather than restarting each session. Neither needs setup; both just start empty.
+One more line, and only if the trip has gone smoothly enough to carry it: two shared surfaces ship empty and are theirs to fill. The **Knowledge** page in the UI takes documents — drop a handbook or a spec in and any agent can be wired to answer from it. The **shared notebook** is where Agno files what the team tells it, and where a built agent files what it finds, so the platform accumulates rather than restarting each session.
