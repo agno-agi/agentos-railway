@@ -12,6 +12,7 @@ from agno.db.base import SessionType
 from agno.tools.agentos import AgentOSTools
 
 from app.learning import shared_self
+from app.offload import result_store
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -181,6 +182,9 @@ platform_manager = Agent(
     name="Platform Manager",
     model=default_model(),
     db=_db,
+    # Big tool results become searchable stored files rather than context —
+    # AgentOSTools returns whole metrics and activity payloads. See app/offload.py.
+    offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=shared_self,
     tools=[

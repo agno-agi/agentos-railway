@@ -2,7 +2,7 @@ manifest:
   # --- Agents ---
 
   platform-builder:
-    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio, wired from a safe registry of tools, knowledge, and shared notes."
+    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
       - "What can you build for me?"
       - "Build an agent that tracks AI news and files a daily brief in the shared notebook"
@@ -11,36 +11,34 @@ manifest:
   platform-manager:
     description: "Monitors and explains what this AgentOS is doing: usage and tokens, run and tool activity, eval history, schedules, deployment checks. Read-only."
     quick_prompts:
-      - "How healthy is the platform right now?"
+      - "Is the platform healthy right now?"
       - "How many runs and tokens over the last 7 days?"
       - "Which agent is slowest, and is anything failing?"
 
   platform-engineer:
-    description: "Knows how this AgentOS is built: reads the source, explains the wiring grounded in real files, and routes source changes to a coding-agent skill."
+    description: "Answers codebase questions: reads the source, explains the wiring, and generates handoffs for the user's coding agent."
     quick_prompts:
-      - "Tell me about this AgentOS"
-      - "How is the MCP endpoint wired?"
-      - "Which env vars does this platform read?"
+      - "How does learning work?"
+      - "How does tool offloading work?"
+      - "How does the agno team work?"
 
   # --- Teams ---
 
   agno:
-    description: "This platform, speaking for itself. Tell Agno anything; it builds agents, runs what the team has built, and checks on itself."
+    description: "The platform lead. Agno can build agents, run them and check on the platform."
     quick_prompts:
-      - "What's up Agno?"
-      - "Agno, we're getting zapatos from garaje"
-      - "Agno, how are you doing?"
+      - "How do I get started?"
+      - "How does learning work?"
+      - "How does tool offloading work?"
 
   # --- Workflows ---
 
   deployment-check:
-    description: "Checks this platform's readiness: database, credentials, auth, scheduler URL, MCP, Slack, schedules, and component wiring. No model calls."
+    description: "Readiness check: database, credentials, auth, scheduler, MCP, Slack. No model calls."
     quick_prompts:
       - "Run the deployment check"
 
   run-evals:
-    # The step never reads its input — the tag comes from EVALS_TAG (workflows/run_evals.py),
-    # so a prompt naming a tag would promise a selection the workflow cannot make.
-    description: "Runs the eval cases tagged by EVALS_TAG (default: smoke); the prompt is ignored. Spends model calls, so the daily schedule ships disabled."
+    description: "Runs the eval cases tagged by EVALS_TAG (default: smoke). Disabled by default."
     quick_prompts:
       - "Run the eval suite (spends model calls)"

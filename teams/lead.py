@@ -30,6 +30,7 @@ from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
 from app.notes import notes
+from app.offload import result_store
 from app.registry import registry
 from app.settings import default_model
 from db import get_postgres_db
@@ -198,6 +199,9 @@ agno_team = Team(
     name="Agno",
     model=default_model(),
     db=get_postgres_db(),
+    # Web pages and member responses are the two payloads that blow a team run's
+    # context; both become stored files the leader can search. See app/offload.py.
+    offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
     tools=[notes.tools(), web_tools, studio_runners],

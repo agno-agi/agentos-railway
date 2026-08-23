@@ -7,6 +7,7 @@ from agno.agent import Agent
 from agno.tools.studio import StudioTools
 
 from app.learning import shared_self
+from app.offload import result_store
 from app.registry import get_agno_docs_tools, registry
 from app.settings import default_model
 from db import get_postgres_db
@@ -180,6 +181,9 @@ platform_builder = Agent(
     name="Platform Builder",
     model=default_model(),
     db=get_postgres_db(),
+    # Big tool results become searchable stored files rather than context —
+    # a registry listing or a stored component can outgrow a turn. See app/offload.py.
+    offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=shared_self,
     tools=[
