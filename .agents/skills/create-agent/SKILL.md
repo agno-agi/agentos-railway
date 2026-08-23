@@ -21,29 +21,19 @@ If it isn't reachable, ask the user to run `docker compose up -d --build` and wa
 
 Use the coding agent's structured user-input control when available (Claude Code's `AskUserQuestion`, Codex's user-input tool, or an equivalent) for the choice-shaped questions below. Use plain prompts for free-form answers.
 
-### This skill is the main route — build it here
+### Two lanes, and this is yours
 
-This platform builds agents two ways, and the difference is who is doing the building. **Lane 1 is a source file in `agents/`, governed by git — that's this skill, and it is the default.** Lane 2 is a component Platform Builder composes at runtime from the safe registry, versioned through the Studio catalog: the no-code route, for the people on the team who are never going to open an editor. Someone with a coding agent already running is not that person. They came here for code they own, in their repo, under review.
+Agents live in two places here. **Lane 1 is a source file in `agents/`, governed by git — this skill.** Lane 2 is a component Platform Builder composes at runtime from the registry, for people who aren't writing code. The user is here, so build the file.
 
-So when the user asks for an agent, **build the file**. Don't stop to offer the runtime builder, and don't hand the job back.
+Lane 1 is the only one that can touch the repo, so it owns anything needing a code change: a toolkit or MCP server the registry doesn't carry, custom Python, a new dependency, a new skill, or growing [`app/registry.py`](../../../app/registry.py) — which is how lane 2 gets its blocks in the first place.
 
-Lane 1 isn't only the default — it's the only lane that can do any of this, so recognise the work and stay:
-
-- a toolkit, MCP server, or context provider the registry doesn't carry
-- custom Python: a tool function, a reader, a deterministic step function
-- a new dependency — `pyproject.toml`, then the rebuild path in Step 6
-- **growing [`app/registry.py`](../../../app/registry.py)** so lane 2 gains a block it lacks. That's [`/extend-agent`](../extend-agent/SKILL.md)'s registry branch, and it's the only way the no-code lane ever gets new capability — every block Platform Builder composes from got there by a code change like this one
-- a new coding-agent skill, or anything else in the repo
-
-Lane 2 is worth one sentence at the *end*, and only when it's true: an agent that happens to compose entirely from registry blocks can also be rebuilt at runtime by asking Agno, which is how a teammate without a checkout would get one. That's a footnote to what you built — never a reason not to build it.
-
-**Check the id is free before you write anything.** Both lanes land in the same id space and the code half wins: `/agents` excludes any database component whose id a registered agent holds. So a file with a taken id doesn't collide loudly — it makes the runtime component disappear from the listing and from Agno's dispatch, with its rows still sitting in the database. This is a collision check, not a routing decision.
+**Check the id is free first.** Both lanes share an id space and code wins, so a file under a taken id doesn't error — it makes the runtime component vanish from `/agents` and from Agno's dispatch, rows still in the database.
 
 ```bash
 curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\t\(.is_component)"'
 ```
 
-`is_component: true` marks the Studio-built ones. If your slug is taken there, pick a different slug. (Same check on `/teams` and `/workflows` when the target is one of those.) There is exactly one case where the job isn't yours: the user's ask was really "change *that* agent" and that agent is a runtime component — there's no file to edit, so editing it belongs to Platform Builder.
+`is_component: true` marks the Studio-built ones; pick a different slug. Same check on `/teams` and `/workflows`. If the ask was really "change *that* agent" and it's a component, there's no file to edit — that one's Platform Builder's.
 
 ### If they already named an agent
 
