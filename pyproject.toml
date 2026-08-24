@@ -8,11 +8,16 @@ license-files = ["LICENSE"]
 authors = [{ name = "Agno", email = "hello@agno.com" }]
 
 dependencies = [
-  "agno[os,mcp,slack,pgvector,psycopg]==3.0.0a4",
+  # csv/excel/docx are agno's own reader extras: aiofiles, openpyxl+xlrd, python-docx.
+  # Without them the Knowledge page advertises formats it cannot actually ingest.
+  "agno[os,mcp,slack,pgvector,psycopg,csv,excel,docx]==3.0.0a4",
+  "beautifulsoup4",  # website + llms_txt readers; no agno extra provides it
   "cel-python",
   "openai",
   "parallel-web",
-  "python-docx",
+  # pypdf direct, not agno[pdf] — that extra also pulls rapidocr_onnxruntime for
+  # scanned-PDF OCR, which is a large dependency this template has no use for.
+  "pypdf",
   "python-dotenv",
   "reportlab",
 ]
