@@ -26,8 +26,6 @@ codebase = WorkspaceContextProvider(
     mode=ContextMode.tools,
     max_file_lines=50_000,
     max_file_length=4_000_000,
-    # `.env*` is excluded, but we let the agent read example.env.
-    allow_paths=["example.env"],
 )
 
 INSTRUCTIONS = """\
