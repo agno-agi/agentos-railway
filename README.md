@@ -1,19 +1,24 @@
 # AgentOS: The Agent Platform That Builds Itself
 
-AgentOS is a durable runtime for your agents. Build agents, multi-agent teams, and multi-step workflows, with every action traced and governance enforced per agent and per tool.
+AgentOS is a durable runtime for your agents. Build agents, multi-agent teams, and multi-step workflows. Trace every action and enforce agent and tool level governance.
 
-**Three ways to build.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle with you: set up, create, extend, improve, eval, review, deploy. Compose visually in the no-code AgentOS Studio. Or ask Platform Builder in plain language from any chat surface, and it builds and publishes for you.
+**Three ways to build agents.**
 
-**Four ways to use what you build.**
+1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle for you: set up, create, extend, improve, eval, review, deploy.
+2. **Natural language.** Ask the built-in Platform Builder and it builds the agent for you.
+3. **No-code Studio.** Build agents visually using the no-code AgentOS Studio.
 
-1. **Your product.** Call the REST API from your app: run agents, stream responses, and manage sessions, memory, and knowledge.
-2. **AgentOS UI.** Chat with your agents and inspect sessions, traces, memory, and evals at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
-3. **AI apps.** Reach your agents from Claude and ChatGPT through the MCP server at `/mcp`.
-4. **Chat interfaces.** Slack goes live with two env vars. WhatsApp, Telegram, and Discord follow the same conditional pattern with agno's other interfaces.
+**Five ways to use what you build.**
+
+1. **AgentOS UI.** Chat with your agents and inspect sessions, traces, memory, and evals at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
+2. **AI apps.** Reach your agents from Claude and ChatGPT: paste your `/mcp` URL as a custom connector and approve it with your connect secret.
+3. **Chat interfaces.** Use your agents from Slack: set two env vars and it is live. WhatsApp, Telegram, and Discord follow the same pattern with agno's other interfaces.
+4. **Your product.** Call the REST API from your app: run agents, stream responses, and manage sessions, memory, and knowledge.
+5. **Your coding agents.** Work with your agents from Claude Code, Codex, or Cursor: `uvx agno connect` mints a token and registers `/mcp` in each of them for you.
 
 <img width="3298" height="2412" alt="AgentOS" src="https://github.com/user-attachments/assets/40a53a42-d4d2-402b-8e92-742609207957" />
 
-<p align="center"><em>Built on the <a href="https://docs.agno.com">Agno framework</a>. Everything runs in your cloud, your data lives in your database.</em></p>
+<p align="center"><em>Built on <a href="https://docs.agno.com">Agno</a>, everything runs in your cloud, your data lives in your database.</em></p>
 
 ## Get Started
 
@@ -26,17 +31,6 @@ Clone https://github.com/agno-agi/agentos-railway into a folder called agent-pla
 ```
 
 Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots the platform, verifies the MCP endpoint, connects the AgentOS UI, and builds your first agent with you. Prefer to drive yourself? See [Manual Setup](#manual-setup).
-
-## Built for agents
-
-This codebase comes with:
-
-- **Agno — the platform, speaking for itself.** "Agno, we're going with PlanetScale over RDS." "Agno, build me an agent that tracks AI news." Tell it anything — decisions, who's on what, what you learned — and it files the who and the why, learns how you work, and connects the dots when someone asks what's happening. Agno holds the thread; everything else is a handoff: it leads the three platform agents and runs everything your team builds, so building things, checking on the platform, and understanding it all work through the same name — from Slack too. Notes and entities are shared by everyone on the platform, so what the team files is there whichever frontend you ask from. What Agno learns about *you* follows your identity, which a deployment with JWT gives you across every channel.
-- **Three platform agents** behind it, one per job. **Platform Builder** creates agents, teams, workflows, and schedules using the AgentOS Studio — builds come out published and runnable. **Platform Manager** monitors what the platform is doing: usage, run activity, eval history, deployment checks, schedules. **Platform Engineer** knows how the platform is built: it reads the source and explains the wiring, grounded in real files.
-- **A safe registry, so "builds itself" is bounded.** [`app/registry.py`](app/registry.py) declares exactly what a component built at runtime may be given: web search, the shared notebook, media and file generation, downloadable files, a knowledge base, the platform's per-user memory, structured questions back to the user, a calculator, a send-only Slack toolkit, and a step-function library. Platform Builder composes from that list and cannot extend it — new capability is a reviewed code change, which is why letting agents build agents is safe to leave on.
-- **Coding-agent skills** let Claude Code, Codex, Cursor, and other coding agents build, test, and improve the platform at the source — including growing that registry — see [Using the platform](#using-the-platform).
-
-Trace data, agent code, evals, and system logs are all available to coding agents, so the platform can inspect and improve itself end to end.
 
 ## Manual Setup
 
