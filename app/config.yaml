@@ -9,14 +9,14 @@ manifest:
       - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
-    description: "Monitors and explains what this AgentOS is doing: usage and tokens, run and tool activity, eval history, schedules, deployment checks. Read-only."
+    description: "Monitors and manages the AgentOS: usage, tokens, runs, tools, evals and schedules."
     quick_prompts:
       - "Is the platform healthy right now?"
       - "How many runs and tokens over the last 7 days?"
       - "Which agent is slowest, and is anything failing?"
 
   platform-engineer:
-    description: "Answers codebase questions: reads the source, explains the wiring, and generates handoffs for the user's coding agent."
+    description: "Answers codebase questions: reads the source code, explains the wiring, and generates handoffs for your coding agent."
     quick_prompts:
       - "How does learning work?"
       - "How does tool offloading work?"
