@@ -34,4 +34,8 @@ from agno.eval import cli  # noqa: E402
 
 from evals.cases import CASES, eval_db  # noqa: E402
 
-sys.exit(cli(CASES, db=eval_db))
+# Behind the guard so an import never spends money: `python -m evals` still runs this
+# (the -m form sets __name__ to "__main__"), while an import sweep, an IDE indexer
+# or a docs tool that reaches this module gets a no-op instead of a live suite run.
+if __name__ == "__main__":
+    sys.exit(cli(CASES, db=eval_db))
