@@ -14,7 +14,6 @@ from agno.tools.mcp import MCPTools
 from agno.tools.openai import OpenAITools
 from agno.tools.parallel import ParallelTools
 from agno.tools.slack import SlackTools
-from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.manager import platform_manager
 from app.functions import (
@@ -97,8 +96,6 @@ registry = Registry(
         *get_slack_tools(),
         *get_media_tools(),
         *get_file_generation_tools(),
-        # Structured ask-the-user questions
-        UserFeedbackTools(),
         CalculatorTools(),
     ],
     models=[default_model()],
