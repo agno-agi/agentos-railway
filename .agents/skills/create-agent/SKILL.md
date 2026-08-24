@@ -160,12 +160,9 @@ How you <work>:
     name="<DisplayName>",
     model=default_model(),
     db=get_postgres_db(),
-    # One self per human, platform-wide: the same profile and memory Agno and the
-    # three platform agents carry. The machine attaches its own tools and recall.
+    # The learning machine attaches its tools, guidance, and recall automatically.
     learning=shared_learning,
-    # Identity fallback for unauthenticated runs (dev MCP, evals). It pairs with
-    # learning: in agentic mode the profile and memory tools are not registered
-    # at all on a run carrying no user id, so without this they vanish silently.
+    # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",
     tools=[...],                     # or context_provider.get_tools()
     instructions=INSTRUCTIONS,
@@ -184,17 +181,19 @@ Notes:
 
 ## 4. Register in `app/main.py`
 
-Add the import and append to the `agents=[…]` list:
+Add the import and put the new agent first in the `agents=[…]` list:
 
 ```python
 from agents.<slug_underscore> import <slug_underscore>
 
 agent_os = AgentOS(
     ...
-    agents=[platform_builder, platform_manager, platform_engineer, <slug_underscore>],
+    agents=[<slug_underscore>, platform_builder, platform_manager, platform_engineer],
     ...
 )
 ```
+
+First, because this is the agent the people here actually talk to: Platform Builder, Manager, and Engineer run the platform and are usually reached through Agno rather than directly. The order carries into the AgentOS UI's agent list and into `get_agentos_config`, so what the platform is *for* reads before the machinery that runs it.
 
 This line also puts the agent on Agno's roster: the team lead's runner dispatches every code-defined agent the OS registers, so people can ask for it by name ("Agno, have radar scan the week") from the AgentOS UI, Slack, or any MCP client.
 
