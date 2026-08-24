@@ -31,8 +31,16 @@ CREDENTIAL_EXCLUDES = [
     "*.pem", "*.key", "*.crt", "*.p12", "*.pfx", "*.jks", "*.keystore",   # keys and certs
     "id_rsa*", "id_dsa*", "id_ecdsa*", "id_ed25519*", ".ssh", ".aws", ".gnupg",
     ".npmrc", ".pypirc", ".netrc", "_netrc",                              # registry/host tokens
-    "credentials", "credentials.*", "*credentials.json", "*-credentials.*",
-    "secrets.*", "*secrets.yaml", "*secrets.yml",
+    # Data files only. `credentials.*` and `secrets.*` would also match credentials.py,
+    # secrets.py and docs/secrets.md — ordinary source this agent exists to read.
+    "credentials",                                                        # the bare AWS/gcloud file
+    "credentials.json", "credentials.yaml", "credentials.yml",
+    "credentials.ini", "credentials.cfg", "credentials.csv",
+    "*-credentials.json", "*-credentials.yaml", "*-credentials.yml", "*-credentials.ini",
+    "*_credentials.json", "*_credentials.yaml", "*_credentials.yml",
+    "secrets.json", "secrets.yaml", "secrets.yml",
+    "secrets.ini", "secrets.cfg", "secrets.env",
+    "*-secrets.json", "*-secrets.yaml", "*-secrets.yml",
     "service_account*.json", "serviceAccount*.json",                      # GCP
     "*.tfvars", "*.tfvars.json",                                          # terraform inputs
 ]
