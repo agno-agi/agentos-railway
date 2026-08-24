@@ -174,7 +174,7 @@ CASES: tuple[Case, ...] = (
         name="platform_builder_creates_directly",
         agent=platform_builder,
         input=(
-            "Create an agent called 'Recipe Finder' that searches the web for recipes and answers "
+            "Create an agent called 'Quillhawk Recipe Scout' that searches the web for recipes and answers "
             "with three options, each with a source link. Use the registry's web search tool and "
             "the default model. This is fully specified — do not ask clarifying questions; create "
             "it now."
@@ -195,16 +195,16 @@ CASES: tuple[Case, ...] = (
         name="platform_builder_renames_in_place",
         agent=platform_builder,
         input=(
-            "Create an agent named 'Scratch Pad' that summarizes pasted text. Default model, "
-            "no tools. Fully specified - create it now. Once created, rename it to 'Note Pad'."
+            "Create an agent named 'Quillhawk Scratch Pad' that summarizes pasted text. Default model, "
+            "no tools. Fully specified - create it now. Once created, rename it to 'Quillhawk Note Pad'."
         ),
         tags=("release",),
         timeout_seconds=150,
         **BUILDER_HOOKS,
         criteria=(
             "Creates the agent, then renames it in place via an edit — one component, its id "
-            "unchanged, now named 'Note Pad', with the rename published so it is live. Does not "
-            "create a second replacement component, does not leave a 'Scratch Pad' duplicate "
+            "unchanged, now named 'Quillhawk Note Pad', with the rename published so it is live. Does not "
+            "create a second replacement component, does not leave a 'Quillhawk Scratch Pad' duplicate "
             "behind, and does not describe the rename as requiring a delete."
         ),
         expected_tool_calls=("create_agent", "edit_agent"),

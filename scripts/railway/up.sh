@@ -136,7 +136,14 @@ ${line}"
         current_value="${current_value#\'}"
         current_value="${current_value%\'}"
 
-        export "${current_key}=${current_value}"
+        # Tolerate `export KEY=value` and indented keys: without this an env file in
+        # that common style aborts the whole script with a raw bash error.
+        current_key="${current_key#"${current_key%%[![:space:]]*}"}"
+        current_key="${current_key#export }"
+        current_key="${current_key%"${current_key##*[![:space:]]}"}"
+        if [[ "$current_key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            export "${current_key}=${current_value}"
+        fi
 
         current_key=""
         current_value=""
