@@ -27,9 +27,9 @@ manifest:
   agno:
     description: "The platform lead. Agno can build agents, run them and check on the platform."
     quick_prompts:
+      - "Tell me about yourself"
       - "How do I get started?"
-      - "How does learning work?"
-      - "How does tool offloading work?"
+      - "Let's build an agent"
 
   # --- Workflows ---
 
