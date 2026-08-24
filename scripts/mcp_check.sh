@@ -4,10 +4,14 @@
 #
 #    MCP Smoke Check
 #
-#    Proves the AgentOS MCP endpoint end to end: handshake, tool count,
+#    Runs the AgentOS MCP endpoint end to end: handshake, tool surface,
 #    then one run_agent call. The default question tells the agent to skip
 #    its tools, so the whole check finishes in seconds. Runs the client
 #    inside the container.
+#
+#    The tool count is asserted, not just printed — this script is the verify
+#    gate across every agentos-* sibling, and a shrunk /mcp surface reads
+#    exactly like a pass when the number only goes to the terminal.
 #
 #    When /mcp is auth-gated (MCP_CONNECT_SECRET set, or prd JWT), the
 #    check mints a short-lived probe service account, runs authenticated,
@@ -15,7 +19,8 @@
 #
 #    Usage:
 #      ./scripts/mcp_check.sh                            # quick default probe
-#      ./scripts/mcp_check.sh "What does chief do?"      # your own question
+#      ./scripts/mcp_check.sh "What does the platform run?"  # your own question
+#      MCP_EXPECTED_TOOLS=9 ./scripts/mcp_check.sh       # you extended /mcp
 #
 ############################################################################
 
@@ -31,13 +36,19 @@ NC='\033[0m'
 DEFAULT_QUESTION="Without using any tools, introduce yourself and this platform in two short sentences."
 QUESTION="${1:-$DEFAULT_QUESTION}"
 
+# The eight built-in tools agno registers for mcp_server=True with no MCPServerConfig:
+# get_agentos_config, run_agent, run_team, run_workflow, continue_run, cancel_run,
+# get_sessions, get_session_runs. Scoping them (include_tags/exclude_tags) or adding
+# custom ones moves the number — set MCP_EXPECTED_TOOLS to your own surface then.
+EXPECTED_TOOLS="${MCP_EXPECTED_TOOLS:-8}"
+
 echo ""
 echo -e "${ORANGE}▸${NC} ${BOLD}MCP Check${NC}"
 echo ""
 echo -e "${DIM}> http://localhost:8000/mcp  (client runs inside agentos-api)${NC}"
 echo ""
 
-if docker compose exec -T agentos-api python -u - "$QUESTION" <<'PY'
+if docker compose exec -T agentos-api python -u - "$QUESTION" "$EXPECTED_TOOLS" <<'PY'
 import asyncio
 import sys
 import time
@@ -46,9 +57,16 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
 ORANGE = "\033[38;5;208m"
+RED = "\033[31m"
 DIM = "\033[2m"
 BOLD = "\033[1m"
 NC = "\033[0m"
+
+EXPECTED_TOOLS = int(sys.argv[2])
+
+
+class ToolSurfaceMismatch(Exception):
+    """/mcp served a different set of tools than the gate expects."""
 
 
 def step(text: str) -> None:
@@ -60,8 +78,15 @@ async def run_check(headers: dict | None, auth_note: str) -> None:
         async with ClientSession(read, write) as session:
             await session.initialize()
             step(f"Handshake — {auth_note}")
-            tools = await session.list_tools()
-            step(f"MCP OK — {len(tools.tools)} tools")
+            names = sorted(tool.name for tool in (await session.list_tools()).tools)
+            # Assert before spending the run_agent call: if the surface is wrong the
+            # answer proves nothing, and naming what was actually served is the whole
+            # diagnostic — a count alone can't tell a scoped config from a regression.
+            if len(names) != EXPECTED_TOOLS:
+                raise ToolSurfaceMismatch(
+                    f"expected {EXPECTED_TOOLS} tools, /mcp served {len(names)}: {', '.join(names) or '(none)'}"
+                )
+            step(f"MCP OK — {len(names)} tools")
             start = time.perf_counter()
             result = await session.call_tool(
                 "run_agent",
@@ -83,6 +108,18 @@ def is_unauthorized(exc: BaseException) -> bool:
     if isinstance(exc, BaseExceptionGroup):
         return any(is_unauthorized(e) for e in exc.exceptions)
     return "401" in str(exc) or any(is_unauthorized(e) for e in (exc.__cause__, exc.__context__) if e)
+
+
+def find_mismatch(exc: BaseException) -> ToolSurfaceMismatch | None:
+    """Dig the mismatch out of the nested ExceptionGroups the transport wraps it in."""
+    if isinstance(exc, ToolSurfaceMismatch):
+        return exc
+    nested: tuple[BaseException, ...] = tuple(exc.exceptions) if isinstance(exc, BaseExceptionGroup) else ()
+    for candidate in nested + tuple(e for e in (exc.__cause__, exc.__context__) if e):
+        found = find_mismatch(candidate)
+        if found is not None:
+            return found
+    return None
 
 
 async def run_check_with_probe_pat() -> None:
@@ -122,12 +159,23 @@ async def main() -> None:
     try:
         await run_check(None, "open (dev)")
     except BaseException as exc:  # ExceptionGroup from the transport on 401
-        if not is_unauthorized(exc):
+        # A wrong tool surface fails under every auth mode — never retry it as a 401.
+        if find_mismatch(exc) is not None or not is_unauthorized(exc):
             raise
         await run_check_with_probe_pat()
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except BaseException as exc:
+    # The transport buries the raise under two layers of ExceptionGroup; a gate failure
+    # deserves one readable line, not that traceback.
+    mismatch = find_mismatch(exc)
+    if mismatch is None:
+        raise
+    print(f"\n{RED}{BOLD}MCP tool surface mismatch{NC} — {mismatch}", flush=True)
+    print(f"{DIM}Set MCP_EXPECTED_TOOLS if you scoped or extended /mcp on purpose.{NC}", flush=True)
+    sys.exit(1)
 PY
 then
     echo ""

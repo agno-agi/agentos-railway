@@ -39,7 +39,7 @@ venv/
 env/
 ENV/
 .env
-.env.production
+.env.*
 .envrc
 
 # =========================

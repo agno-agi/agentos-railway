@@ -1,35 +1,44 @@
 manifest:
   # --- Agents ---
 
-  chief:
-    description: "The team mascot. Tell Chief anything (decisions, what you learned, what you had for lunch)."
+  platform-builder:
+    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
-      - "What's up chief?"
-      - "Hey Chief, we're getting zapatos from garaje"
-      - "Chief, we're going with planetscale over RDS"
-
-  agent-builder:
-    description: "Creates agents, teams, and workflows using the AgentOS Studio."
-    quick_prompts:
-      - "Build an agent like chief but sassier"
-      - "Build an agent that tracks AI news and writes a daily brief"
-      - "Build a multi-agent team with the chief and platform manager"
+      - "What can you build for me?"
+      - "Build an agent that tracks AI news and files a daily brief in the shared notebook"
+      - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
-    description: "Understands, monitors, and explains this AgentOS. Codebase context, runtime diagnostics, usage patterns."
+    description: "Monitors and manages the AgentOS: usage, tokens, runs, tools, evals and schedules."
     quick_prompts:
-      - "Tell me about this AgentOS"
-      - "Share some usage patterns"
+      - "Is the platform healthy right now?"
+      - "How many runs and tokens over the last 7 days?"
       - "Which agent is slowest, and is anything failing?"
+
+  platform-engineer:
+    description: "Answers codebase questions: reads the source code, explains the wiring, and generates handoffs for your coding agent."
+    quick_prompts:
+      - "How does learning work?"
+      - "How does tool offloading work?"
+      - "How does the agno team work?"
+
+  # --- Teams ---
+
+  agno:
+    description: "The platform lead. Agno can build agents, run them and check on the platform."
+    quick_prompts:
+      - "Tell me about yourself"
+      - "How do I get started?"
+      - "Let's build an agent"
 
   # --- Workflows ---
 
   deployment-check:
-    description: "Run a deployment check to verify the AgentOS is running correctly."
+    description: "Readiness check: database, credentials, auth, scheduler, MCP, Slack. No model calls."
     quick_prompts:
       - "Run the deployment check"
 
   run-evals:
-    description: "Run a subset of the eval suite."
+    description: "Runs the eval cases tagged by EVALS_TAG (default: smoke). Disabled by default."
     quick_prompts:
-      - "Run the smoke evals"
+      - "Run the eval suite (spends model calls)"

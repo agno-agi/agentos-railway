@@ -35,7 +35,7 @@ echo -e "    ${DIM}Virtual Environment Setup${NC}"
 echo ""
 
 # Preflight
-if [[ -n "$VIRTUAL_ENV" ]]; then
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
     echo "    Deactivate your current venv first."
     exit 1
 fi
@@ -48,22 +48,25 @@ fi
 # Setup
 echo -e "    ${DIM}Removing old environment...${NC}"
 echo -e "    ${DIM}> rm -rf ${VENV_DIR}${NC}"
-rm -rf ${VENV_DIR}
+rm -rf "${VENV_DIR}"
 
 echo ""
-echo -e "    ${DIM}Creating Python 3.12 venv...${NC}"
-echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.12${NC}"
-uv venv ${VENV_DIR} --python 3.12 --quiet
+echo -e "    ${DIM}Creating Python 3.14 venv...${NC}"
+echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.14${NC}"
+uv venv "${VENV_DIR}" --python 3.14 --quiet
 
 echo ""
 echo -e "    ${DIM}Installing requirements...${NC}"
 echo -e "    ${DIM}> uv pip install -r requirements.txt${NC}"
-VIRTUAL_ENV=${VENV_DIR} uv pip install -r ${REPO_ROOT}/requirements.txt --quiet
+VIRTUAL_ENV="${VENV_DIR}" uv pip install -r "${REPO_ROOT}/requirements.txt" --quiet
 
 echo ""
 echo -e "    ${DIM}Installing project in editable mode with dev dependencies...${NC}"
 echo -e "    ${DIM}> uv pip install -e .[dev]${NC}"
-VIRTUAL_ENV=${VENV_DIR} uv pip install -e ${REPO_ROOT}[dev] --quiet
+# Quotes matter twice here: a clone path with a space, and `[dev]` — unquoted, bash
+# reads it as a glob character class and silently rewrites the path when a sibling
+# file happens to match.
+VIRTUAL_ENV="${VENV_DIR}" uv pip install -e "${REPO_ROOT}[dev]" --quiet
 
 # Copy activation command to clipboard
 ACTIVATE_CMD="source .venv/bin/activate"

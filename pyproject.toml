@@ -1,17 +1,19 @@
 [project]
 name = "agentos"
 version = "1.0.0"
-description = "AgentOS: a production API for agents."
-requires-python = ">=3.12,<4"
+description = "AgentOS: a production runtime for agents."
+requires-python = ">=3.14,<4"
 readme = "README.md"
 license-files = ["LICENSE"]
 authors = [{ name = "Agno", email = "hello@agno.com" }]
 
 dependencies = [
-  "agno[os,mcp,slack,pgvector,psycopg]==2.8.5",
+  "agno[os,mcp,slack,pgvector,psycopg,csv,excel,docx,pdf,website]==3.0.0",
+  "cel-python",
   "openai",
   "parallel-web",
   "python-dotenv",
+  "reportlab",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +24,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["agents*", "app*", "db*", "evals*", "workflows*"]
+include = ["agents*", "app*", "db*", "evals*", "teams*", "workflows*"]
 namespaces = false
 
 [tool.ruff]
@@ -40,4 +42,5 @@ check_untyped_defs = true
 no_implicit_optional = true
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
-exclude = [".venv*"]
+# tmp/ is untracked scratch space — never part of the validated tree.
+exclude = [".venv*", "tmp"]

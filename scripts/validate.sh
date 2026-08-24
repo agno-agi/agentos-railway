@@ -29,6 +29,13 @@ echo ""
 
 failed=0
 
+echo -e "${DIM}> ruff format --check ${REPO_ROOT}${NC}"
+if ! ruff format --check "${REPO_ROOT}"; then
+  echo -e "${RED}Fix with:${NC} ${BOLD}./scripts/format.sh${NC}"
+  failed=1
+fi
+
+echo ""
 echo -e "${DIM}> ruff check ${REPO_ROOT}${NC}"
 if ! ruff check "${REPO_ROOT}"; then
   failed=1
@@ -48,4 +55,4 @@ else
 fi
 echo ""
 
-exit $failed
+exit "$failed"

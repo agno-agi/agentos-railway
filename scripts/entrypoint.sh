@@ -24,9 +24,9 @@ cat << 'BANNER'
 BANNER
 echo -e "${NC}"
 
-if [[ "$WAIT_FOR_DB" = true || "$WAIT_FOR_DB" = True ]]; then
+if [[ "${WAIT_FOR_DB:-}" = true || "${WAIT_FOR_DB:-}" = True ]]; then
     echo -e "    ${DIM}Waiting for database at ${DB_HOST}:${DB_PORT}...${NC}"
-    dockerize -wait tcp://$DB_HOST:$DB_PORT -timeout 300s
+    dockerize -wait "tcp://${DB_HOST}:${DB_PORT}" -timeout 300s
     echo -e "    ${BOLD}Database ready.${NC}"
     echo ""
 fi
@@ -39,7 +39,9 @@ case "$1" in
         while true; do sleep 18000; done
         ;;
     *)
-        echo -e "    ${DIM}> $@${NC}"
+        # `$*` for the echo, `"$@"` for the exec — the echo wants one display string,
+        # and only "$@" keeps an argument that contains spaces a single argument.
+        echo -e "    ${DIM}> $*${NC}"
         echo ""
         exec "$@"
         ;;

@@ -6,9 +6,9 @@
 .mypy_cache
 .ruff_cache
 .pytest_cache
-*__pycache__*
+**/__pycache__
 *.egg-info
-*.pyc
+**/*.pyc
 
 # Machine specific
 .idea
@@ -16,7 +16,7 @@
 
 # Ignore .env files
 .env
-.env.production
+.env.*
 .envrc
 
 # ignore virtualenvs
@@ -26,9 +26,14 @@ aienv*
 
 .ipynb_checkpoints
 
-# Project-specific
+# Project-specific. .claude/ and .codex/ are per-machine coding-agent state:
+# both are gitignored, but docker reads this file independently of .gitignore,
+# so a directory left off here still rides into the build context and out to the
+# registry. The shared, vendor-neutral assets live in .agents/skills/ — those
+# ship, because Platform Engineer reads them out of the deployed image.
 tmp/
 .claude/
+.codex/
 
 # Node (local deploy-tooling installs — not part of the image)
 node_modules

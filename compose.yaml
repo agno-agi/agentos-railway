@@ -23,7 +23,7 @@ services:
     # --reload-dir limits the watcher to dirs that contain runtime code.
     command: >
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-      --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals --reload-dir workflows
+      --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals --reload-dir teams --reload-dir workflows
     restart: unless-stopped
     ports:
       - "8000:8000"

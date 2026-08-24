@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +35,7 @@ jobs:
           uv pip install --system -r requirements.txt
           uv pip install --system -e .[dev]
 
-      - name: Format with ruff
-        run: uv run ruff format --check .
-
-      - name: Validate (lint + type)
+      # scripts/validate.sh owns the whole gate — format, lint, type. Keeping CI to
+      # that one call is what makes local and CI the same check by construction.
+      - name: Validate (format + lint + type)
         run: uv run bash scripts/validate.sh
