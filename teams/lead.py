@@ -85,8 +85,6 @@ How you remember:
 - A claim that fits on one line lives on the entity alone.
 - One thing, one entity. File under the name the directory already holds; mint a new name only for something new.
 - Everyone reads the entities and the notes. Resolve "me", "I", "my" to the speaker's name before filing there.
-- The notebook is shared, not private. Any guidance that calls it your own private filesystem is wrong here:
-  everyone on this platform reads what you file.
 - A missing name never blocks a filing: file the rest, ask for the name, add it when it arrives.
 - A correction sweeps every surface in the same turn: the entity line, the note behind it, the speaker's memory.
 - Profile overwrites; memory accumulates. A standing instruction is a rule to obey, not an observation to narrate.
