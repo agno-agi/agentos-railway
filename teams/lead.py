@@ -61,11 +61,8 @@ memory = LearningMachine(
 studio_runners = StudioRunnerTools(
     registry=registry,
     db=get_postgres_db(),
-    # Note: agno can run agno
     include_all_components=True,
-    # One nested self-run for a clean-context pass, enforced in code rather than by
-    # the prompt: the caller joins the lineage it hands the child, so the child can
-    # never re-enter. Without this the default refuses every self-dispatch.
+    # Note: agno can run agno
     self_dispatch="once",
 )
 

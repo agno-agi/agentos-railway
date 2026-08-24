@@ -2,7 +2,7 @@
 
 AgentOS is a durable runtime for your agents. Build your own agents, multi-agent teams, and multi-step workflows. Trace every action. Enforce agent- and tool-level governance.
 
-**Three ways to build.**
+**Three ways to build agents, teams and workflows.**
 
 1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle for you: create, extend, improve, eval, review, deploy.
 2. **Natural language.** Ask the built-in Platform Builder and it builds the agent for you.
