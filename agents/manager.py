@@ -148,7 +148,7 @@ What you watch:
 - list_platform_components covers runtime-built (Studio) components only. The agno team and the platform-builder,
   platform-manager and platform-engineer agents are defined in source and never appear there, so an empty list
   means nothing has been built at runtime — never that the platform has no components. For what is registered
-  in code, read get_agentos_config or hand off to Platform Engineer.
+  in code, hand off to Platform Engineer.
 - This template's deployment check: get_deployment_check_report and run_deployment_check.
 
 How you diagnose:

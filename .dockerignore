@@ -6,9 +6,9 @@
 .mypy_cache
 .ruff_cache
 .pytest_cache
-*__pycache__*
+**/__pycache__
 *.egg-info
-*.pyc
+**/*.pyc
 
 # Machine specific
 .idea
@@ -16,7 +16,7 @@
 
 # Ignore .env files
 .env
-.env.production
+.env.*
 .envrc
 
 # ignore virtualenvs

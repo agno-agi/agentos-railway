@@ -188,7 +188,7 @@ To re-sync environment variables, run the following command:
 ./scripts/railway/down.sh
 ```
 
-Deletes the Railway project: the agent-os service, the pgvector database, and its volume, **including all data**. It also comments out a Railway-generated `AGENTOS_URL` in your env file so a future `up.sh` derives it again. Custom domains are preserved.
+Deletes the Railway project: the agent-os service, the pgvector database, and its volume, **including all data**. It also comments out the Railway-minted `AGENTOS_URL` and `JWT_VERIFICATION_KEY` in your env file, so a future `up.sh` derives a fresh domain and re-runs its guided key step. Custom domains are preserved.
 
 ### Opting out of JWT (not recommended)
 
@@ -228,7 +228,7 @@ python -m evals --name <case>    # one case while iterating
 python -m evals -v               # stream the full run with rich panels
 ```
 
-If a case fails, run **`/eval-and-improve`** — it diagnoses each failure, fixes what's in scope, and loops until green. And when you build an agent of your own, **`/create-evals`** writes its coverage: it mines your real sessions for scenarios and adds cases the scheduled eval run watches from then on.
+If a case fails, run **`/eval-and-improve`** — it diagnoses each failure, fixes what's in scope, and loops until green. And when you build an agent of your own, **`/create-evals`** writes its coverage: it mines your real sessions for scenarios and adds cases tagged `smoke`, which the daily run-evals schedule picks up. That schedule ships **disabled** because it spends model calls — enable it from the AgentOS UI when you want the nightly watch.
 
 ### Maintain
 

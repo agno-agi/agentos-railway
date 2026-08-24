@@ -51,6 +51,7 @@ else:
 memory = LearningMachine(
     name="agno-memory",
     db=get_postgres_db(),
+    model=default_model(),
     user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),
     user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),
     entity_memory=EntityMemoryConfig(namespace="global"),
