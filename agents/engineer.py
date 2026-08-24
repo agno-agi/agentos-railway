@@ -8,7 +8,6 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.context.mode import ContextMode
 from agno.context.workspace import WorkspaceContextProvider
-from agno.tools.workspace import DEFAULT_EXCLUDE_PATTERNS
 
 from app.learning import shared_learning
 from app.offload import result_store
@@ -20,32 +19,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # Use ContextMode.tools for direct tools access (read_file, list_files, search_content)
 # The engineer orchestrates its own multi-file reads, so answers cite real paths
 # without a nested-agent round-trip per question.
-# agno's defaults exclude .env* and build/dependency directories. They do not exclude the other
-# files a real repo keeps credentials in, and an excluded name is the only thing that stops a
-# credential reaching the tool result — where it is persisted in the run row and served back by
-# /sessions/{id}/runs, whatever the agent then says in prose. Verified against the live toolkit:
-# without these, id_rsa, *.pem, *.key, serviceAccount.json, .npmrc, .netrc, credentials.*,
-# secrets.*, *.tfvars and *.p12 all read fine.
-# fmt: off
-CREDENTIAL_EXCLUDES = [
-    "*.pem", "*.key", "*.crt", "*.p12", "*.pfx", "*.jks", "*.keystore",   # keys and certs
-    "id_rsa*", "id_dsa*", "id_ecdsa*", "id_ed25519*", ".ssh", ".aws", ".gnupg",
-    ".npmrc", ".pypirc", ".netrc", "_netrc",                              # registry/host tokens
-    # Data files only. `credentials.*` and `secrets.*` would also match credentials.py,
-    # secrets.py and docs/secrets.md — ordinary source this agent exists to read.
-    "credentials",                                                        # the bare AWS/gcloud file
-    "credentials.json", "credentials.yaml", "credentials.yml",
-    "credentials.ini", "credentials.cfg", "credentials.csv",
-    "*-credentials.json", "*-credentials.yaml", "*-credentials.yml", "*-credentials.ini",
-    "*_credentials.json", "*_credentials.yaml", "*_credentials.yml",
-    "secrets.json", "secrets.yaml", "secrets.yml",
-    "secrets.ini", "secrets.cfg", "secrets.env",
-    "*-secrets.json", "*-secrets.yaml", "*-secrets.yml",
-    "service_account*.json", "serviceAccount*.json",                      # GCP
-    "*.tfvars", "*.tfvars.json",                                          # terraform inputs
-]
-# fmt: on
-
 codebase = WorkspaceContextProvider(
     id="platform-source",
     name="Platform Source",
@@ -53,11 +26,7 @@ codebase = WorkspaceContextProvider(
     mode=ContextMode.tools,
     max_file_lines=50_000,
     max_file_length=4_000_000,
-    exclude_patterns=[*DEFAULT_EXCLUDE_PATTERNS, *CREDENTIAL_EXCLUDES],
-    # `.env*` is excluded, which as of 3.0.0a4 blocks reads too — and that swept up example.env,
-    # the committed, value-free file that documents every env var. Naming it here re-admits that
-    # one file (in every spelling: ./, app/../, absolute) and re-admits nothing else: .env and
-    # .env.production stay blocked by the same pattern.
+    # `.env*` is excluded, but we let the agent read example.env.
     allow_paths=["example.env"],
 )
 
