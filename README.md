@@ -1,10 +1,10 @@
 # AgentOS: The Agent Platform That Builds Itself
 
-AgentOS is a durable runtime for your agents. Build agents, multi-agent teams, and multi-step workflows. Trace every action and enforce agent and tool level governance.
+AgentOS is a durable runtime for your agents. Build your own agents, multi-agent teams, and multi-step workflows. Trace every action. Enforce agent- and tool-level governance.
 
-**Three ways to build agents.**
+**Three ways to build.**
 
-1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle for you: set up, create, extend, improve, eval, review, deploy.
+1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle for you: create, extend, improve, eval, review, deploy.
 2. **Natural language.** Ask the built-in Platform Builder and it builds the agent for you.
 3. **No-code Studio.** Build agents visually using the no-code AgentOS Studio.
 
@@ -12,8 +12,8 @@ AgentOS is a durable runtime for your agents. Build agents, multi-agent teams, a
 
 1. **AgentOS UI.** Chat with your agents and inspect sessions, traces, memory, and evals at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
 2. **AI apps.** Reach your agents from Claude and ChatGPT: paste your `/mcp` URL as a custom connector and approve it with your connect secret.
-3. **Chat interfaces.** Use your agents from Slack: set two env vars and it is live. WhatsApp, Telegram, and Discord follow the same pattern with agno's other interfaces.
-4. **Your product.** Call the REST API from your app: run agents, stream responses, and manage sessions, memory, and knowledge.
+3. **Chat interfaces.** Use your agents from Slack, WhatsApp, Telegram, and Discord.
+4. **Your product.** Call the REST API from your product: run agents, stream responses, and manage sessions, memory, and knowledge.
 5. **Your coding agents.** Work with your agents from Claude Code, Codex, or Cursor: `uvx agno connect` mints a token and registers `/mcp` in each of them for you.
 
 <img width="3298" height="2412" alt="AgentOS" src="https://github.com/user-attachments/assets/40a53a42-d4d2-402b-8e92-742609207957" />
@@ -59,15 +59,13 @@ Confirm your AgentOS is running at [http://localhost:8000/docs](http://localhost
 
 ### Step 3: Meet Agno — and build your first agent through it
 
-1. Click **Chat** under the **Agno** team and tell it what you're working on: "Hey Agno — I'm building a support bot." It files the who and what as entities, the why as notes, and what it learns about you stays yours.
-2. Now ask it to build: "Build an agent that tracks AI news and writes a daily brief". Agno hands the build to Platform Builder, and the agent comes back created **and published** — live on the platform.
+1. Click **Chat** under the **Agno** team and tell it what you're working on: "Hey Agno — I'm building a support bot".
+2. Now ask it to build: "Build an agent that tracks AI news and writes a daily brief".
 3. Click the **Refresh** button on the top right. You should now see the "Daily AI News Brief" agent in the **Agents** dropdown — chat with it directly, or just tell Agno: "Have the news agent brief me."
-
-From then on, tag Agno in from anywhere — this UI, Slack, claude.ai, ChatGPT — and ask "Agno, what's happening?": same Agno everywhere.
 
 ### Step 4: Check platform health
 
-Click **Chat** under **Platform Manager** and ask: "How healthy is the platform?" It answers from runtime data — eval history, deployment checks, schedules, and the run activity of the agent you just built.
+Click **Chat** under **Platform Manager** and ask: "Is the platform healthy?" It answers from runtime data — eval history, deployment checks, schedules, and the run activity of the agent you just built.
 
 ### Step 5: See how it's built
 
@@ -75,7 +73,7 @@ Click **Chat** under **Platform Engineer** and ask: "Tell me about this AgentOS.
 
 ### Step 6: Make it yours
 
-Your clone's `origin` points at this public template — a repo you can't push to. Give your platform a home of its own:
+Your cloned repo points at this public template. Make it your own:
 
 ```sh
 git remote rename origin upstream    # keep the template connected for updates
@@ -87,7 +85,7 @@ Create the private repo first ([github.com/new](https://github.com/new), or `gh 
 
 ## Run in production
 
-You can run the platform anywhere that supports containerized images. This codebase comes with scripts to deploy the platform to [Railway](https://railway.com) — and a coding-agent skill, [`/deploy-platform`](.agents/skills/deploy-platform/SKILL.md), that drives them for you and verifies the live platform at the end.
+You can run the platform anywhere that supports containers. This codebase comes with scripts to deploy the platform to [Railway](https://railway.com) — and a coding-agent skill, [`/deploy-platform`](.agents/skills/deploy-platform/SKILL.md), that drives them for you and verifies the live platform at the end.
 
 > **Prerequisite:** [Railway CLI](https://docs.railway.com/cli#installing-the-cli) installed and `railway login` completed.
 
