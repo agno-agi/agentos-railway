@@ -178,6 +178,7 @@ Notes:
 - Don't add a `if __name__ == "__main__":` smoke block — the platform-driven workflow is the smoke test.
 - If the agent uses an `MCPTools` instance, pass it through `tools=[mcp_tools]` directly — AgentOS manages the connect/close lifecycle.
 - If a context provider needs a model, reuse `default_model()` so the model id stays in one place.
+- **Keep every line ≤120 characters — `INSTRUCTIONS` prose included.** The repo lints at `line-length = 120` (ruff `E501`, [`pyproject.toml`](../../../pyproject.toml)), and `agents/` is not exempt, so a long instruction line makes the user's first `./scripts/validate.sh` after building their first agent fail. The built-in agents ([`agents/manager.py`](../../../agents/manager.py)) wrap long bullets with a two-space hanging indent — match that. A hard wrap inside a bullet is fine; the model reads wrapped prose the same way. Write the lines short as you generate; ruff's formatter does **not** reflow long string literals, so this can't be auto-fixed after the fact.
 
 ## 4. Register in `app/main.py`
 
