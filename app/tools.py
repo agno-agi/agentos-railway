@@ -5,8 +5,8 @@ Platform Tools
 
 from os import getenv
 
-from agno.tools.file_generation import FileGenerationTools
-from agno.tools.knowledge_management import KnowledgeManagementTools
+from agno.tools.file import FileGenerationTools
+from agno.tools.knowledge import KnowledgeManagementTools
 from agno.tools.mcp import MCPTools
 from agno.tools.openai import OpenAITools
 from agno.tools.parallel import ParallelTools
@@ -75,13 +75,6 @@ def get_file_generation_tools() -> list[FileGenerationTools]:
     return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
 
-DEFAULT_MAX_PAGES = 50
-HARD_MAX_PAGES = 500
-PARALLEL_BATCH = 8
-
-
 def get_knowledge_management_tools() -> KnowledgeManagementTools:
     """The write side of the product knowledge base, mounted on Platform Builder."""
-    # ingest_path reads server-local files into the shared base; the platform's
-    # ingestion is URLs and text only.
-    return KnowledgeManagementTools(knowledge=product_knowledge, exclude_tools=["ingest_path"])
+    return KnowledgeManagementTools(knowledge=product_knowledge)
