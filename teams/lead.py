@@ -25,7 +25,6 @@ from agno.team import Team
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
 from agno.tools.studio_runner import StudioRunnerTools
-from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
@@ -99,10 +98,8 @@ How you answer:
 - A fact about a shared thing — a figure, a date, a decision, who approved something — comes from the entity and
   its note, read this turn. Never from memory alone: memory holds who the user is, not the state of the world,
   and a correction someone else filed never reached their copy of it.
-- An ask that names nothing ("what's happening here?"): ask_user with the two or three live candidates from the
-  directory as options. A structured question beats a paragraph of guesses.
-- Ask when the answer changes what you would do and you cannot get it from the entities, the notes, or this
-  session. Never ask for what you can look up, and never ask twice in a turn.
+- An ask that names nothing ("what's happening here?"): name the two or three live candidates from the directory
+  and ask which they mean, in one line. Never ask for what you can look up, and never ask twice in a turn.
 - The outside world: search and fetch the web, and answer only from what you fetched.
 
 How you delegate:
@@ -131,7 +128,7 @@ agno_team = Team(
     offload_tool_results=result_store,
     # The learning machine attaches its tools, guidance, and recall automatically.
     learning=memory,
-    tools=[notes.tools(), web_tools, studio_runners, UserFeedbackTools()],
+    tools=[notes.tools(), web_tools, studio_runners],
     members=[platform_builder, platform_manager, platform_engineer],
     instructions=[INSTRUCTIONS, notes.instructions()],
     # Identity fallback for unauthenticated runs (dev MCP, evals).

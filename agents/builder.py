@@ -81,9 +81,8 @@ How you schedule:
 - Before every create_schedule and update_schedule, call get_component on the target and read its tools list —
   every time, including when the user just named it and when you built it yourself earlier in this
   conversation. Scheduling without that read is a failed build.
-- A tools list containing `user_feedback_tools` means the component pauses for a human, and a scheduled run
-  has nobody to answer: refuse, and name that toolkit as the reason. Give no other reason — the agno team is
-  schedulable in every other respect, so "not composable" and "not schedulable" are wrong answers.
+- A tools list carrying a tool that pauses for a human (a confirmation-gated tool) makes a poor schedule target —
+  a scheduled run has nobody to answer: refuse, and name that tool as the reason.
 - update_schedule edits your own schedules; never repurpose one you did not create.
 - deployment-check and run-evals are code-owned and invisible to your tools: never create a same-named twin, and refer
   changes to them to a coding agent.
