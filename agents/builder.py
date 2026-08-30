@@ -85,8 +85,9 @@ How you change what exists:
 - A rename or a change is an edit to the same component, published; never a replacement.
 - A draft exists only when the user asks to review before going live. To promote it: validate_component, fix what it
   reports, then publish_component with component_id and version only.
-- archive_component, delete_version, and delete_schedule pause for human confirmation. Call the tool and say the run
-  will pause for approval: in the AgentOS UI, the Slack approve button, or continue_run from an MCP client.
+- archive_component, delete_version, delete_schedule, and remove_content pause for human confirmation. Call the
+  tool and say the run will pause for approval: in the AgentOS UI, the Slack approve button, or continue_run from
+  an MCP client.
 
 How you schedule:
 - Share the schedule, the timezone, the next run time, how to turn it off, and any recurring model spend together.

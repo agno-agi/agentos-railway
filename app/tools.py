@@ -3,24 +3,16 @@ Platform Tools
 ==============
 """
 
-import json
-import time
 from os import getenv
-from urllib.parse import urlparse
-from xml.etree import ElementTree
 
-import httpx
-import sqlalchemy as sa
-from agno.knowledge import Knowledge
-from agno.tools import Toolkit
 from agno.tools.file_generation import FileGenerationTools
+from agno.tools.knowledge_management import KnowledgeManagementTools
 from agno.tools.mcp import MCPTools
 from agno.tools.openai import OpenAITools
 from agno.tools.parallel import ParallelTools
 from agno.tools.slack import SlackTools
 
 from app.knowledge import product_knowledge
-from db.url import build_db_url
 
 AGNO_DOCS_MCP_URL = "https://docs.agno.com/mcp"
 
@@ -154,89 +146,6 @@ async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str
     return "website_reader", pages, failed
 
 
-class KnowledgeManagementTools(Toolkit):
-    """Load a website or docs site into a knowledge base, one row per page with its source URL."""
-
-    def __init__(self, knowledge: Knowledge, *, max_pages: int = DEFAULT_MAX_PAGES) -> None:
-        self.knowledge = knowledge
-        self.max_pages = max_pages
-        super().__init__(
-            name="knowledge_management",
-            tools=[self.ingest_url, self.list_content],
-        )
-
-    async def ingest_url(self, url: str, max_pages: int | None = None) -> str:
-        """Ingest a website or docs site into the knowledge base, one row per page with its source URL.
-
-        Discovers pages from the site's sitemap.xml (a sitemap index is followed) up to page_cap, in sitemap order.
-        A site without a sitemap gets the one page at `url`. Re-running refreshes pages already loaded.
-
-        Args:
-            url: Any page of the product's docs or website, e.g. https://docs.example.com. Prefer the docs subdomain.
-            max_pages: Maximum pages to ingest (default 50, hard cap 500). Coverage beats selection.
-
-        Returns:
-            JSON: ok, route (parallel or website_reader), pages, failed, chars, seconds, and a sample of page names.
-        """
-        parsed = urlparse(url if "://" in url else f"https://{url}")
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return json.dumps({"ok": False, "error": f"not an http(s) URL: {url}"})
-        cap = max(1, min(int(max_pages if max_pages is not None else self.max_pages), HARD_MAX_PAGES))
-        root = f"{parsed.scheme}://{parsed.netloc}"
-        start = time.monotonic()
-        urls = _sitemap_urls(root, cap)
-        used_sitemap = bool(urls)
-        if not urls:
-            urls = [parsed.geturl()]
-        route, pages, failed = await _extract(urls, parsed.netloc)
-        for page_url, title, content in pages:
-            page = urlparse(page_url)
-            await self.knowledge.ainsert(
-                name=f"{page.netloc}/{page.path.strip('/') or 'index'}",
-                text_content=f"# {title}\nSource: {page_url}\n\n{content}",
-                metadata={"url": page_url, "title": title, "source": "product-site", "host": parsed.netloc},
-            )
-        return json.dumps(
-            {
-                "ok": True,
-                "route": route,
-                "sitemap": used_sitemap,
-                "pages": len(pages),
-                "failed": failed,
-                "chars": sum(len(c) for _, _, c in pages),
-                "seconds": round(time.monotonic() - start, 1),
-                "sample": [f"{urlparse(u).netloc}/{urlparse(u).path.strip('/') or 'index'}" for u, _, _ in pages[:5]],
-            }
-        )
-
-    def list_content(self, host: str | None = None, limit: int = 50) -> str:
-        """List what the knowledge base holds, grouped by site.
-
-        Args:
-            host: Only list this host's pages, e.g. docs.example.com.
-            limit: Maximum page names listed per site.
-
-        Returns:
-            JSON: sites, each with name, pages, and a sample of page names. Empty when nothing is ingested yet.
-        """
-        table = getattr(self.knowledge.vector_db, "table_name", "product_knowledge")
-        engine = sa.create_engine(build_db_url())
-        with engine.connect() as conn:
-            rows = conn.execute(
-                sa.text(f"select metadata->>'host', name from ai.{table}_contents order by 1, 2")
-            ).fetchall()
-        by_host: dict[str, list[str]] = {}
-        for row_host, name in rows:
-            by_host.setdefault(row_host or "unknown", []).append(name)
-        if host is not None:
-            by_host = {h: n for h, n in by_host.items() if h == host}
-        return json.dumps(
-            {
-                "sites": [{"name": h, "pages": len(n), "sample": n[: max(1, int(limit))]} for h, n in by_host.items()],
-                "other": [],
-            }
-        )
-
-
 def get_knowledge_management_tools() -> KnowledgeManagementTools:
+    """The write side of the product knowledge base, mounted on Platform Builder."""
     return KnowledgeManagementTools(knowledge=product_knowledge)
