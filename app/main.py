@@ -103,10 +103,8 @@ agent_os = AgentOS(
                 name="agno",
                 title="Agno",
                 description=(
-                    "Talk to Agno, this platform's lead agent. Ask what's happening, file "
-                    "decisions and updates, and have it build, run, or explain anything on "
-                    "the platform. Send plain language; pass session_id back to continue "
-                    "the conversation."
+                    "Talk to Agno, the platform lead. Send plain language. "
+                    "Pass session_id back to continue the conversation."
                 ),
             )
         ],
