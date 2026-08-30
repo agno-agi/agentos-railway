@@ -79,4 +79,6 @@ PARALLEL_BATCH = 8
 
 def get_knowledge_management_tools() -> KnowledgeManagementTools:
     """The write side of the product knowledge base, mounted on Platform Builder."""
-    return KnowledgeManagementTools(knowledge=product_knowledge)
+    # ingest_path reads server-local files into the shared base; the platform's
+    # ingestion is URLs and text only.
+    return KnowledgeManagementTools(knowledge=product_knowledge, exclude_tools=["ingest_path"])
