@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from os import getenv
 from pathlib import Path
 
-from agno.os import AgentOS
+from agno.os import AgentOS, MCPConfig
 from agno.os.config import AuthorizationConfig
 from agno.utils.log import log_info
 
@@ -96,7 +96,21 @@ agent_os = AgentOS(
     scheduler_base_url=agentos_url,
     authorization=runtime_env != "dev",
     authorization_config=AuthorizationConfig(user_isolation=True),
-    mcp=True,
+    # MCP clients can run agno directly
+    mcp=MCPConfig(
+        tools=[
+            agno_team.as_tool(
+                name="agno",
+                title="Agno",
+                description=(
+                    "Talk to Agno, this platform's lead agent. Ask what's happening, file "
+                    "decisions and updates, and have it build, run, or explain anything on "
+                    "the platform. Send plain language; pass session_id back to continue "
+                    "the conversation."
+                ),
+            )
+        ],
+    ),
     mcp_auth=mcp_auth,
     lifespan=lifespan,
     db=get_postgres_db(),

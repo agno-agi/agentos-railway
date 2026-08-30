@@ -20,7 +20,7 @@
 #    Usage:
 #      ./scripts/mcp_check.sh                            # quick default probe
 #      ./scripts/mcp_check.sh "What does the platform run?"  # your own question
-#      MCP_EXPECTED_TOOLS=9 ./scripts/mcp_check.sh       # you extended /mcp
+#      MCP_EXPECTED_TOOLS=10 ./scripts/mcp_check.sh      # you extended /mcp
 #
 ############################################################################
 
@@ -36,11 +36,12 @@ NC='\033[0m'
 DEFAULT_QUESTION="Without using any tools, introduce yourself and this platform in two short sentences."
 QUESTION="${1:-$DEFAULT_QUESTION}"
 
-# The eight built-in tools agno registers for mcp_server=True with no MCPServerConfig:
-# get_agentos_config, run_agent, run_team, run_workflow, continue_run, cancel_run,
-# get_sessions, get_session_runs. Scoping them (include_tags/exclude_tags) or adding
-# custom ones moves the number — set MCP_EXPECTED_TOOLS to your own surface then.
-EXPECTED_TOOLS="${MCP_EXPECTED_TOOLS:-8}"
+# The eight built-in tools agno registers by default — get_agentos_config, run_agent,
+# run_team, run_workflow, continue_run, cancel_run, get_sessions, get_session_runs —
+# plus the agno front-door tool app/main.py publishes via MCPConfig(tools=[...]).
+# Scoping them (include_tags/exclude_tags) or adding your own moves the number — set
+# MCP_EXPECTED_TOOLS to your own surface then.
+EXPECTED_TOOLS="${MCP_EXPECTED_TOOLS:-9}"
 
 echo ""
 echo -e "${ORANGE}▸${NC} ${BOLD}MCP Check${NC}"
