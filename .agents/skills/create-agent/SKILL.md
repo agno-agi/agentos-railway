@@ -5,132 +5,71 @@ description: Add a new agent to this AgentOS. Runs guided discovery or takes a c
 
 # Create a New Agent
 
-> _**Coding-agent workflow** — a `/slash-command` your coding agent (Claude Code, Codex, others) runs while developing this repo. Invoke it by name (e.g. `/create-agent`) or describe the task and it triggers automatically._
+> _Coding-agent workflow: run as `/create-agent` or by describing the task._
 
-You are creating a new agent in this AgentOS. The user already has the platform running locally on `http://localhost:8000` (`RUNTIME_ENV=dev`); code edits hot-reload (Step 6).
+The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`); code edits hot-reload.
 
 ## 0. Preconditions
 
-- Live container reachable: `curl -sSf http://localhost:8000/health` returns 200. (`docker compose ps` is unreliable from worktrees or alternate clones — trust the health probe.)
-
-If it isn't reachable, ask the user to run `docker compose up -d --build` and wait for it to come up.
+`curl -sSf http://localhost:8000/health` returns 200. If not, ask the user to `docker compose up -d --build`.
 
 ## 1. Find the agent worth building
 
-**Be self-driving: ask only what needs a human, decide the rest, and say what you decided.** Two exchanges is the target — one to understand the job, one to confirm what you'll build.
+**Be self-driving: ask only what needs a human, decide the rest, say what you decided.** Two exchanges is the target. Use the harness's structured choice control for choice-shaped questions, plain prompts for free-form ones.
 
-Use the coding agent's structured user-input control when available (Claude Code's `AskUserQuestion`, Codex's user-input tool, or an equivalent) for the choice-shaped questions below. Use plain prompts for free-form answers.
+This skill builds lane 1 — a source file in `agents/`, governed by git. Lane 2 is a component Platform Builder composes at runtime; it can't touch the repo, so anything needing a code change (a toolkit the registry lacks, custom Python, a dependency, growing [`app/registry.py`](../../../app/registry.py)) is yours.
 
-### Two lanes, and this is yours
-
-Agents live in two places here. **Lane 1 is a source file in `agents/`, governed by git — this skill.** Lane 2 is a component Platform Builder composes at runtime from the registry, for people who aren't writing code. The user is here, so build the file.
-
-Lane 1 is the only one that can touch the repo, so it owns anything needing a code change: a toolkit or MCP server the registry doesn't carry, custom Python, a new dependency, a new skill, or growing [`app/registry.py`](../../../app/registry.py) — which is how lane 2 gets its blocks in the first place.
-
-**Check the id is free first.** Both lanes share an id space and code wins, so a file under a taken id doesn't error — it makes the runtime component vanish from `/agents` and from Agno's dispatch, rows still in the database.
+**Check the id is free first** — both lanes share one id space and code silently wins, hiding a Studio-built component under your file:
 
 ```bash
 curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\t\(.is_component)"'
 ```
 
-`is_component: true` marks the Studio-built ones; pick a different slug. Same check on `/teams` and `/workflows`. If the ask was really "change *that* agent" and it's a component, there's no file to edit — that one's Platform Builder's.
+**They named an agent** ("build me a GitHub PR reviewer") → ask nothing. Design it, state it in one message, start:
 
-### If they already named an agent
+> Building **PR Reviewer** (`pr-reviewer`) — reads open PRs on a repo and summarizes what changed and what looks risky. Uses `GithubTools`; needs `GITHUB_ACCESS_TOKEN`, already in your `.env`. Building now — stop me if I've read it wrong.
 
-"Build me a GitHub PR reviewer" is a complete brief. **Ask nothing.** Design it (Step 2), then state what you're building in one message and start:
+**They named a product** (a URL, "an agent for Acme") → the product-agent pattern in Step 3. Ask nothing beyond the URL.
 
-> Building **PR Reviewer** (`pr-reviewer`) — reads open PRs on a repo and summarizes what changed and what looks risky. Uses `GithubTools`; needs `GITHUB_ACCESS_TOKEN`, which is already in your `.env`. Building now — stop me if I've read it wrong.
+**They want guidance** → one question: *"What's something you do every week that you'd rather hand off?"* Dig once with a grounded follow-up (where do you look? what do you do with the result? what's the annoying part?), then propose one recommendation plus two alternates — name, one sentence, toolkit — grounded in the `agno-docs` MCP ([`.mcp.json`](../../../.mcp.json)). Skip the demo classics.
 
-Don't wait for a reply. Only pause if something is genuinely missing (see **Stop only for this**).
+Decide these yourself:
 
-### If they want guidance
-
-Open with **one** question:
-
-> What's something you do every week that you'd rather hand off?
-
-Their first answer will be vague — *"I keep up with what competitors ship"*. **Dig once:** a generic answer yields a generic agent, and nobody keeps one.
-
-Ask one grounded follow-up, in their own terms — whichever unlocks the design:
-
-- Where do you look when you do it? (Which repos, sites, channels, tools?)
-- What do you do with the result — post it, file it, decide from it?
-- What's the annoying part — the volume, the context-switching, the writing-up?
-
-Then propose **one agent you recommend**, plus two alternates — a recommendation with a fallback, not a menu. For each: a name, one sentence on what it does, and the toolkit(s) behind it, grounded in the `agno-docs` MCP ([`.mcp.json`](../../../.mcp.json)) — never invent one.
-
-Skip the demo classics (news digest, generic web researcher) unless that's what they described.
-
-### Decide these yourself — don't ask
-
-| Decision | How you decide it |
+| Decision | How |
 |---|---|
-| **Pattern** | **Product agent** (Step 3's product-agent section) when the ask names a product — theirs or one they use — and the job is answering questions about it: ingest its docs, knowledge search as the only tool. **Direct tools** (the required structure in Step 3; [`agents/manager.py`](../../../agents/manager.py) shows it live) when the agent uses ≤2 toolkits — the common case. **Context provider** (mirror the `codebase` wiring in [`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source — a single `query_<thing>` tool by default, or the provider's direct read tools in `ContextMode.tools` as the engineer does. Pick one and mention it in a clause. |
-| **Slug** | Derive it from the purpose (`pr-reviewer`, `linear-triager`). Kebab-case. State it. |
-| **Model** | `default_model()` (`gpt-5.6`). Override only if the user asks. |
-| **Toolkits** | Choose from what the discovery answers imply, grounded in agno docs (Step 2). Prefer what is already in this image and needs no key — the keyless Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, the shared notebook's scoped tools (`get_shared_notes_tools()`, [`app/notes.py`](../../../app/notes.py)) for files and state. Anything beyond that set costs a rebuild or a key, and an unverified import takes down the platform — check it in the container (Step 2). |
-| **Memory / history** | **Wire `learning=shared_learning`** ([`app/learning.py`](../../../app/learning.py)) whenever the agent should know the person it works for across sessions — most agents worth keeping. It joins the new agent to the same per-user self Agno and the three platform agents carry. Leave it off only when the agent's durable state isn't per-user (Step 3 notes). History defaults come from the template pattern. Don't ask either way; say which you did. |
+| **Pattern** | **Product agent** when the ask names a product. **Direct tools** ([`agents/manager.py`](../../../agents/manager.py)) for ≤2 toolkits — the common case. **Context provider** ([`agents/engineer.py`](../../../agents/engineer.py)) when it queries one information source. |
+| **Slug** | From the purpose, kebab-case (`pr-reviewer`). |
+| **Model** | `default_model()`. Override only if asked. |
+| **Toolkits** | From the discovery answers, grounded in docs. Prefer what's in the image and keyless: the Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, `get_shared_notes_tools()` for files and state. |
+| **Memory** | `learning=shared_learning` whenever the agent should know its person across sessions — most agents. Off when its durable state is the platform's, not a person's (a ledger, a queue), or for an end-user-facing product agent. Say which. |
 
-### Stop only for this
-
-An API key that the chosen toolkit **requires** and that isn't in `.env`. Check `.env` yourself first — don't ask the user what's in a file you can read. If a key is genuinely missing, say which toolkit needs it and offer the two real choices:
-
-- add the key to `.env` now (they paste it in; never read or print it), or
-- swap to a toolkit that's keyless *and already in the image* — verify the import (Step 2) before you offer it — or a variant of the idea that is, and build now. (Some jobs have no such route; then the key is the only choice — say so plainly.)
-
-Everything else — proceed and report.
+**Stop only for** an API key the chosen toolkit requires that isn't in `.env` (check yourself). Offer: add it to `.env` (never read or print it), or a keyless toolkit already in the image.
 
 ## 2. Ground the design in agno docs
 
-For every toolkit, MCP server, or integration the agent will use (Linear, Stripe, GitHub, …), search agno docs **before** writing code:
+For every toolkit or MCP server, search the `agno-docs` MCP (fallback: <https://docs.agno.com/llms.txt>) and capture the import path, the constructor args that matter, required env vars, and pip dependencies. Skip if chat-only.
 
-- Preferred: the `agno-docs` MCP server (configured in [`.mcp.json`](../../../.mcp.json)) — search for the toolkit / integration name and read the relevant page(s).
-- Fallback: fetch <https://docs.agno.com/llms.txt> and search inline for the relevant sections.
-
-For each toolkit, capture four things:
-
-- **Import path** (e.g. `from agno.tools.exa import ExaTools`).
-- **Constructor args** that matter for this agent (categories, domains, max_results, etc.).
-- **Required env vars** — check them against `.env` (Step 1, **Stop only for this**).
-- **Pip dependencies** — some toolkits need extra packages (`exa-py`, `anthropic`, `jina`, `yfinance`, …). The toolkit's `Prerequisites` section lists them. Capture now, then add them to `pyproject.toml` before generating `requirements.txt` in Step 6.
-
-Don't guess any of the four. Skip this step entirely if the agent is chat-only with no tools.
-
-### The image decides dependencies, not the docs page
-
-**Verify the import in the container before you write it.** 85 toolkit modules in this image import their third-party package at module scope and raise `ImportError` when it's missing. That is not a degraded agent, it's a dead platform: `app/main.py` imports every registered agent at module scope, so the `ImportError` propagates out of `app.main`, uvicorn's reload fails, and **nothing serves** — including the agents that worked a minute ago.
+**Verify every import in the container before writing it** — a missing package is a dead platform, not a degraded agent (`app/main.py` imports every agent at module scope):
 
 ```bash
 docker exec agentos-api python -c 'from agno.tools.exa import ExaTools'
 ```
 
-Silence means it's there. An `ImportError` names the package: either add it to `pyproject.toml` and take the rebuild path in Step 6, or pick a different toolkit.
-
-A docs page with no `Prerequisites` section proves nothing about this image: `ArxivTools` (`arxiv`, `pypdf`), `WikipediaTools` (`wikipedia`), and `WebSearchTools` / `DuckDuckGoTools` (`ddgs`) are all key-free and still fail to import here. Of the usual keyless suspects only `HackerNewsTools` is in the image.
-
-**For web search there is exactly one route that needs neither a key nor a rebuild** — the keyless Parallel MCP this platform already runs on ([`teams/lead.py`](../../../teams/lead.py), [`app/registry.py`](../../../app/registry.py)):
+Many key-free toolkits still fail to import here (`ArxivTools`, `WikipediaTools`, `DuckDuckGoTools`); of the usual suspects only `HackerNewsTools` is in the image. Web search without a key or rebuild is the keyless Parallel MCP this platform already runs on:
 
 ```python
 from agno.tools.mcp import MCPTools
 
-# Keyless. AgentOS connects and closes MCP servers as part of its lifespan.
-# timeout_seconds: web_fetch page extraction regularly exceeds the 10s MCP default.
 web_tools = MCPTools(
     url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
 )
 ```
 
-It exposes two tools, `web_search` and `web_fetch`. (`ParallelTools()` is the SDK path the same two files switch to when `PARALLEL_API_KEY` is set — mirror it only if the user has that key.)
+(`ParallelTools()` when the user has `PARALLEL_API_KEY`.) It exposes `web_search` and `web_fetch`. AgentOS manages MCP connect/close.
 
 ## 3. Generate the agent file
 
-Create `agents/<slug>.py` (replacing `-` with `_` for the filename: `agents/linear_agent.py`). Follow the closest reference pattern:
-
-- **Direct tools** → follow the required structure below. [`agents/manager.py`](../../../agents/manager.py) is the live example.
-- **Context provider** → mirror the `codebase` part of [`agents/engineer.py`](../../../agents/engineer.py): build the `WorkspaceContextProvider`, unpack `*provider.get_tools()` into `tools=`, and append `provider.instructions()` to the agent's instructions — without it the agent holds tools nobody explained.
-- **Studio builder** → mirror [`agents/builder.py`](../../../agents/builder.py) when the agent should create or refine AgentOS components through StudioTools.
-
-Required structure (no `offload_tool_results` — result offloading is for the four platform agents only; a new agent does not get it):
+Create `agents/<slug_underscore>.py`:
 
 ```python
 """
@@ -151,8 +90,7 @@ How you speak:
 - <one rule per line: tone, length, what to confirm>
 
 How you <work>:
-- <one rule per line: which tool for what, what to refuse, what to hand off>
-- <a sequence is a numbered list; no rationale, no examples longer than a clause>\
+- <one rule per line: which tool for what, what to refuse, what to hand off>\
 """
 
 <slug_underscore> = Agent(
@@ -160,11 +98,10 @@ How you <work>:
     name="<DisplayName>",
     model=default_model(),
     db=get_postgres_db(),
-    # The learning machine attaches its tools, guidance, and recall automatically.
     learning=shared_learning,
     # Identity fallback for unauthenticated runs (dev MCP, evals).
     user_id="anonymous-user",
-    tools=[...],                     # or context_provider.get_tools()
+    tools=[...],
     instructions=INSTRUCTIONS,
     add_datetime_to_context=True,
     add_history_to_context=True,
@@ -172,61 +109,50 @@ How you <work>:
 )
 ```
 
-Notes:
+- No `offload_tool_results` — that's for the four platform agents only.
+- Drop `learning=`/`user_id` only for a stated reason, in a comment. Platform-owned state goes in the shared notebook: `tools=[*get_shared_notes_tools(), ...]` ([`app/notes.py`](../../../app/notes.py)), working files under `<slug>/`.
+- Context provider: spread `provider.get_tools()` into `tools=` and append `provider.instructions()` to the instructions.
+- **Every line ≤120 characters, `INSTRUCTIONS` included** — the repo lints `E501` and ruff won't reflow string literals. Wrap long bullets with a two-space hanging indent like [`agents/manager.py`](../../../agents/manager.py).
 
-- **Drop the `learning=` / `user_id` pair only for a deliberate reason, and comment the reason in the file.** Per-user is the wrong shape when the agent's durable state belongs to the platform rather than to a person — a ledger of what it has already reported, a queue, anything a scheduled run has to read back: profile and memory rows are keyed by user id alone, so state filed there is invisible to the next user and to any run without one. File that state in the shared notebook, the platform's one file store ([`app/notes.py`](../../../app/notes.py)): `tools=[*get_shared_notes_tools(), ...]` mounts `read_file`, `append_file`, `list_files`, `search_content`, and `check_lines` over the `shared-notes` namespace and carries its own usage instructions (append nothing to `INSTRUCTIONS` for it); the agent keeps its working files in a directory named after it (`<slug>/`). Keep learning for what the agent knows about its human.
-- Don't add a `if __name__ == "__main__":` smoke block — the platform-driven workflow is the smoke test.
-- If the agent uses an `MCPTools` instance, pass it through `tools=[mcp_tools]` directly — AgentOS manages the connect/close lifecycle.
-- If a context provider needs a model, reuse `default_model()` so the model id stays in one place.
-- **Keep every line ≤120 characters — `INSTRUCTIONS` prose included.** The repo lints at `line-length = 120` (ruff `E501`, [`pyproject.toml`](../../../pyproject.toml)), and `agents/` is not exempt, so a long instruction line makes the user's first `./scripts/validate.sh` after building their first agent fail. The built-in agents ([`agents/manager.py`](../../../agents/manager.py)) wrap long bullets with a two-space hanging indent — match that. A hard wrap inside a bullet is fine; the model reads wrapped prose the same way. Write the lines short as you generate; ruff's formatter does **not** reflow long string literals, so this can't be auto-fixed after the fact.
+### The product agent
 
-### The product agent — knowledge-only over ingested docs
+Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes, no `learning=` — it can answer badly but must not act badly), and **the base is dedicated, never `shared-knowledge`** (operator content stays out of an end-user agent's retrieval).
 
-The agent that answers questions about one product from that product's own docs, and nothing else. It is the recommended *first* agent (setup-platform hands off here), and it exercises the platform's whole serving story: REST inside their product, chat apps via custom connectors, MCP. Two properties are trust decisions, not conveniences: **knowledge search is its only tool** (an agent facing end users can answer badly but must not be able to act badly — no web tools, no notes, no `learning=`), and **its base is dedicated, never `shared-knowledge`** (the shared base is operator-trust content; this one is public product content for an untrusted audience, and re-ingestion rebuilds it wholesale).
+Decide and state: slug from the product; root URL (prefer the docs subdomain); page cap **50** — ingest the sitemap in order up to the cap, never a keyword slice (a skipped page turns a true answer into "not documented"); base `"<Product> Knowledge"`, table `<slug_underscore>_vectors`. Cost, said once: embeddings are under a cent for 50 pages; Parallel spends about one credit per 8 pages.
 
-Decide yourself and state it: slug from the product (`acme-agent`); root URL — prefer the docs subdomain over the marketing site; page cap **50** (coverage beats selection: a skipped page turns a *true* answer into "that's not documented" — ingest the sitemap in order up to the cap, never a keyword slice); base `"<Product> Knowledge"` / table `<slug_underscore>_vectors`. Say the cost once: embeddings are well under a cent for 50 pages; the Parallel route spends Parallel credits, about one request per 8 pages.
+**Discover:** `<root>/sitemap.xml`. A `<sitemapindex>` lists child sitemaps — follow each (Railway's docs are one; a naive read yields one "page").
 
-**Discover pages:** `<root>/sitemap.xml`, `<loc>` entries up to the cap. Check the root element — a `<sitemapindex>` lists child sitemaps, not pages; follow each child (Railway's docs are one; a naive read yields one "page").
-
-**Ingest — one good route, one fallback. Check `.env` for `PARALLEL_API_KEY` yourself:**
-
-- **Parallel Extract (key set) — prefer it.** Clean markdown per page, JS-heavy pages and PDFs handled, measured 24–50 pages in 13–26s. Batch 8 URLs per call and insert **one content row per page with the URL in metadata** — that structure is what makes citations possible:
-
-  ```python
-  from agno.tools.parallel import ParallelTools
-  from db import create_knowledge
-
-  kb = create_knowledge("<Product> Knowledge", "<slug_underscore>_vectors")
-  raw = ParallelTools().parallel_extract(urls=batch, full_content=True, max_chars_for_full_content=40000)
-  # for each result page:
-  await kb.ainsert(
-      name=<url path>,
-      text_content=f"# {title}\nSource: {url}\n\n{content}",
-      metadata={"url": url, "title": title, "source": "product-site"},
-      skip_if_exists=True,
-  )
-  ```
-
-- **WebsiteReader (no key) — same shape, one page at a time.** Never crawl from the root (`max_depth=2` lands the whole site as **one content row** — no per-page names, no citations). Read each sitemap URL with a non-crawling reader and insert it exactly like the Parallel route, `Source:` header included — measured ≈2.4s/page against Parallel's ≈0.5s, and it cannot read JS-rendered pages or PDFs:
-
-  ```python
-  from agno.knowledge.reader.website_reader import WebsiteReader
-
-  reader = WebsiteReader(max_depth=1, max_links=1, allowed_hosts=[host])
-  docs = await reader.async_read(url)
-  content = "\n\n".join(d.content for d in docs if d.content)
-  # then the same kb.ainsert(name=..., text_content=f"# {title}\nSource: {url}\n\n{content}", metadata=...) as above
-  ```
-
-Write the ingestion as `scripts/ingest_<slug>.py` (loads `.env` like `evals/__main__.py`; branch on `PARALLEL_API_KEY` between the two extractors, one insert shape) and run it now **inside the container** — `docker exec agentos-api python scripts/ingest_<slug>.py` — which has agno, `.env`, and the database and needs no host venv (a fresh clone has none yet). Measured on a fresh clone: 50 pages in ~2 minutes on the keyless route. Leaving the script in the repo makes re-ingestion a command, and a stale base gives wrong answers inside the user's own product. Verify rows landed (`ai.<table>_contents` ≈ pages, `ai.<table>` > 0) before generating anything; zero rows is a stop.
-
-**The file** — the same structure as above, with these differences: no `learning=` and no tools beyond the base (comment the reason), `knowledge=<slug_underscore>_knowledge`, and this instruction template. The rules under "What counts as documented" are the load-bearing part: the model *remembers the real docs* and will otherwise complete gaps from memory — exact flags, prices, code — under a real-but-irrelevant citation. Measured across three products and 92 probes, these rules took fabricated citations to zero and ungrounded details to zero on uncovered topics without costing anything on covered ones.
+**Ingest — one insert shape, two extractors.** Check `.env` for `PARALLEL_API_KEY` yourself:
 
 ```python
-# Dedicated base on purpose: shared-knowledge is operator-trust content; this is
-# public product content for an untrusted audience. Loaded by scripts/ingest_<slug>.py.
-<slug_underscore>_knowledge = create_knowledge("<Product> Knowledge", "<slug_underscore>_vectors")
+from db import create_knowledge
 
+kb = create_knowledge("<Product> Knowledge", "<slug_underscore>_vectors")
+
+# Key set — Parallel Extract: clean markdown, JS pages and PDFs, ~0.5s/page. Batch 8 URLs per call.
+from agno.tools.parallel import ParallelTools
+raw = ParallelTools().parallel_extract(urls=batch, full_content=True, max_chars_for_full_content=40000)
+# → for each result: url, title, content = page["url"], page["title"], page["full_content"]
+
+# No key — per-page WebsiteReader, ~2.4s/page. Never crawl from the root (one blob, no citations).
+from agno.knowledge.reader.website_reader import WebsiteReader
+docs = await WebsiteReader(max_depth=1, max_links=1, allowed_hosts=[host]).async_read(url)
+content = "\n\n".join(d.content for d in docs if d.content)
+
+# Either way, one content row per page with the URL in the text and the metadata:
+await kb.ainsert(
+    name=<url path>,
+    text_content=f"# {title}\nSource: {url}\n\n{content}",
+    metadata={"url": url, "title": title, "source": "product-site"},
+    skip_if_exists=True,
+)
+```
+
+Write it as `scripts/ingest_<slug>.py` (loads `.env` like `evals/__main__.py`) and run it **inside the container** — `docker exec agentos-api python scripts/ingest_<slug>.py` — no host venv needed; a fresh clone has none. Measured: 50 pages in ~2 minutes keyless. The script stays in the repo so re-ingestion is a command. Verify rows before generating anything (`ai.<table>_contents` ≈ pages); zero rows is a stop.
+
+**The file:** the structure above with `knowledge=<slug_underscore>_knowledge`, no `learning=`, no tools, the base declared beside it (`create_knowledge(...)` with a comment saying why it's dedicated), and this instruction template. The "What counts as documented" rules are the load-bearing part — the model remembers the real docs and will otherwise complete gaps from memory under a real-but-irrelevant citation. Measured across three products and 92 probes, these rules took fabricated citations and ungrounded details to zero without costing covered answers.
+
+```python
 INSTRUCTIONS = """\
 You are the <Product> product agent: you answer questions about <Product> from
 the product documentation in your knowledge base, and from nothing else.
@@ -257,13 +183,11 @@ How you work:
 """
 ```
 
-In Step 4, import the base alongside the agent and add it to `knowledge=[shared_knowledge, <slug_underscore>_knowledge]` so the AgentOS UI's Knowledge page shows it. In Step 7, run **three probes, not one**: a covered question (concrete details plus a Source URL), an in-scope question the cap probably excluded (a grounded refusal pointing at support — the pass that matters most), and an off-topic one (a scoped refusal). Before calling a refusal-probe answer a leak, check the base — `select count(*) from ai.<table> where content ilike '%<detail>%'` for the specific command or value it stated: index and cheat-sheet pages cover far more topics than their titles suggest, and a detail that is in the base is grounded even when the topic's own page was never ingested. If the covered probe answers thinly, raise the cap and re-ingest before touching the prompt.
-
-In Step 9, lead the hand-over with the serving story: live now in the UI, over MCP, and on Agno's roster; the developer and team from claude.ai/ChatGPT via custom connectors once deployed; and **the production path for their end users** — REST with per-user JWTs (this platform ships `user_isolation=True`, and `JWT_JWKS_FILE` lets their product's existing login mint the tokens), which along with shipping to end users through chat apps is the enterprise-shaped part of the story. Re-run `scripts/ingest_<slug>.py` when the docs change.
+Step 4: import the base too and add it to `knowledge=[shared_knowledge, <slug_underscore>_knowledge]` so the UI's Knowledge page shows it. Step 7: three probes, not one — a covered question (details plus a Source URL), an in-scope question the cap probably excluded (a grounded refusal pointing at support — the pass that matters most), an off-topic one (a scoped refusal). Before calling a refusal-probe answer a leak, check the base: `select count(*) from ai.<table> where content ilike '%<detail>%'` — index and cheat-sheet pages cover far more than their titles, and a detail that's in the base is grounded. Thin covered answers → raise the cap and re-ingest before touching the prompt. Step 9: lead with the serving story — live in the UI, over MCP, on Agno's roster; claude.ai/ChatGPT via connectors once deployed; and for their end users, REST with per-user JWTs (`user_isolation=True` ships on; `JWT_JWKS_FILE` lets their login mint the tokens) — the enterprise-shaped part. Re-run `scripts/ingest_<slug>.py` when the docs change.
 
 ## 4. Register in `app/main.py`
 
-Add the import and put the new agent first in the `agents=[…]` list:
+Import it and put it **first** in `agents=[…]` — it's what the platform is for; the platform agents come after. That line also puts it on Agno's roster (the team runs every registered agent by name).
 
 ```python
 from agents.<slug_underscore> import <slug_underscore>
@@ -271,101 +195,43 @@ from agents.<slug_underscore> import <slug_underscore>
 agent_os = AgentOS(
     ...
     agents=[<slug_underscore>, platform_builder, platform_manager, platform_engineer],
-    ...
 )
 ```
 
-First, because this is the agent the people here actually talk to: Platform Builder, Manager, and Engineer run the platform and are usually reached through Agno rather than directly. The order carries into the AgentOS UI's agent list and into `get_agentos_config`, so what the platform is *for* reads before the machinery that runs it.
-
-This line also puts the agent on Agno's roster: the team lead's runner dispatches every code-defined agent the OS registers, so people can ask for it by name ("Agno, have radar scan the week") from the AgentOS UI, Slack, or any MCP client.
-
 ## 5. Manifest entry
 
-Add the agent to [`app/config.yaml`](../../../app/config.yaml) under `manifest`, keyed by the agent's `id`: a one-line description and three suggested prompts. The description renders on the AgentOS home card; quick prompts on the chat page. (The `description=` param on `Agent` is not used in this repo — UI metadata lives here. Optional `labels: [...]` are also supported for home-card tags.)
+In [`app/config.yaml`](../../../app/config.yaml) under `manifest`, keyed by id: one-line description and three quick prompts (the home card and chat page read these; `Agent(description=)` is unused here).
 
-```yaml
-manifest:
-  <slug>:
-    description: "<one line on what the agent does>"
-    quick_prompts:
-      - "First example prompt"
-      - "Second example prompt"
-      - "Third example prompt"
-```
-
-## 6. Reload the container
-
-Compose runs uvicorn with a scoped `--reload`, so the new file and its `app/main.py` registration are picked up within a couple of seconds. A restart is the deterministic option:
-
-- **No new pip deps** (the common case):
-
-  ```bash
-  docker compose restart agentos-api
-  ```
-
-- **New pip deps found in Step 2** — add each package to [`pyproject.toml`](../../../pyproject.toml), then update `requirements.txt` and rebuild:
-
-  ```bash
-  ./scripts/generate_requirements.sh
-  docker compose up -d --build
-  ```
-
-Then verify the agent shows up in the registry before smoke-testing:
+## 6. Reload
 
 ```bash
-curl -s http://localhost:8000/agents | jq -r '.[].id' | grep <slug>
+docker compose restart agentos-api                                   # no new deps
+./scripts/generate_requirements.sh && docker compose up -d --build   # new deps in pyproject.toml
+curl -s http://localhost:8000/agents | jq -r '.[].id' | grep <slug>  # missing → Step 8
 ```
-
-If `<slug>` isn't in the list, the restart didn't pick up your edits — jump to Step 8.
 
 ## 7. Smoke test
 
-Poll `/health` until the API is back up, then probe the agent with **one of the quick prompts you wrote in Step 5** (so the smoke test exercises what real users will hit). Substitute `<slug>` and the `message=` value before running:
-
 ```bash
 until curl -sSf http://localhost:8000/health > /dev/null; do sleep 0.5; done
-
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
-  -F "message=<one of the quick_prompts you just wrote>" \
-  -F "user_id=claude-create-agent" \
-  -F "stream=false" \
-  -o /tmp/agent-out.json \
-  -w "HTTP %{http_code} in %{time_total}s\n"
-
+  -F "message=<one of the quick_prompts>" -F "user_id=claude-create-agent" -F "stream=false" \
+  -o /tmp/agent-out.json -w "HTTP %{http_code} in %{time_total}s\n"
 jq -r '.content // .' < /tmp/agent-out.json
+docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40   # which tools fired
 ```
 
-Pass = `HTTP 200` and a non-empty `.content` field.
+Pass = 200 and non-empty content. Studio-builder-pattern agents: probe read-only ("What components can you see?") — a "build me X" prompt creates and publishes a real component.
 
-> **Studio-builder-pattern agents:** create/edit StudioTools execute immediately against the DB, and the builder pattern treats publish as completion — only `archive_component`, `delete_version`, and `delete_schedule` pause for confirmation. Don't smoke-test with a "Build me X" quick prompt; it will create and publish a real component. Probe with a read-only prompt instead (e.g. "What components can you see in the registry?"), or archive anything the smoke test created (the archive pauses for approval — grant it in the AgentOS UI, or over MCP with the `continue_run` tool).
+## 8. If it fails
 
-Check the container logs to see which tools fired:
+- **404** — not registered, not restarted, or the container is bound to another checkout: `docker inspect agentos-api --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}'`.
+- **5xx** — `docker logs agentos-api --tail 50`: usually an import error, a missing env var, or a typo in `tools=`.
+- **Empty response** — tool errors in the logs (rate limit, key, MCP unreachable). Tell the user.
+- **Tool not firing** — the prompt isn't strong enough; suggest [`improve-agent`](../improve-agent/SKILL.md).
 
-```bash
-docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40
-```
-
-(`Running: <tool>(` is the line shape agno emits per tool call when `AGNO_DEBUG=True`, which compose sets for dev. Without `AGNO_DEBUG`, expect no matches — `HTTP 200` and a non-empty body are then your only signal.)
-
-## 8. If the smoke test fails
-
-- **HTTP 404** — the agent isn't registered, the container wasn't restarted, or your edits aren't reaching the bind-mount. Re-check Step 4 and Step 6. If both look right, run `docker inspect agentos-api --format '{{ range .Mounts }}{{ .Source }} → {{ .Destination }}{{ "\n" }}{{ end }}'` to confirm `/app` is bound to *this* repo's path (a stale clone or a different worktree is a common cause).
-- **HTTP 5xx** — read `docker logs agentos-api --tail 50` for the traceback. Most failures are import errors, missing env vars, or a typo in the agent's `tools=` list.
-- **Empty response** — check the logs for tool call errors (rate limits, missing API keys, MCP server unreachable). Tell the user what went wrong; don't paper over it.
-- **Tool not firing when expected** — the instruction prompt isn't strong enough. Tell the user; suggest tightening or running [`improve-agent`](../improve-agent/SKILL.md) once the agent is loaded.
-
-Iterate at most 2-3 times on the prompt before stopping and asking the user.
+Iterate 2–3 times, then ask.
 
 ## 9. Done
 
-When the smoke test passes:
-
-1. **Show them their agent working.** Lead with the answer it just gave in the smoke test. Then the slug, and where to reach it: `https://os.agno.com` (hit **Refresh**, top right, and it's in the Agents list next to the built-in ones), or `http://localhost:8000` directly if their OS isn't connected; the MCP endpoint at `/mcp` (`run_agent` tool); and Agno's roster (Step 4), so they can ask the team lead for it by name — say that one out loud.
-2. **Hand them the loop.** The agent is a first draft; the ways to sharpen it are already in this session:
-   - [`/extend-agent`](../extend-agent/SKILL.md) — they drive: add a tool or source, teach it a new trick, fix something it got wrong.
-   - [`/improve-agent`](../improve-agent/SKILL.md) — you drive: probe it against its own `INSTRUCTIONS`, judge, edit, re-probe until it's reliable. No input needed from them.
-   - [`/create-evals`](../create-evals/SKILL.md) — pin today's behavior down as tests. Offer to persist the smoke test that just passed as the first case, so the eval suite (and the scheduled run-evals check) watches their agent from day one. (Studio-builder agents: the smoke probe was deliberately read-only — create-evals is where the build loop gets tested safely, because its cases carry snapshot hooks that delete whatever a run creates.)
-
-   Suggest whichever fits what the smoke test actually showed — if a tool didn't fire or an answer was thin, name that and point at the loop that fixes it.
-
-A simple agent usually takes 5-10 minutes from invoking the `create-agent` skill to working. More if the user asks for custom tools or an MCP server with auth.
+Lead with the smoke-test answer. Then where it lives: `https://os.agno.com` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/improve-agent`](../improve-agent/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). A simple agent takes 5–10 minutes; a product agent about the same, ingestion being most of it.
