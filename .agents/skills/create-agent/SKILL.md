@@ -120,11 +120,11 @@ Answers questions about one product from that product's docs, and nothing else. 
 
 Decide and state: slug from the product; root URL (prefer the docs subdomain); page cap **50** — the sitemap in order up to the cap, never a keyword slice (a skipped page turns a true answer into "not documented"). Cost, said once: embeddings under a cent for 50 pages; Parallel spends about one credit per 8 pages.
 
-**Ingest** with the platform's own function ([`app/tools.py`](../../../app/tools.py) — sitemap discovery with indexes followed, Parallel Extract when `PARALLEL_API_KEY` is set, page-by-page `WebsiteReader` otherwise, one row per page with a `Source:` header). Run it inside the container — no host venv needed:
+**Ingest** with the platform's own function ([`app/tools.py`](../../../app/tools.py) — sitemap discovery with indexes followed, Parallel-backed extraction when `PARALLEL_API_KEY` is set with a built-in fetcher otherwise, one row per page with its source URL). Run it inside the container — no host venv needed:
 
 ```bash
-docker exec agentos-api python -c "import asyncio; from app.tools import KnowledgeManagementTools; \
-print(asyncio.run(KnowledgeManagementTools().ingest_url('https://docs.example.com')))"
+docker exec agentos-api python -c "import asyncio; from app.tools import get_knowledge_management_tools; \
+print(asyncio.run(get_knowledge_management_tools().ingest_url('https://docs.example.com')))"
 ```
 
 It returns `pages`, `route`, and `seconds` (50 pages: ~25s with Parallel, ~2 minutes without). Zero pages is a stop. Re-run it when the docs change — it refreshes in place.

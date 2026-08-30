@@ -80,8 +80,8 @@ def get_file_generation_tools() -> list[FileGenerationTools]:
     return [FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False)]
 
 
-DEFAULT_PAGE_CAP = 50
-MAX_PAGE_CAP = 200
+DEFAULT_MAX_PAGES = 50
+HARD_MAX_PAGES = 500
 PARALLEL_BATCH = 8
 
 
@@ -157,14 +157,15 @@ async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str
 class KnowledgeManagementTools(Toolkit):
     """Load a website or docs site into a knowledge base, one row per page with its source URL."""
 
-    def __init__(self, knowledge: Knowledge = product_knowledge) -> None:
+    def __init__(self, knowledge: Knowledge, *, max_pages: int = DEFAULT_MAX_PAGES) -> None:
         self.knowledge = knowledge
+        self.max_pages = max_pages
         super().__init__(
             name="knowledge_management",
-            tools=[self.ingest_url, self.list_ingested_sources],
+            tools=[self.ingest_url, self.list_content],
         )
 
-    async def ingest_url(self, url: str, page_cap: int = DEFAULT_PAGE_CAP) -> str:
+    async def ingest_url(self, url: str, max_pages: int | None = None) -> str:
         """Ingest a website or docs site into the knowledge base, one row per page with its source URL.
 
         Discovers pages from the site's sitemap.xml (a sitemap index is followed) up to page_cap, in sitemap order.
@@ -172,7 +173,7 @@ class KnowledgeManagementTools(Toolkit):
 
         Args:
             url: Any page of the product's docs or website, e.g. https://docs.example.com. Prefer the docs subdomain.
-            page_cap: Maximum pages to ingest (default 50, hard cap 200). Coverage beats selection.
+            max_pages: Maximum pages to ingest (default 50, hard cap 500). Coverage beats selection.
 
         Returns:
             JSON: ok, route (parallel or website_reader), pages, failed, chars, seconds, and a sample of page names.
@@ -180,7 +181,7 @@ class KnowledgeManagementTools(Toolkit):
         parsed = urlparse(url if "://" in url else f"https://{url}")
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             return json.dumps({"ok": False, "error": f"not an http(s) URL: {url}"})
-        cap = max(1, min(int(page_cap), MAX_PAGE_CAP))
+        cap = max(1, min(int(max_pages if max_pages is not None else self.max_pages), HARD_MAX_PAGES))
         root = f"{parsed.scheme}://{parsed.netloc}"
         start = time.monotonic()
         urls = _sitemap_urls(root, cap)
@@ -208,11 +209,15 @@ class KnowledgeManagementTools(Toolkit):
             }
         )
 
-    def list_ingested_sources(self) -> str:
-        """List what the knowledge base holds: hosts, page counts, and the first page names per host.
+    def list_content(self, host: str | None = None, limit: int = 50) -> str:
+        """List what the knowledge base holds, grouped by site.
+
+        Args:
+            host: Only list this host's pages, e.g. docs.example.com.
+            limit: Maximum page names listed per site.
 
         Returns:
-            JSON: total pages and a per-host breakdown. Empty when nothing has been ingested yet.
+            JSON: sites, each with name, pages, and a sample of page names. Empty when nothing is ingested yet.
         """
         table = getattr(self.knowledge.vector_db, "table_name", "product_knowledge")
         engine = sa.create_engine(build_db_url())
@@ -221,11 +226,17 @@ class KnowledgeManagementTools(Toolkit):
                 sa.text(f"select metadata->>'host', name from ai.{table}_contents order by 1, 2")
             ).fetchall()
         by_host: dict[str, list[str]] = {}
-        for host, name in rows:
-            by_host.setdefault(host or "unknown", []).append(name)
+        for row_host, name in rows:
+            by_host.setdefault(row_host or "unknown", []).append(name)
+        if host is not None:
+            by_host = {h: n for h, n in by_host.items() if h == host}
         return json.dumps(
             {
-                "total_pages": len(rows),
-                "hosts": [{"host": h, "pages": len(n), "sample": n[:5]} for h, n in by_host.items()],
+                "sites": [{"name": h, "pages": len(n), "sample": n[: max(1, int(limit))]} for h, n in by_host.items()],
+                "other": [],
             }
         )
+
+
+def get_knowledge_management_tools() -> KnowledgeManagementTools:
+    return KnowledgeManagementTools(knowledge=product_knowledge)

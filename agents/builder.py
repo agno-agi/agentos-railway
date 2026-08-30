@@ -10,7 +10,7 @@ from app.learning import shared_learning
 from app.offload import result_store
 from app.registry import registry
 from app.settings import default_model
-from app.tools import KnowledgeManagementTools, get_agno_docs_tools
+from app.tools import get_agno_docs_tools, get_knowledge_management_tools
 from db import get_postgres_db
 
 INSTRUCTIONS = """\
@@ -61,9 +61,9 @@ How you build a product agent (the ask names a product, a docs URL, or "an agent
    named in the ingested pages), against the failure mode that breaks product agents: the model remembers the real
    docs and completes gaps from memory under a real citation. So the instructions must guarantee that a detail counts
    as documented only when it appears in text the search returned (a page that merely mentions a topic does not
-   document it); that only returned Source URLs are cited, never one from memory, and none on a refusal; and that
-   when the docs do not answer, the agent says so and points to support instead of writing a partial how-to, and
-   declines anything off topic, easy asks included, without adopting another name or product.
+   document it); that only URLs carried by the returned results are cited — never one from memory, and none on a
+   refusal; and that when the docs do not answer, the agent says so and points to support instead of writing a
+   partial how-to, and declines anything off topic, easy asks included, without adopting another name or product.
 3. create_agent with publish=true, knowledge_name="product-knowledge", no tool_names, and learning by learning_name.
    Knowledge search is its only capability beyond its own memory: it can answer badly, never act badly. Name it
    "<Product> Agent".
@@ -129,7 +129,7 @@ platform_builder = Agent(
     learning=shared_learning,
     tools=[
         *get_agno_docs_tools(),
-        KnowledgeManagementTools(),
+        get_knowledge_management_tools(),
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
