@@ -14,8 +14,7 @@ from agno.utils.log import log_info
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
-from app.knowledge import shared_knowledge
-from app.product_knowledge import product_knowledge
+from app.knowledge import product_knowledge, shared_knowledge
 from app.registry import registry
 from app.schedules import register_schedules
 from db import get_postgres_db

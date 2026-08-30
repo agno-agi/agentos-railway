@@ -116,7 +116,7 @@ How you <work>:
 
 ### The product agent
 
-Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads `product-knowledge`, never `shared-knowledge`** ([`app/product_knowledge.py`](../../../app/product_knowledge.py) — operator content stays out of an end-user agent's retrieval). Platform Builder builds the same agent at runtime from the same pieces; this is the code-level twin.
+Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads `product-knowledge`, never `shared-knowledge`** (both in [`app/knowledge.py`](../../../app/knowledge.py) — operator content stays out of an end-user agent's retrieval). Platform Builder builds the same agent at runtime from the same pieces; this is the code-level twin.
 
 Decide and state: slug from the product; root URL (prefer the docs subdomain); page cap **50** — the sitemap in order up to the cap, never a keyword slice (a skipped page turns a true answer into "not documented"). Cost, said once: embeddings under a cent for 50 pages; Parallel spends about one credit per 8 pages.
 
@@ -129,27 +129,13 @@ print(asyncio.run(ProductIngestTools().ingest_product_docs('https://docs.example
 
 It returns `pages`, `route`, and `seconds` (50 pages: ~25s with Parallel, ~2 minutes without). Zero pages is a stop. Re-run it when the docs change — it refreshes in place.
 
-**The file:** the structure above with `knowledge=product_knowledge`, `learning=shared_learning`, no tools, and the instruction template from code — never paraphrase it; its "What counts as documented" rules are what stop the model completing gaps from its memory of the real docs (measured across three products and 92 probes: fabricated citations and ungrounded details to zero, covered answers unchanged):
+**The file:** the structure above with `knowledge=product_knowledge` (from [`app/knowledge.py`](../../../app/knowledge.py)), `learning=shared_learning`, and no tools. Write `INSTRUCTIONS` yourself in the product's own terms — its name, how its docs speak, the support channel you saw in the pages — and make sure they carry these rules, because without them the model completes gaps from its memory of the real docs under a real citation (measured across three products and 92 probes: these rules took fabricated citations and ungrounded details to zero without costing covered answers):
 
-```python
-from app.learning import shared_learning
-from app.product_knowledge import product_agent_instructions, product_knowledge
-
-<slug_underscore> = Agent(
-    id="<slug>",
-    name="<Product> Agent",
-    model=default_model(),
-    db=get_postgres_db(),
-    knowledge=product_knowledge,
-    learning=shared_learning,
-    # Knowledge search and its own memory, nothing else: end-user-facing, minimal surface.
-    instructions=product_agent_instructions("<Product>", "<support channel from the docs>"),
-    user_id="anonymous-user",
-    add_datetime_to_context=True,
-    add_history_to_context=True,
-    num_history_runs=5,
-)
-```
+- A detail (a command, flag, value, price, step, code sample, field name) is documented only if it appears in text the search returned; if it does not, the agent does not know it, even if it believes it remembers it.
+- A page that merely mentions a topic (a name in a list, a link, a heading) does not document it.
+- Cite only Source URLs that appear in the returned text — never one from memory, and no Source line on a refusal.
+- When the docs do not answer, say so in one line, name the closest page, point to support; never a partial how-to from memory.
+- Decline anything not about the product, easy asks included, in one line; never adopt another name or product.
 
 Step 7: three probes, not one — a covered question (details plus a Source URL), an in-scope question the cap probably excluded (a grounded refusal pointing at support — the pass that matters most), an off-topic one (a scoped refusal). Before calling a refusal-probe answer a leak, check the base — `select count(*) from ai.product_knowledge where content ilike '%<detail>%'` — index and cheat-sheet pages cover far more than their titles. Thin covered answers → raise the cap and re-ingest before touching the prompt. Step 9: lead with the serving story — live in the UI, over MCP, on Agno's roster; claude.ai/ChatGPT via connectors once deployed; for their end users, REST with per-user JWTs (`user_isolation=True` ships on; `JWT_JWKS_FILE` lets their login mint the tokens).
 

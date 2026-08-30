@@ -201,9 +201,8 @@ def _check_registry_resources() -> CheckResult:
     way: strict rehydration refuses the ambiguity rather than guess which store to bind.
     """
     try:
-        from app.knowledge import KNOWLEDGE_NAME
+        from app.knowledge import KNOWLEDGE_NAME, PRODUCT_KNOWLEDGE_NAME
         from app.learning import SHARED_LEARNING_NAME
-        from app.product_knowledge import PRODUCT_KNOWLEDGE_NAME
         from app.registry import registry
     except Exception as exc:
         return _fail("Registry", f"Could not import the registry and its named resources: {exc}")

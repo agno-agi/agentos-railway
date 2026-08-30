@@ -19,7 +19,7 @@ import httpx
 import sqlalchemy as sa
 from agno.tools import Toolkit
 
-from app.product_knowledge import product_agent_instructions, product_knowledge
+from app.knowledge import product_knowledge
 from db.url import build_db_url
 
 DEFAULT_PAGE_CAP = 50
@@ -97,12 +97,12 @@ async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str
 
 
 class ProductIngestTools(Toolkit):
-    """Load a product's docs into the product knowledge base and hand out the product agent template."""
+    """Load a product's docs into the product knowledge base."""
 
     def __init__(self) -> None:
         super().__init__(
             name="product_ingest",
-            tools=[self.ingest_product_docs, self.list_product_sources, self.product_agent_instructions],
+            tools=[self.ingest_product_docs, self.list_product_sources],
         )
 
     async def ingest_product_docs(self, url: str, page_cap: int = DEFAULT_PAGE_CAP) -> str:
@@ -169,13 +169,3 @@ class ProductIngestTools(Toolkit):
                 "hosts": [{"host": h, "pages": len(n), "sample": n[:5]} for h, n in by_host.items()],
             }
         )
-
-    def product_agent_instructions(self, product: str, support_channel: str) -> str:
-        """The instruction text for a product agent, ready to pass to create_agent as `instructions`.
-
-        Args:
-            product: The product's name as users say it, e.g. "Railway".
-            support_channel: Where the agent sends people it cannot help, from the docs, e.g.
-                "Railway's Central Station (station.railway.com) or Discord".
-        """
-        return product_agent_instructions(product, support_channel)

@@ -74,7 +74,7 @@ Below the connect direction, ask the one question that starts it — plain text,
 
 Whatever they type is the first discovery answer for [`create-agent`](../create-agent/SKILL.md): a URL or product name takes its **product-agent pattern** (Step 3 there); anything else takes its normal path. Close the message with the first build move, never with "ready?".
 
-**The product brief** you hand create-agent when they name a product — complete, so it builds without asking more: the product pattern (Step 3 there), ingest with `app/ingest.py`'s `ingest_product_docs` inside the container (Parallel Extract if `PARALLEL_API_KEY` is set, else the per-page route — same rows and citations, slower; a fresh clone lands here), page cap 50, `knowledge=product_knowledge`, `learning=shared_learning`, the instruction template from `app/product_knowledge.py`, no other tools; three smoke probes.
+**The product brief** you hand create-agent when they name a product — complete, so it builds without asking more: the product pattern (Step 3 there), ingest with `app/ingest.py`'s `ingest_product_docs` inside the container (Parallel Extract if `PARALLEL_API_KEY` is set, else the per-page route — same rows and citations, slower; a fresh clone lands here), page cap 50, `knowledge=product_knowledge`, `learning=shared_learning`, instructions you write that carry the grounding rules in create-agent's product pattern, no other tools; three smoke probes.
 
 Follow create-agent through its smoke test, then land where the agent now lives, in the same breath as its first answer:
 
