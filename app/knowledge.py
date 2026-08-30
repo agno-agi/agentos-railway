@@ -2,14 +2,11 @@
 Knowledge
 =========
 
-Two PgVector knowledge bases, kept apart on purpose.
+Two PgVector knowledge bases available to the platform components:
 
-- shared-knowledge: the operators' base. Load documents through the AgentOS UI or
-  the `/knowledge` API. Anything a platform agent should know goes here.
-- product-knowledge: the product's docs, one row per page with its source URL.
-  Filled by Platform Builder's ingestion toolkit (app/ingest.py) or by hand
-  through the UI. An end-user-facing product agent reads this base and never
-  the operators' one.
+- shared-knowledge: a shared knowledge base that can be used by any component.
+  Load documents through the AgentOS UI or the `/knowledge` API.
+- product-knowledge: a dedicated knowledge base for product agents.
 """
 
 from agno.knowledge import Knowledge
