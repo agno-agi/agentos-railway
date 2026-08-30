@@ -51,33 +51,49 @@ def _sitemap_urls(root: str, cap: int) -> list[str]:
     return pages[:cap]
 
 
-async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str, str]]]:
-    """(route, [(url, title, content)]) — Parallel Extract with a key, page-by-page WebsiteReader without."""
+async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str, str]], int]:
+    """(route, [(url, title, content)], failed) — Parallel Extract with a key, page-by-page WebsiteReader without.
+
+    A page that cannot be read is counted and skipped; one bad page must not abort the ingest.
+    """
     pages: list[tuple[str, str, str]] = []
+    failed = 0
     if getenv("PARALLEL_API_KEY"):
         from agno.tools.parallel import ParallelTools
 
         tools = ParallelTools()
         for i in range(0, len(urls), PARALLEL_BATCH):
-            raw = tools.parallel_extract(urls=urls[i : i + PARALLEL_BATCH], full_content=True)
-            for page in json.loads(raw).get("results") or []:
+            batch = urls[i : i + PARALLEL_BATCH]
+            try:
+                results = json.loads(tools.parallel_extract(urls=batch, full_content=True)).get("results") or []
+            except Exception:
+                failed += len(batch)
+                continue
+            for page in results:
                 content = page.get("full_content") or "\n".join(page.get("excerpts") or [])
                 if page.get("url") and content:
                     title = page.get("title") or urlparse(page["url"]).path.strip("/")
                     pages.append((page["url"], str(title), content))
-        return "parallel", pages
+            failed += len(batch) - len(results)
+        return "parallel", pages, failed
 
     from agno.knowledge.reader.website_reader import WebsiteReader
 
     # max_depth=1, max_links=1 reads the one page; crawling from the root lands the site as one row.
     reader = WebsiteReader(max_depth=1, max_links=1, allowed_hosts=[host])
     for url in urls:
-        docs = await reader.async_read(url)
+        try:
+            docs = await reader.async_read(url)
+        except Exception:
+            failed += 1
+            continue
         content = "\n\n".join(d.content for d in docs if d.content)
         if content:
             title = docs[0].name if docs and docs[0].name else urlparse(url).path.strip("/")
             pages.append((url, str(title), content))
-    return "website_reader", pages
+        else:
+            failed += 1
+    return "website_reader", pages, failed
 
 
 class ProductIngestTools(Toolkit):
@@ -100,7 +116,7 @@ class ProductIngestTools(Toolkit):
             page_cap: Maximum pages to ingest (default 50, hard cap 200). Coverage beats selection.
 
         Returns:
-            JSON: ok, route (parallel or website_reader), pages, chars, seconds, and a sample of page names.
+            JSON: ok, route (parallel or website_reader), pages, failed, chars, seconds, and a sample of page names.
         """
         parsed = urlparse(url if "://" in url else f"https://{url}")
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
@@ -112,10 +128,11 @@ class ProductIngestTools(Toolkit):
         used_sitemap = bool(urls)
         if not urls:
             urls = [parsed.geturl()]
-        route, pages = await _extract(urls, parsed.netloc)
+        route, pages, failed = await _extract(urls, parsed.netloc)
         for page_url, title, content in pages:
+            page = urlparse(page_url)
             await product_knowledge.ainsert(
-                name=urlparse(page_url).path.strip("/") or "index",
+                name=f"{page.netloc}/{page.path.strip('/') or 'index'}",
                 text_content=f"# {title}\nSource: {page_url}\n\n{content}",
                 metadata={"url": page_url, "title": title, "source": "product-site", "host": parsed.netloc},
             )
@@ -125,9 +142,10 @@ class ProductIngestTools(Toolkit):
                 "route": route,
                 "sitemap": used_sitemap,
                 "pages": len(pages),
+                "failed": failed,
                 "chars": sum(len(c) for _, _, c in pages),
                 "seconds": round(time.monotonic() - start, 1),
-                "sample": [urlparse(u).path.strip("/") or "index" for u, _, _ in pages[:5]],
+                "sample": [f"{urlparse(u).netloc}/{urlparse(u).path.strip('/') or 'index'}" for u, _, _ in pages[:5]],
             }
         )
 
