@@ -68,48 +68,28 @@ This table is a hard checkpoint: it gets written before anything from Step 6 hap
 
 ## 6. Build their first agent
 
-In the same message, below the connect direction, say let's build your first agent (they can always run `/create-agent` later for more), and start [`create-agent`](../create-agent/SKILL.md): if they've hinted at an idea anywhere in the session, propose that; otherwise offer **one** recommendation, carrying that skill's discovery question as its fallback. Keep it plain text — no structured choice control here, even though create-agent's own instructions offer one. (The override is for this kickoff message only — once they answer, that skill's guidance applies as written.) The recommendation goes in the message like this:
+In the same message, below the connect direction, say let's build your first agent, and ask the one question that starts it — plain text, no structured choice control here even though create-agent's own instructions offer one (the override is for this kickoff message only):
 
-> Here's the one I'd build for you: **Radar**: a quick brief on what the AI labs and agent frameworks shipped. Five items max, one line each, every one with a link, no hype. It keeps a ledger of what it's already sent you, so every brief is only what's new — and it learns what you care about, so "stop showing me funding rounds" sticks.
+> Now let's build your first agent. Do you have a product you'd like to build an agent for — or a product you use that you'd like an agent for? Give me its docs or website URL and I'll build an agent that answers questions about it from its own docs, ready to serve in your product, in claude.ai and ChatGPT, and over MCP.
 >
-> Or something from your own week instead — issue triage, release notes, your weekly update. Say it in your own words and I'll build that.
+> Or if you have something else in mind — issue triage, release notes, your weekly update — say it in your own words and I'll build that instead.
 
-The recommendation is calibration, not a menu — whatever they type is their first discovery answer, and create-agent's follow-up dig still applies when the answer leaves the design open (a complete brief builds immediately, per that skill). The message closes with the first build move — never with "ready?" or "connected yet?".
+Whatever they type is their first discovery answer for [`create-agent`](../create-agent/SKILL.md): a URL or product name takes the **product-agent pattern** in that skill's Step 3 (ingest, knowledge-only agent, three-probe smoke); anything else takes its normal path. The message closes with the first build move — never with "ready?" or "connected yet?".
 
-### The Radar brief
+### The product-agent brief
 
-If they take it, this is what you hand create-agent — a spec for you, never pasted to the user. It's a complete brief, so that skill builds immediately without asking anything.
+What you hand create-agent when they name a product — a spec for you, never pasted to the user. It's complete, so that skill builds immediately without asking anything more:
 
-- **Radar** (`radar`), direct-tools pattern, searching through the **keyless Parallel MCP** — the one search route that works on a fresh clone carrying only `OPENAI_API_KEY` (the wiring snippet and the `ddgs` import trap are in create-agent Step 2). Searches the web for what the major AI labs and agent frameworks released or announced.
-- Max 5 items, one line each, every item with a source link. No hype adjectives — what happened, not how exciting it is.
-- **The delta comes from a ledger, not a clock.** `check_lines` says which URLs are already recorded, `append_file(unique=True)` records the new ones. Whatever isn't in the ledger is the brief. No schedule, no `last_run` timestamp.
-- Nothing new is one line that says since when ("nothing new since Tuesday"). Never pad the brief.
-- **Two answer modes.** "What's new?" → the delta-filtered brief. "What's going on with X?" → answer it from search, no suppression; recording happens either way. The ledger filters the brief, never a direct question.
-- Preferences live in a file it reads every run, so a standing rule binds on any run from any surface.
+- Product-agent pattern from create-agent Step 3: dedicated base `"<Product> Knowledge"`, sitemap discovery (follow a sitemap index), page cap 50, one content row per page.
+- Ingestion route by what's in `.env`: `PARALLEL_API_KEY` set → Parallel Extract (citations work); only `OPENAI_API_KEY` → the WebsiteReader fallback, and tell them citations need the Parallel key — a fresh clone usually lands here, and the agent still works.
+- Knowledge search as the only tool, no `learning=`, the instruction template as written — the "What counts as documented" rules are what keep it from answering from memory.
+- Three smoke probes: a covered question, a likely-uncovered one, an off-topic one.
 
-Two things the code has to get right:
+Then follow the skill through its smoke test: ingest, generate the agent, register it (agent *and* base), and prove it live. Show the user their agent's first answer, then land where it now lives — say all of it in the same breath as the answer:
 
-- **No `learning=` on this one, and the reason goes in a comment.** Its state is the platform's, not any one person's: profile and memory rows are keyed by user id alone, and in agentic mode their tools are not registered at all on a run that carries no user id, so a brief triggered by a schedule would write to nothing and read back nothing.
-- **Its files live in the shared notebook, under `radar/`.** That is the platform's one file store ([`app/notes.py`](../../../app/notes.py)): the ledger at `radar/reported.md` (one canonical URL per line, nothing else — `check_lines` is whole-line exact match), each brief at `radar/briefs/<date>.md` (so "nothing new since Tuesday" is a `list_files` over that directory), preferences at `radar/preferences.md`. Filing there is what lets "Agno, what did radar find this week?" work — Agno reads the same notebook.
-
-Wire it with the shared notebook's scoped tools alongside the web tools (create-agent Step 2 has the `MCPTools` snippet):
-
-```python
-from app.notes import get_shared_notes_tools
-
-radar = Agent(
-    ...
-    tools=[*get_shared_notes_tools(), web_tools],
-    instructions=INSTRUCTIONS,
-)
-```
-
-`get_shared_notes_tools()` carries its own usage instructions, so nothing is appended to `INSTRUCTIONS` for it. The MCP exposes `web_search` and `web_fetch` — that is the whole search surface, so Radar's own `INSTRUCTIONS` name those two rather than a generic "search the web", and name its three paths under `radar/`.
-
-Then follow the skill through its smoke test: work out what to build, generate the agent, register it, and prove it live. Show the user their agent's first answer, then land the two places it now lives — say both in the same breath as the answer:
-
-- **In the UI they just connected** — a **Refresh** puts their agent in the Agents list next to the built-in ones.
-- **On Agno's roster.** Registering the agent in `app/main.py` is also what puts it in front of the team lead: Agno discovers every component this platform registers and can run it by name, so "Agno, have radar scan the week" now works — from the AgentOS UI, from Slack, from any MCP client. Their agent joined the platform, not just the repo.
+- **In the UI they just connected** — a **Refresh** puts their agent in the Agents list next to the built-in ones, and its base on the Knowledge page.
+- **On Agno's roster.** Registering the agent in `app/main.py` is also what puts it in front of the team lead: Agno discovers every component this platform registers and can run it by name, so "Agno, ask the <Product> agent…" now works — from the AgentOS UI, from Slack, from any MCP client. Their agent joined the platform, not just the repo.
+- **Ready to serve** — over REST inside their product and over MCP right now; from claude.ai and ChatGPT once deployed (Step 8 names the deploy).
 
 Then come back here: stop before that skill's own closing and let Steps 7 and 8 replace it, so the handover lands once.
 
