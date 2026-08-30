@@ -1,13 +1,6 @@
 """
 Platform Tools
 ==============
-
-The toolkits the platform's components mount, declared once so agents, teams,
-and the registry import them from here.
-
-KnowledgeManagementTools is a placeholder for agno 3.0.3's toolkit of the same
-name (specs/agno/website-ingestion): same class name, so the swap is an import
-change; ingest_url's body collapses to one Knowledge.ainsert call when it ships.
 """
 
 import json
