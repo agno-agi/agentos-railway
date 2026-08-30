@@ -1,33 +1,35 @@
-# AgentOS: The Agent Platform That Builds Itself
+# AgentOS: The Agent Platform That Powers Your Product
 
-**Start with your product's agent.** Point a coding agent at this repo, give it your product's docs URL, and in a few minutes you have an agent that answers questions about your product from its own documentation — with citations, and nothing it can't back up. It's ready to serve right away: over REST inside your product, from claude.ai and ChatGPT, and over MCP.
+AgentOS is a durable agent runtime that serves agents over REST, MCP, and chat interfaces like Slack. Build customer-facing agents and serve them to your users from your product, through AI apps like Claude and ChatGPT, or interfaces like Slack.
 
-Underneath is a durable runtime for all your agents. Build agents, multi-agent teams, and multi-step workflows. Trace every action. Enforce agent- and tool-level governance. Operators talk to **Agno**, the platform's own team; your users talk to **your product agent**.
+AgentOS gives you one agent backend for every frontend.
 
-**Three ways to build agents, teams and workflows.**
+**Three ways to build agents.**
 
-1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it runs the whole lifecycle for you: create, extend, improve, eval, review, deploy.
-2. **Natural language.** Ask the built-in Platform Builder and it builds the agent for you.
-3. **No-code Studio.** Build agents visually using the no-code AgentOS Studio.
+1. **Coding agent.** Point a coding agent at the skills in [`.agents/skills/`](.agents/skills/) and it can create, improve and evaluate your agents for you.
+2. **Natural language.** Ask the built-in Platform Builder to build agents for you.
+3. **No-code Studio.** Build agents visually using the [AgentOS Studio](https://os.agno.com?utm_source=github&utm_medium=template&utm_campaign=agentos-railway).
 
-**Five ways to use what you build.**
+**Three ways to serve your agents to your users.**
 
-1. **AgentOS UI.** Chat with your agents and inspect sessions, traces, memory, and evals at [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway).
-2. **AI apps.** Reach your agents from Claude and ChatGPT: paste your `/mcp` URL as a custom connector and approve it with your connect secret.
-3. **Chat interfaces.** Use your agents from Slack, WhatsApp, Telegram, and Discord.
-4. **Your product.** Call the REST API from your product: run agents, stream responses, and manage sessions, memory, and knowledge.
-5. **Your coding agents.** Work with your agents from Claude Code, Codex, or Cursor: `uvx agno connect` mints a token and registers `/mcp` in each of them for you.
+1. **Your product.** Call the AgentOS REST API from your product.
+2. **AI apps.** Connect your agents to Claude and ChatGPT using the AgentOS MCP server.
+3. **Chat interfaces.** Distribute your agents through Slack, WhatsApp (and more) using AgentOS Interfaces.
+
+**Monitor and govern your agents.**
+
+The [AgentOS Control Plane](https://os.agno.com?utm_source=github&utm_medium=template&utm_campaign=agentos-railway) gives you a unified view of your agent platform. Trace every action. Enforce agent- and tool-level permissions.
 
 <img width="3298" height="2412" alt="AgentOS" src="https://github.com/user-attachments/assets/40a53a42-d4d2-402b-8e92-742609207957" />
 
-<p align="center"><em>Built on <a href="https://docs.agno.com">Agno</a>, everything runs in your cloud, your data lives in your database.</em></p>
+<p align="center"><em>Everything runs in your cloud, your data lives in your database.</em></p>
 
 ## Get Started
 
-Copy this prompt into your favorite coding agent. It sets up the platform and builds your product's agent with you:
+Copy this prompt into your favorite coding agent. It sets up the platform and builds your first agent for you:
 
 ```text
-Help me set up my agent platform and build an agent for my product.
+Help me set up my agent platform and build my first agent.
 
 Clone https://github.com/agno-agi/agentos-railway into a folder called agent-platform, cd in, and run the setup-platform skill (in .agents/skills/).
 ```
