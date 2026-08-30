@@ -31,11 +31,16 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 import sys  # noqa: E402
 
 from agno.eval import cli  # noqa: E402
+from agno.os.utils import collect_mcp_tools_from_registry  # noqa: E402
 
+from app.registry import registry  # noqa: E402
 from evals.cases import CASES, eval_db  # noqa: E402
 
-# Behind the guard so an import never spends money: `python -m evals` still runs this
-# (the -m form sets __name__ to "__main__"), while an import sweep, an IDE indexer
-# or a docs tool that reaches this module gets a no-op instead of a live suite run.
+# Behind the guard so an import never costs money
 if __name__ == "__main__":
-    sys.exit(cli(CASES, db=eval_db))
+    # AgentOS connects to the registry's MCP toolkits in its server lifecycle.
+    # This standalone process does not have an equivalent, so hand them to the runner instead.
+    # The runner connects them before the cases run and closes them afterwards.
+    mcp_tools: list = []
+    collect_mcp_tools_from_registry(registry, mcp_tools)
+    sys.exit(cli(CASES, db=eval_db, mcp_tools=mcp_tools))

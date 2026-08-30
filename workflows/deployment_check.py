@@ -201,7 +201,7 @@ def _check_registry_resources() -> CheckResult:
     way: strict rehydration refuses the ambiguity rather than guess which store to bind.
     """
     try:
-        from app.knowledge import KNOWLEDGE_NAME
+        from app.knowledge import KNOWLEDGE_NAME, PRODUCT_KNOWLEDGE_NAME
         from app.learning import SHARED_LEARNING_NAME
         from app.registry import registry
     except Exception as exc:
@@ -213,10 +213,11 @@ def _check_registry_resources() -> CheckResult:
         missing.append(f"learning {SHARED_LEARNING_NAME!r}")
     elif registry.learning_name_is_ambiguous(SHARED_LEARNING_NAME):
         ambiguous.append(f"learning {SHARED_LEARNING_NAME!r}")
-    if registry.get_knowledge(KNOWLEDGE_NAME) is None:
-        missing.append(f"knowledge {KNOWLEDGE_NAME!r}")
-    elif registry.knowledge_name_is_ambiguous(KNOWLEDGE_NAME):
-        ambiguous.append(f"knowledge {KNOWLEDGE_NAME!r}")
+    for knowledge_name in (KNOWLEDGE_NAME, PRODUCT_KNOWLEDGE_NAME):
+        if registry.get_knowledge(knowledge_name) is None:
+            missing.append(f"knowledge {knowledge_name!r}")
+        elif registry.knowledge_name_is_ambiguous(knowledge_name):
+            ambiguous.append(f"knowledge {knowledge_name!r}")
 
     if missing:
         return _fail(

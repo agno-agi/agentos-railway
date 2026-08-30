@@ -4,14 +4,14 @@ manifest:
   platform-builder:
     description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
-      - "What can you build for me?"
-      - "Build an agent that tracks AI news and files a daily brief in the shared notebook"
+      - "What can you build?"
+      - "Build an agent for my product — the docs are at docs.agno.com"
       - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:
-    description: "Monitors and manages the AgentOS: usage, tokens, runs, tools, evals and schedules."
+    description: "Monitors and manages your AgentOS: usage, tokens, runs, tools, evals and schedules."
     quick_prompts:
-      - "Is the platform healthy right now?"
+      - "Is the platform healthy?"
       - "How many runs and tokens over the last 7 days?"
       - "Which agent is slowest, and is anything failing?"
 
@@ -29,7 +29,7 @@ manifest:
     quick_prompts:
       - "Tell me about yourself"
       - "How do I get started?"
-      - "Let's build an agent"
+      - "Build an agent for my product, the docs are at docs.agno.com"
 
   # --- Workflows ---
 
