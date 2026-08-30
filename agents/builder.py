@@ -6,11 +6,11 @@ Platform Builder
 from agno.agent import Agent
 from agno.tools.studio import StudioTools
 
-from app.ingest import KnowledgeManagementTools
 from app.learning import shared_learning
 from app.offload import result_store
-from app.registry import get_agno_docs_tools, registry
+from app.registry import registry
 from app.settings import default_model
+from app.tools import KnowledgeManagementTools, get_agno_docs_tools
 from db import get_postgres_db
 
 INSTRUCTIONS = """\
