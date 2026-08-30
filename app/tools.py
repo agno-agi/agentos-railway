@@ -1,6 +1,6 @@
 """
-Tools
-=====
+Platform Tools
+==============
 
 The toolkits the platform's components mount, declared once so agents, teams,
 and the registry import them from here.

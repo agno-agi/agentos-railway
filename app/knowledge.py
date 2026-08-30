@@ -1,6 +1,6 @@
 """
-Knowledge
-=========
+Platform Knowledge
+==================
 
 Two PgVector knowledge bases available to the platform components:
 
