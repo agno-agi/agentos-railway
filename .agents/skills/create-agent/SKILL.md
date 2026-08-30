@@ -124,7 +124,7 @@ Decide and state: slug from the product; root URL (prefer the docs subdomain); p
 
 ```bash
 docker exec agentos-api python -c "import asyncio; from app.tools import get_knowledge_management_tools; \
-print(asyncio.run(get_knowledge_management_tools().aingest_url('https://docs.example.com')))"
+print(asyncio.run(get_knowledge_management_tools().aingest_url(None, 'https://docs.example.com')))"
 ```
 
 It returns `pages`, `route`, and `seconds` (50 pages: ~25s with Parallel, ~2 minutes without). Zero pages is a stop. Re-run it when the docs change — it refreshes in place.
