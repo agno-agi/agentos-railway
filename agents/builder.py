@@ -6,6 +6,7 @@ Platform Builder
 from agno.agent import Agent
 from agno.tools.studio import StudioTools
 
+from app.ingest import ProductIngestTools
 from app.learning import shared_learning
 from app.offload import result_store
 from app.registry import get_agno_docs_tools, registry
@@ -48,8 +49,20 @@ How you wire:
 - Learning is the platform's per-user self: wire it by learning_name from list_learning, never enable_learning=true.
   Wire it when the component should know the person across sessions, leave it off when session history is enough, and
   say which you did. Workflows cannot carry it: put it on a member.
-- Knowledge is wired by knowledge_name from list_knowledge. It ships empty; say so and point to the Knowledge page in
-  the AgentOS UI.
+- Knowledge is wired by knowledge_name from list_knowledge. shared-knowledge is the operators' base and ships empty;
+  say so and point to the Knowledge page in the AgentOS UI. product-knowledge holds the product's docs — you fill it
+  with ingest_product_docs.
+
+How you build a product agent (the ask names a product, a docs URL, or "an agent for my product"):
+1. Ingest first: ingest_product_docs with the docs URL (prefer the docs subdomain; default page cap). Report the
+   pages and route it returns. Zero pages is a stop: say so and ask for a different URL.
+2. Get the instructions from product_agent_instructions with the product's name and a support channel you read in
+   the ingested pages (or the site's obvious one). Use that text verbatim as `instructions`.
+3. create_agent with publish=true, knowledge_name="product-knowledge", no tool_names, no learning: knowledge search is
+   its only tool, so it can answer badly but never act badly. Name it "<Product> Agent".
+4. Report the pages ingested, then the three checks the user should try: a documented question (answer with a Source
+   URL), a question the docs do not cover (it must say so, not guess), and an off-topic one (it declines).
+   Re-running ingest_product_docs refreshes the base when the docs change.
 - Output schemas come from list_schemas; when it is empty, say so.
 - Describe capability by the tools actually wired: a prompt-level limit reads "instructed to stay read-only", never
   "read-only".
@@ -119,6 +132,7 @@ platform_builder = Agent(
     learning=shared_learning,
     tools=[
         *get_agno_docs_tools(),
+        ProductIngestTools(),
         StudioTools(
             registry=registry,
             db=get_postgres_db(),

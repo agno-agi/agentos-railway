@@ -5,7 +5,7 @@ manifest:
     description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
     quick_prompts:
       - "What can you build for me?"
-      - "Build an agent that tracks AI news and files a daily brief in the shared notebook"
+      - "Build an agent for my product — the docs are at docs.agno.com"
       - "Build a daily pulse workflow and schedule it for 9am"
 
   platform-manager:

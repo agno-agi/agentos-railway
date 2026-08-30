@@ -26,6 +26,7 @@ from app.functions import (
 from app.knowledge import shared_knowledge
 from app.learning import shared_learning
 from app.notes import get_shared_notes_tools
+from app.product_knowledge import product_knowledge
 from app.settings import default_model
 from db import get_postgres_db
 
@@ -108,6 +109,6 @@ registry = Registry(
         content_to_file,
     ],
     learning=[shared_learning],
-    knowledge=[shared_knowledge],
+    knowledge=[shared_knowledge, product_knowledge],
     agents=[platform_manager],
 )
