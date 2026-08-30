@@ -1,8 +1,6 @@
-# AgentOS: The Agent Platform That Powers Your Product
+# AgentOS: Serve agents over REST, MCP, and chat interfaces like Slack
 
-AgentOS is a durable agent runtime that serves agents over REST, MCP, and chat interfaces like Slack. Build customer-facing agents and serve them to your users from your product, through AI apps like Claude and ChatGPT, or interfaces like Slack.
-
-AgentOS gives you one agent backend for every frontend.
+AgentOS is a durable agent runtime that serves agents over REST, MCP, and chat interfaces like Slack. Build customer-facing agents and serve them to your users from your product, through AI apps like Claude and ChatGPT, or interfaces like Slack. AgentOS gives you one agent backend for every frontend.
 
 **Three ways to build agents.**
 
