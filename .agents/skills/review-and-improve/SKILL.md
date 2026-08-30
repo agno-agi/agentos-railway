@@ -40,7 +40,7 @@ Read first, fix once. Build the picture: registered agents/teams/workflows in `a
 | Key Files table matches the tree | `AGENTS.md` |
 | Skill `name:` equals its folder; `../../../` links resolve; `.claude/skills` symlink resolves | `.agents/skills/` |
 | `.mcp.json` servers agree with the docs | `.mcp.json` |
-| MCP endpoint claims match `mcp_server=` in `app/main.py`; `scripts/mcp_check.sh` calls a registered agent | docs ↔ code |
+| MCP endpoint claims match `mcp=` in `app/main.py`; `scripts/mcp_check.sh` calls a registered agent | docs ↔ code |
 
 ## 4. Live smoke
 

@@ -41,7 +41,7 @@ Decide these yourself:
 | **Slug** | From the purpose, kebab-case (`pr-reviewer`). |
 | **Model** | `default_model()`. Override only if asked. |
 | **Toolkits** | From the discovery answers, grounded in docs. Prefer what's in the image and keyless: the Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`, `get_shared_notes_tools()` for files and state. |
-| **Memory** | `learning=shared_learning` whenever the agent should know its person across sessions — most agents. Off when its durable state is the platform's, not a person's (a ledger, a queue), or for an end-user-facing product agent. Say which. |
+| **Memory** | `learning=shared_learning` whenever the agent should know its person across sessions — most agents. Off only when its durable state is the platform's, not a person's (a ledger, a queue). Say which. |
 
 **Stop only for** an API key the chosen toolkit requires that isn't in `.env` (check yourself). Offer: add it to `.env` (never read or print it), or a keyless toolkit already in the image.
 
@@ -116,7 +116,7 @@ How you <work>:
 
 ### The product agent
 
-Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes, no `learning=` — it can answer badly but must not act badly), and **it reads `product-knowledge`, never `shared-knowledge`** ([`app/product_knowledge.py`](../../../app/product_knowledge.py) — operator content stays out of an end-user agent's retrieval). Platform Builder builds the same agent at runtime from the same pieces; this is the code-level twin.
+Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads `product-knowledge`, never `shared-knowledge`** ([`app/product_knowledge.py`](../../../app/product_knowledge.py) — operator content stays out of an end-user agent's retrieval). Platform Builder builds the same agent at runtime from the same pieces; this is the code-level twin.
 
 Decide and state: slug from the product; root URL (prefer the docs subdomain); page cap **50** — the sitemap in order up to the cap, never a keyword slice (a skipped page turns a true answer into "not documented"). Cost, said once: embeddings under a cent for 50 pages; Parallel spends about one credit per 8 pages.
 
@@ -129,9 +129,10 @@ print(asyncio.run(ProductIngestTools().ingest_product_docs('https://docs.example
 
 It returns `pages`, `route`, and `seconds` (50 pages: ~25s with Parallel, ~2 minutes without). Zero pages is a stop. Re-run it when the docs change — it refreshes in place.
 
-**The file:** the structure above with `knowledge=product_knowledge`, no `learning=`, no tools, and the instruction template from code — never paraphrase it; its "What counts as documented" rules are what stop the model completing gaps from its memory of the real docs (measured across three products and 92 probes: fabricated citations and ungrounded details to zero, covered answers unchanged):
+**The file:** the structure above with `knowledge=product_knowledge`, `learning=shared_learning`, no tools, and the instruction template from code — never paraphrase it; its "What counts as documented" rules are what stop the model completing gaps from its memory of the real docs (measured across three products and 92 probes: fabricated citations and ungrounded details to zero, covered answers unchanged):
 
 ```python
+from app.learning import shared_learning
 from app.product_knowledge import product_agent_instructions, product_knowledge
 
 <slug_underscore> = Agent(
@@ -140,7 +141,8 @@ from app.product_knowledge import product_agent_instructions, product_knowledge
     model=default_model(),
     db=get_postgres_db(),
     knowledge=product_knowledge,
-    # Knowledge search only, no learning: end-user-facing, minimal surface.
+    learning=shared_learning,
+    # Knowledge search and its own memory, nothing else: end-user-facing, minimal surface.
     instructions=product_agent_instructions("<Product>", "<support channel from the docs>"),
     user_id="anonymous-user",
     add_datetime_to_context=True,
