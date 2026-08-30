@@ -14,7 +14,6 @@ from agno.utils.log import log_info
 from agents.builder import platform_builder
 from agents.engineer import platform_engineer
 from agents.manager import platform_manager
-from agents.product import product_agent, product_knowledge
 from app.knowledge import shared_knowledge
 from app.registry import registry
 from app.schedules import register_schedules
@@ -105,8 +104,8 @@ agent_os = AgentOS(
     mcp_auth=mcp_auth,
     lifespan=lifespan,
     db=get_postgres_db(),
-    knowledge=[shared_knowledge, product_knowledge],
-    agents=[platform_builder, platform_manager, platform_engineer, product_agent],
+    knowledge=[shared_knowledge],
+    agents=[platform_builder, platform_manager, platform_engineer],
     teams=[agno_team],
     workflows=[deployment_check, run_evals],
     interfaces=interfaces,

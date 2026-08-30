@@ -22,13 +22,6 @@ manifest:
       - "How does tool offloading work?"
       - "How does the agno team work?"
 
-  product-agent:
-    description: "Answers questions about the product from its ingested docs — knowledge search only, ready to serve end users."
-    quick_prompts:
-      - "What is AgentOS?"
-      - "How do I connect this platform to Claude?"
-      - "What can I build with teams?"
-
   # --- Teams ---
 
   agno:
