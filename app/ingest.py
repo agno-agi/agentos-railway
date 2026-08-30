@@ -1,12 +1,16 @@
 """
-Product Ingestion
-=================
+Ingest URL
+==========
 
-Loads a product's website or docs into the product knowledge base, one row per
-page with the source URL kept: sitemap discovery (indexes followed), Parallel
-Extract when PARALLEL_API_KEY is set, page-by-page WebsiteReader otherwise.
-Mounted on Platform Builder so a product agent can be built at runtime; the
-create-agent skill calls the same function from the command line.
+Loads a website or docs site into a knowledge base, one row per page with the
+source URL kept: sitemap discovery (indexes followed), Parallel Extract when
+PARALLEL_API_KEY is set, page-by-page WebsiteReader otherwise. Mounted on
+Platform Builder so a product agent can be built at runtime; the create-agent
+skill calls the same function from the command line.
+
+Placeholder for agno 3.0.3's KnowledgeManagementTools (specs/agno/website-ingestion):
+same class name, so the swap is an import change; ingest_url's body collapses to
+one Knowledge.ainsert call when it ships.
 """
 
 import json
@@ -17,6 +21,7 @@ from xml.etree import ElementTree
 
 import httpx
 import sqlalchemy as sa
+from agno.knowledge import Knowledge
 from agno.tools import Toolkit
 
 from app.knowledge import product_knowledge
@@ -96,17 +101,18 @@ async def _extract(urls: list[str], host: str) -> tuple[str, list[tuple[str, str
     return "website_reader", pages, failed
 
 
-class ProductIngestTools(Toolkit):
-    """Load a product's docs into the product knowledge base."""
+class KnowledgeManagementTools(Toolkit):
+    """Load a website or docs site into a knowledge base, one row per page with its source URL."""
 
-    def __init__(self) -> None:
+    def __init__(self, knowledge: Knowledge = product_knowledge) -> None:
+        self.knowledge = knowledge
         super().__init__(
-            name="product_ingest",
-            tools=[self.ingest_product_docs, self.list_product_sources],
+            name="knowledge_management",
+            tools=[self.ingest_url, self.list_ingested_sources],
         )
 
-    async def ingest_product_docs(self, url: str, page_cap: int = DEFAULT_PAGE_CAP) -> str:
-        """Ingest a product's website or docs into the product knowledge base, one row per page with its source URL.
+    async def ingest_url(self, url: str, page_cap: int = DEFAULT_PAGE_CAP) -> str:
+        """Ingest a website or docs site into the knowledge base, one row per page with its source URL.
 
         Discovers pages from the site's sitemap.xml (a sitemap index is followed) up to page_cap, in sitemap order.
         A site without a sitemap gets the one page at `url`. Re-running refreshes pages already loaded.
@@ -131,7 +137,7 @@ class ProductIngestTools(Toolkit):
         route, pages, failed = await _extract(urls, parsed.netloc)
         for page_url, title, content in pages:
             page = urlparse(page_url)
-            await product_knowledge.ainsert(
+            await self.knowledge.ainsert(
                 name=f"{page.netloc}/{page.path.strip('/') or 'index'}",
                 text_content=f"# {title}\nSource: {page_url}\n\n{content}",
                 metadata={"url": page_url, "title": title, "source": "product-site", "host": parsed.netloc},
@@ -149,16 +155,17 @@ class ProductIngestTools(Toolkit):
             }
         )
 
-    def list_product_sources(self) -> str:
-        """List what the product knowledge base holds: hosts, page counts, and the first page names per host.
+    def list_ingested_sources(self) -> str:
+        """List what the knowledge base holds: hosts, page counts, and the first page names per host.
 
         Returns:
             JSON: total pages and a per-host breakdown. Empty when nothing has been ingested yet.
         """
+        table = getattr(self.knowledge.vector_db, "table_name", "product_knowledge")
         engine = sa.create_engine(build_db_url())
         with engine.connect() as conn:
             rows = conn.execute(
-                sa.text("select metadata->>'host', name from ai.product_knowledge_contents order by 1, 2")
+                sa.text(f"select metadata->>'host', name from ai.{table}_contents order by 1, 2")
             ).fetchall()
         by_host: dict[str, list[str]] = {}
         for host, name in rows:

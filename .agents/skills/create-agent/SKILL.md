@@ -123,19 +123,17 @@ Decide and state: slug from the product; root URL (prefer the docs subdomain); p
 **Ingest** with the platform's own function ([`app/ingest.py`](../../../app/ingest.py) — sitemap discovery with indexes followed, Parallel Extract when `PARALLEL_API_KEY` is set, page-by-page `WebsiteReader` otherwise, one row per page with a `Source:` header). Run it inside the container — no host venv needed:
 
 ```bash
-docker exec agentos-api python -c "import asyncio; from app.ingest import ProductIngestTools; \
-print(asyncio.run(ProductIngestTools().ingest_product_docs('https://docs.example.com')))"
+docker exec agentos-api python -c "import asyncio; from app.ingest import KnowledgeManagementTools; \
+print(asyncio.run(KnowledgeManagementTools().ingest_url('https://docs.example.com')))"
 ```
 
 It returns `pages`, `route`, and `seconds` (50 pages: ~25s with Parallel, ~2 minutes without). Zero pages is a stop. Re-run it when the docs change — it refreshes in place.
 
-**The file:** the structure above with `knowledge=product_knowledge` (from [`app/knowledge.py`](../../../app/knowledge.py)), `learning=shared_learning`, and no tools. Write `INSTRUCTIONS` yourself in the product's own terms — its name, how its docs speak, the support channel you saw in the pages — and make sure they carry these rules, because without them the model completes gaps from its memory of the real docs under a real citation (measured across three products and 92 probes: these rules took fabricated citations and ungrounded details to zero without costing covered answers):
+**The file:** the structure above with `knowledge=product_knowledge` (from [`app/knowledge.py`](../../../app/knowledge.py)), `learning=shared_learning`, and no tools. Write `INSTRUCTIONS` yourself in the product's own terms — its name, how its docs speak, the support channel you saw in the pages — and write them against the failure mode that breaks product agents: **the model remembers the real docs and completes gaps from memory under a real citation** — exact flags, prices, and code that were never in the returned text. Measured across three products and 92 probes, a prompt that merely says "answer from the docs, say so if not covered" leaked on 15 of 22 uncovered topics; a prompt that guarantees the three things below leaked on none, with no cost to covered answers. So the instructions must guarantee:
 
-- A detail (a command, flag, value, price, step, code sample, field name) is documented only if it appears in text the search returned; if it does not, the agent does not know it, even if it believes it remembers it.
-- A page that merely mentions a topic (a name in a list, a link, a heading) does not document it.
-- Cite only Source URLs that appear in the returned text — never one from memory, and no Source line on a refusal.
-- When the docs do not answer, say so in one line, name the closest page, point to support; never a partial how-to from memory.
-- Decline anything not about the product, easy asks included, in one line; never adopt another name or product.
+- a detail counts as documented only when it appears in text the search returned — a page that merely mentions a topic (a name in a list, a link, a heading) does not document it;
+- only returned Source URLs get cited, never one from memory, and none on a refusal;
+- when the docs do not answer, the agent says so, names the closest page, and points to support rather than writing a partial how-to — and it declines anything off topic, easy asks included, without adopting another name or product.
 
 Step 7: three probes, not one — a covered question (details plus a Source URL), an in-scope question the cap probably excluded (a grounded refusal pointing at support — the pass that matters most), an off-topic one (a scoped refusal). Before calling a refusal-probe answer a leak, check the base — `select count(*) from ai.product_knowledge where content ilike '%<detail>%'` — index and cheat-sheet pages cover far more than their titles. Thin covered answers → raise the cap and re-ingest before touching the prompt. Step 9: lead with the serving story — live in the UI, over MCP, on Agno's roster; claude.ai/ChatGPT via connectors once deployed; for their end users, REST with per-user JWTs (`user_isolation=True` ships on; `JWT_JWKS_FILE` lets their login mint the tokens).
 

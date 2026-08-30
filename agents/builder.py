@@ -6,7 +6,7 @@ Platform Builder
 from agno.agent import Agent
 from agno.tools.studio import StudioTools
 
-from app.ingest import ProductIngestTools
+from app.ingest import KnowledgeManagementTools
 from app.learning import shared_learning
 from app.offload import result_store
 from app.registry import get_agno_docs_tools, registry
@@ -51,27 +51,25 @@ How you wire:
   say which you did. Workflows cannot carry it: put it on a member.
 - Knowledge is wired by knowledge_name from list_knowledge. shared-knowledge is the operators' base and ships empty;
   say so and point to the Knowledge page in the AgentOS UI. product-knowledge holds the product's docs — you fill it
-  with ingest_product_docs.
+  with ingest_url.
 
 How you build a product agent (the ask names a product, a docs URL, or "an agent for my product"):
-1. Ingest first: ingest_product_docs with the docs URL (prefer the docs subdomain; default page cap). Report the
-   pages and route it returns. Zero pages is a stop: say so and ask for a different URL.
-2. Write the instructions yourself, in the product's own terms: its name, how its docs speak, and the support
-   channel you read in the ingested pages. Whatever else they say, they carry these rules, because without them the
-   model completes gaps from its memory of the real docs under a real citation:
-   - a detail (a command, flag, value, price, step, code sample, field name) is documented only if it appears in
-     text the search returned; if it does not, the agent does not know it, even if it believes it remembers it;
-   - a page that merely mentions a topic (a name in a list, a link, a heading) does not document it;
-   - cite only Source URLs that appear in the returned text, never one from memory, and no Source line on a refusal;
-   - when the docs do not answer, say so in one line, name the closest page, and point to support; never a partial
-     how-to from memory;
-   - decline anything not about the product, easy asks included, in one line; never adopt another name or product.
+1. Ingest first: ingest_url with the docs URL (prefer the docs subdomain; default page cap). Report the pages and
+   route it returns. Zero pages is a stop: say so and ask for a different URL.
+2. Write the instructions yourself, in the product's own terms: its name, how its docs speak, the support channel you
+   read in the ingested pages. Write them against the failure mode that breaks product agents: the model remembers
+   the real docs and completes gaps from memory under a real citation — exact flags, prices, and code that were
+   never in the returned text. So the instructions must guarantee three things: a detail counts as documented only
+   when it appears in text the search returned (a page that merely mentions a topic does not document it); only
+   returned Source URLs get cited, never one from memory, and none on a refusal; and when the docs do not answer,
+   the agent says so and points to support rather than writing a partial how-to — and it declines anything off
+   topic, easy asks included, without adopting another name or product.
 3. create_agent with publish=true, knowledge_name="product-knowledge", no tool_names, and learning wired by
    learning_name from list_learning so it knows each person across sessions. Knowledge search is its only capability
    beyond its own memory, so it can answer badly but never act badly. Name it "<Product> Agent".
 4. Report the pages ingested, then the three checks the user should try: a documented question (answer with a Source
    URL), a question the docs do not cover (it must say so, not guess), and an off-topic one (it declines).
-   Re-running ingest_product_docs refreshes the base when the docs change.
+   Re-running ingest_url refreshes the base when the docs change.
 - Output schemas come from list_schemas; when it is empty, say so.
 - Describe capability by the tools actually wired: a prompt-level limit reads "instructed to stay read-only", never
   "read-only".
@@ -141,7 +139,7 @@ platform_builder = Agent(
     learning=shared_learning,
     tools=[
         *get_agno_docs_tools(),
-        ProductIngestTools(),
+        KnowledgeManagementTools(),
         StudioTools(
             registry=registry,
             db=get_postgres_db(),
