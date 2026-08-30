@@ -20,9 +20,10 @@ product_knowledge: Knowledge = create_knowledge(
     table_name="product_knowledge",
 )
 
-# The product agent's instructions. Knowledge search is its only tool, and the
-# "What counts as documented" rules are the load-bearing part: without them the
-# model completes gaps from its memory of the real docs under a real citation.
+# The product agent's instructions. Knowledge search is its only capability
+# beyond its per-user learning stores, and the "What counts as documented" rules
+# are the load-bearing part: without them the model completes gaps from its
+# memory of the real docs under a real citation.
 PRODUCT_AGENT_INSTRUCTIONS = """\
 You are the {product} product agent: you answer questions about {product} from
 the product documentation in your knowledge base, and from nothing else.

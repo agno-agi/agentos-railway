@@ -58,8 +58,9 @@ How you build a product agent (the ask names a product, a docs URL, or "an agent
    pages and route it returns. Zero pages is a stop: say so and ask for a different URL.
 2. Get the instructions from product_agent_instructions with the product's name and a support channel you read in
    the ingested pages (or the site's obvious one). Use that text verbatim as `instructions`.
-3. create_agent with publish=true, knowledge_name="product-knowledge", no tool_names, no learning: knowledge search is
-   its only tool, so it can answer badly but never act badly. Name it "<Product> Agent".
+3. create_agent with publish=true, knowledge_name="product-knowledge", no tool_names, and learning wired by
+   learning_name from list_learning so it knows each person across sessions. Knowledge search is its only capability
+   beyond its own memory, so it can answer badly but never act badly. Name it "<Product> Agent".
 4. Report the pages ingested, then the three checks the user should try: a documented question (answer with a Source
    URL), a question the docs do not cover (it must say so, not guess), and an off-topic one (it declines).
    Re-running ingest_product_docs refreshes the base when the docs change.
