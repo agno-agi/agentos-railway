@@ -95,10 +95,6 @@ agent_os = AgentOS(
     scheduler=True,
     scheduler_base_url=agentos_url,
     authorization=runtime_env != "dev",
-    # A platform serving end users must not let them read each other: scope REST
-    # session/memory reads to the authenticated principal. Operators keep the
-    # platform-wide view through Platform Manager, whose AgentOSTools read
-    # Postgres directly and never pass through REST scopes.
     authorization_config=AuthorizationConfig(user_isolation=True),
     mcp_server=True,
     mcp_auth=mcp_auth,

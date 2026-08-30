@@ -36,16 +36,11 @@ from agno.os.utils import collect_mcp_tools_from_registry  # noqa: E402
 from app.registry import registry  # noqa: E402
 from evals.cases import CASES, eval_db  # noqa: E402
 
-# Behind the guard so an import never spends money: `python -m evals` still runs this
-# (the -m form sets __name__ to "__main__"), while an import sweep, an IDE indexer
-# or a docs tool that reaches this module gets a no-op instead of a live suite run.
+# Behind the guard so an import never costs money
 if __name__ == "__main__":
-    # AgentOS connects the registry's MCP toolkits in its server lifespan; this
-    # standalone process has none, so hand them to the runner instead — it connects
-    # them fail-soft in the loop the cases run in and closes them afterwards. Studio
-    # would connect one on demand at persist time anyway (per-toolkit, per-case);
-    # this keeps the sessions warm across cases and lets a case that dispatches a
-    # component it just built find the toolkit connected.
+    # AgentOS connects to the registry's MCP toolkits in its server lifecycle.
+    # This standalone process does not have an equivalent, so hand them to the runner instead.
+    # The runner connects them before the cases run and closes them afterwards.
     mcp_tools: list = []
     collect_mcp_tools_from_registry(registry, mcp_tools)
     sys.exit(cli(CASES, db=eval_db, mcp_tools=mcp_tools))
