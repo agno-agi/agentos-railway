@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Agno", email = "hello@agno.com" }]
 
 dependencies = [
-  "agno[os,mcp,slack,pgvector,psycopg,csv,excel,docx,pdf,website]==3.0.1",
+  "agno[os,mcp,slack,pgvector,psycopg,csv,excel,docx,pdf,website]==3.0.2",
   "cel-python",
   "openai",
   "parallel-web",
