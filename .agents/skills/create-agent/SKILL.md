@@ -207,7 +207,16 @@ Decide yourself and state it: slug from the product (`acme-agent`); root URL —
   )
   ```
 
-- **WebsiteReader (no key) — works, with a limitation you state.** `kb.ainsert(url=root, reader=WebsiteReader(max_depth=2, max_links=<cap>, allowed_hosts=[host]))` lands the whole crawl as **one content row** — no per-page names, no source URLs, so the agent cannot cite pages. Say citations need `PARALLEL_API_KEY` and move on.
+- **WebsiteReader (no key) — same shape, one page at a time.** Never crawl from the root (`max_depth=2` lands the whole site as **one content row** — no per-page names, no citations). Read each sitemap URL with a non-crawling reader and insert it exactly like the Parallel route, `Source:` header included — measured ≈2.4s/page against Parallel's ≈0.5s, and it cannot read JS-rendered pages or PDFs:
+
+  ```python
+  from agno.knowledge.reader.website_reader import WebsiteReader
+
+  reader = WebsiteReader(max_depth=1, max_links=1, allowed_hosts=[host])
+  docs = await reader.async_read(url)
+  content = "\n\n".join(d.content for d in docs if d.content)
+  # then the same kb.ainsert(name=..., text_content=f"# {title}\nSource: {url}\n\n{content}", metadata=...) as above
+  ```
 
 Write the ingestion as `scripts/ingest_<slug>.py` (loads `.env` like `evals/__main__.py`, runs with the repo venv) and run it now — leaving it in the repo makes re-ingestion a command, and a stale base gives wrong answers inside the user's own product. Verify rows landed (`ai.<table>_contents` ≈ pages, `ai.<table>` > 0) before generating anything; zero rows is a stop.
 

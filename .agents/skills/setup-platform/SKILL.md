@@ -81,7 +81,7 @@ Whatever they type is their first discovery answer for [`create-agent`](../creat
 What you hand create-agent when they name a product — a spec for you, never pasted to the user. It's complete, so that skill builds immediately without asking anything more:
 
 - Product-agent pattern from create-agent Step 3: dedicated base `"<Product> Knowledge"`, sitemap discovery (follow a sitemap index), page cap 50, one content row per page.
-- Ingestion route by what's in `.env`: `PARALLEL_API_KEY` set → Parallel Extract (citations work); only `OPENAI_API_KEY` → the WebsiteReader fallback, and tell them citations need the Parallel key — a fresh clone usually lands here, and the agent still works.
+- Ingestion route by what's in `.env`: `PARALLEL_API_KEY` set → Parallel Extract (fastest, handles JS-rendered pages and PDFs); only `OPENAI_API_KEY` → the per-page WebsiteReader route — a fresh clone usually lands here, and it produces the same per-page rows and citations, just slower.
 - Knowledge search as the only tool, no `learning=`, the instruction template as written — the "What counts as documented" rules are what keep it from answering from memory.
 - Three smoke probes: a covered question, a likely-uncovered one, an off-topic one.
 
