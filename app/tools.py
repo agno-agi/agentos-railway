@@ -27,7 +27,10 @@ def get_parallel_tools() -> list[ParallelTools | MCPTools]:
     # timeout_seconds: web_fetch page extraction regularly exceeds the 10s MCP default.
     return [
         MCPTools(
-            url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
+            url="https://search.parallel.ai/mcp",
+            transport="streamable-http",
+            name="parallel_tools",
+            timeout_seconds=30,
         )
     ]
 
