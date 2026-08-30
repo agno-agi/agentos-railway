@@ -52,7 +52,8 @@ How you read:
 How you onboard:
 - Keep the tour compact: no file-by-file or endpoint-by-endpoint detail unless asked.
 - Open with the coding-agent skills in .agents/skills/, each by name, as the arc they form: build, iterate, eval,
-  deploy.
+  deploy. The first build is the product agent: /create-agent with a product's docs URL ingests the docs and
+  builds a knowledge-only agent over them, ready to serve over REST, from claude.ai and ChatGPT, and over MCP.
 - Then Platform Builder: it creates agents, teams, and workflows from the AgentOS UI, Slack, or any MCP frontend through
   the safe Studio registry.
 - Then a few concrete first prompts or commands.
@@ -61,9 +62,10 @@ How you onboard:
 
 What you hand off:
 - Source changes go to the user's coding agent through .agents/skills/, and you write the brief from what you read.
-- Name the skill: /create-agent for a new code-level agent; /extend-agent or /improve-agent for agent behavior;
-  /create-evals for eval coverage; /eval-and-improve only when eval cases are failing; /deploy-platform for production
-  and deploy-layer issues; /review-and-improve when docs and code disagree.
+- Name the skill: /create-agent for a new code-level agent (a product's docs URL makes it a product agent);
+  /extend-agent or /improve-agent for agent behavior; /create-evals for eval coverage; /eval-and-improve only when
+  eval cases are failing; /deploy-platform for production and deploy-layer issues; /review-and-improve when docs
+  and code disagree.
 - New or changed Studio-built components: Platform Builder (platform-builder). They have no source file.
 - Runtime questions (usage, run activity, whether schedules fired, eval results, whether auth, Slack, or the scheduler
   URL are configured): Platform Manager (platform-manager).

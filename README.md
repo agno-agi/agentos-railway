@@ -1,6 +1,8 @@
 # AgentOS: The Agent Platform That Builds Itself
 
-AgentOS is a durable runtime for your agents. Build your own agents, multi-agent teams, and multi-step workflows. Trace every action. Enforce agent- and tool-level governance.
+**Start with your product's agent.** Point a coding agent at this repo, give it your product's docs URL, and in a few minutes you have an agent that answers questions about your product from its own documentation — with citations, and nothing it can't back up. It's ready to serve right away: over REST inside your product, from claude.ai and ChatGPT, and over MCP.
+
+Underneath is a durable runtime for all your agents. Build agents, multi-agent teams, and multi-step workflows. Trace every action. Enforce agent- and tool-level governance. Operators talk to **Agno**, the platform's own team; your users talk to **your product agent**.
 
 **Three ways to build agents, teams and workflows.**
 
@@ -22,15 +24,15 @@ AgentOS is a durable runtime for your agents. Build your own agents, multi-agent
 
 ## Get Started
 
-Copy this prompt into your favorite coding agent. It sets up the platform and builds your first agent with you:
+Copy this prompt into your favorite coding agent. It sets up the platform and builds your product's agent with you:
 
 ```text
-Help me set up my agent platform and build my first agent.
+Help me set up my agent platform and build an agent for my product.
 
 Clone https://github.com/agno-agi/agentos-railway into a folder called agent-platform, cd in, and run the setup-platform skill (in .agents/skills/).
 ```
 
-Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots the platform, verifies the MCP endpoint, connects the AgentOS UI, and builds your first agent with you. Prefer to drive yourself? See [Manual Setup](#manual-setup).
+Your coding agent drives the whole flow: it checks Docker, sets up `.env`, boots the platform, verifies the MCP endpoint, connects the AgentOS UI, then asks for your product's docs URL and builds the agent — ingests the docs into a knowledge base, generates a knowledge-only agent grounded in them, and smoke-tests it live. No product in mind? Name any product you use, or describe something from your own week instead. Prefer to drive yourself? See [Manual Setup](#manual-setup).
 
 ## Manual Setup
 
@@ -57,11 +59,13 @@ Confirm your AgentOS is running at [http://localhost:8000/docs](http://localhost
 1. Open [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agentos-railway&utm_content=agentos-railway&utm_term=railway) and sign in.
 2. Click **Connect OS**, enter `http://localhost:8000` as the URL, name it **Local AgentOS**, and connect.
 
-### Step 3: Meet Agno — and build your first agent through it
+### Step 3: Meet Agno — and build an agent through it
 
 1. Click **Chat** under the **Agno** team and tell it what you're working on: "Hey Agno — I'm building a support bot".
 2. Now ask it to build: "Build an agent that tracks AI news and writes a daily brief".
 3. Click the **Refresh** button on the top right. You should now see the "Daily AI News Brief" agent in the **Agents** dropdown — chat with it directly, or just tell Agno: "Have the news agent brief me."
+
+Your **product agent** is built by your coding agent, not by Agno: run `/create-agent` with your product's docs URL (see [Create](#create)). Ingesting docs is a code-level job, so it lives in the repo where you can re-run it whenever the docs change.
 
 ### Step 4: Check platform health
 
@@ -203,6 +207,8 @@ Open your coding agent of choice (Claude Code, Codex, Cursor) and run:
 
 It asks a few questions, generates the agent file in `agents/`, registers it in `app/main.py`, adds its description and quick prompts to `app/config.yaml`, restarts the container, and smoke-tests it live.
 
+Give it a product's docs URL and it builds a **product agent**: the docs are ingested into a dedicated knowledge base (one row per page, source URLs kept), the agent gets knowledge search as its only tool and instructions that keep it from answering beyond what the docs say, and the smoke test checks three things — a covered question, a question the docs don't cover (it must say so rather than guess), and an off-topic one. Re-run `scripts/ingest_<slug>.py` when the docs change.
+
 ### Improve
 
 Improve your agents by running the following skills:
@@ -228,6 +234,20 @@ If a case fails, run **`/eval-and-improve`** — it diagnoses each failure, fixe
 ### Maintain
 
 Because the repo is managed by coding agents, it moves fast. Run `/review-and-improve` before a release or after a refactor: it sweeps for drift between docs, code, and config, auto-fixes mechanical drift like stale paths and missing env vars, and flags anything bigger.
+
+## Serve your product agent
+
+Two audiences, two front doors. **Operators** — you and your team — talk to Agno and the platform agents from the AgentOS UI, Slack, and your AI apps. **Your users** talk to your product agent, and only to it: it carries knowledge search and nothing else, its knowledge base is its own, and REST user isolation is on so no user can read another's sessions.
+
+Three ways to put it in front of people:
+
+1. **Inside your product, over REST.** `POST /agents/<slug>/runs` with a per-user JWT. Your existing login can mint the tokens: point `JWT_JWKS_FILE` at your JWKS and the platform verifies them — no separate identity system. Each user gets their own sessions and memory.
+2. **From claude.ai and ChatGPT.** Once deployed, add `https://<domain>/mcp` as a custom connector and approve it with your connect secret. This is how you and your team reach it from the chat apps you already use.
+3. **From coding agents, over MCP.** `uvx agno connect` registers it in Claude Code, Codex, and Cursor.
+
+Serving end users is the enterprise-shaped part of the story — inside your product through REST, and to your users through the chat apps. Building the agent, the AgentOS UI, and the custom connectors for your own team are yours from the first deploy.
+
+**In your community Slack.** The Slack interface routes to the Agno team by default. To run your product agent in a support or community channel instead, point the interface at it: change `team=agno_team` to `agent=<your_product_agent>` in [`app/main.py`](app/main.py).
 
 ## Connect more frontends (optional)
 
@@ -262,7 +282,7 @@ can you access my agentos mcp?
 | `EVALS_TAG` | no | `smoke` | Eval tag run by the run-evals workflow. |
 | `EVALS_CASE_TIMEOUT_SECONDS` | no | `90` | Default per-case timeout for run-evals runs; applies only to cases that don't set their own `timeout_seconds`. |
 | `EVALS_SUITE_TIMEOUT_SECONDS` | no | derived | Whole-suite timeout for run-evals runs; per-case timeouts are the granular limit. Unset, it is derived from the cases the tag selects. Set it to override. |
-| `PARALLEL_API_KEY` | no | none | Authenticates Agno's and the Studio registry's web search tools (Parallel SDK when set; keyless MCP fallback). |
+| `PARALLEL_API_KEY` | no | none | Authenticates Agno's and the Studio registry's web search tools (Parallel SDK when set; keyless MCP fallback). Also the fast route for ingesting a product's docs — clean markdown per page, JS-rendered pages and PDFs included; without it ingestion still works, page by page, just slower. |
 | `SLACK_BOT_TOKEN` / `SLACK_SIGNING_SECRET` | no | none | Both must be set to enable the Slack interface. The bot token also lights up the registry's send-only Slack toolkit for built agents. |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASS` / `DB_DATABASE` | no | matches compose | Postgres connection. |
 | `DB_DRIVER` | no | `postgresql+psycopg` | SQLAlchemy driver. |
