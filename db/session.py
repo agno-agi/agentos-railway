@@ -27,9 +27,7 @@ def get_postgres_db(contents_table: str | None = None) -> PostgresDb:
     instead of constructing a fresh PostgresDb on each call.
 
     Pass contents_table when this database is used as the contents_db of a Knowledge base.
-    For plain agent persistence (sessions, memory), leave it unset. A contents db carries
-    its own id: it is a distinct instance (different knowledge_table), and reusing DB_ID
-    would make the registry drop it as a duplicate and warn about the shadowed id.
+    For plain agent persistence (sessions, memory), leave it unset.
     """
     if contents_table is not None:
         return PostgresDb(id=f"{DB_ID}-{contents_table}", db_url=db_url, knowledge_table=contents_table)
