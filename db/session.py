@@ -30,7 +30,7 @@ def get_postgres_db(contents_table: str | None = None) -> PostgresDb:
     For plain agent persistence (sessions, memory), leave it unset.
     """
     if contents_table is not None:
-        return PostgresDb(id=DB_ID, db_url=db_url, knowledge_table=contents_table)
+        return PostgresDb(id=f"{DB_ID}-{contents_table}", db_url=db_url, knowledge_table=contents_table)
     return PostgresDb(id=DB_ID, db_url=db_url)
 
 
