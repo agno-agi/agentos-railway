@@ -65,7 +65,7 @@ Render the connection as a table, then one line of direction:
 
 | Setting | Value |
 |---|---|
-| AgentOS UI | https://os.agno.com |
+| AgentOS UI | https://os.agno.com/?ref=railway-template |
 | Connection type | **Local** |
 | Endpoint | `http://localhost:8000` |
 | Name | `Local AgentOS` |
