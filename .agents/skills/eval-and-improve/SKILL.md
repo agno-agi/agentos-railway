@@ -27,7 +27,7 @@ python -m evals --json-output out.json # machine-readable (carries judge_reason)
 python -m evals -v                     # stream the runs
 ```
 
-Exit 0 = all passed. **Be the only writer:** teardowns sweep by snapshot diff, so a note or entity a teammate files during a case gets deleted. Coming from a scheduled failure? Find the case in eval history (`db.get_eval_runs()`, os.agno.com, or Platform Manager) and reproduce it with `--name` first; one that won't reproduce is usually environment. Stderr noise at the end of a run (`Event loop is closed`, httpx timeouts) is harmless.
+Exit 0 = all passed. **Be the only writer:** teardowns sweep by snapshot diff, so a note or entity a teammate files during a case gets deleted. Coming from a scheduled failure? Find the case in eval history (`db.get_eval_runs()`, [os.agno.com](https://os.agno.com/?ref=railway-template), or Platform Manager) and reproduce it with `--name` first; one that won't reproduce is usually environment. Stderr noise at the end of a run (`Event loop is closed`, httpx timeouts) is harmless.
 
 ## 2. Diagnose
 
@@ -75,4 +75,4 @@ Only a completed run is graded; a paused, cancelled, or errored run fails with t
 
 ## 6. Over time
 
-Cases log to Postgres (`db=eval_db`); history shows at os.agno.com. The daily [`workflows/run_evals.py`](../../../workflows/run_evals.py) schedule ships disabled — enabling it carries the only-writer rule into an unattended run; name an hour nobody is on the platform, or leave it off on a busy one.
+Cases log to Postgres (`db=eval_db`); history shows at [os.agno.com](https://os.agno.com/?ref=railway-template). The daily [`workflows/run_evals.py`](../../../workflows/run_evals.py) schedule ships disabled — enabling it carries the only-writer rule into an unattended run; name an hour nobody is on the platform, or leave it off on a busy one.

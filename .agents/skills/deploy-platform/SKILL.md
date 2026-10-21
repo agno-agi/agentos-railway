@@ -50,7 +50,7 @@ Say plainly: deployed, not live yet — this key is the one piece only they can 
 
 | Setting | Value |
 |---|---|
-| AgentOS UI | https://os.agno.com |
+| AgentOS UI | https://os.agno.com/?ref=railway-template |
 | Connection type | **Live** |
 | Endpoint | `https://<the AGENTOS_URL domain>` |
 | Name | `Live AgentOS` |
@@ -71,7 +71,7 @@ Every probe against the public domain, never localhost:
 - `/docs` → 200 (excluded from JWT on purpose).
 - `/mcp` → **401** — with `MCP_CONNECT_SECRET` set, plus a `WWW-Authenticate: Bearer resource_metadata="…"` header; without it a plain JSON 401. **200 means the endpoint is open — stop.**
 - `/agents` → **401**. A 200 means `RUNTIME_ENV=dev` reached the synced env — stop and fix.
-- Tell the user to hit **Connect** on the os.agno.com Live screen — the end-to-end proof.
+- Tell the user to hit **Connect** on the [os.agno.com](https://os.agno.com/?ref=railway-template) Live screen — the end-to-end proof.
 
 Show what you verified, compactly.
 
