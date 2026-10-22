@@ -9,7 +9,7 @@ generic manager behavior belongs in Agno. `CLAUDE.md` links to this file.
   changes and keep work within the requested scope.
 - Agno owns OS Manager (`os-manager-internal`), its members, source tools, Studio,
   Company Manager (`company-manager-internal`), authorization, durable execution and sandbox lifecycle.
-  Configure `OSManager(root=".")` in `app/main.py`; do not recreate these components
+  Configure `OSManager(root=agentos_root)` in `app/main.py`; do not recreate these components
   or add application-owned queues, lifecycle code or Company state machines.
 - Check framework behavior against the Agno version pinned in `pyproject.toml`.
   Do not bypass framework rejections or add compatibility adapters to this template.
@@ -90,7 +90,7 @@ Knowledge content adapters need distinct IDs; never create a second adapter with
 
 Company Products contain Projects and Routines; Tasks belong to Projects. On the current
 pin, Product metadata PATCH replaces the whole dictionary. Preserve existing metadata.
-`app/company.py` declares `agentos-maintenance` for Mondays at 09:00 UTC, executed by
+`app/company.py` declares `agentos-maintenance` for every day at 09:00 UTC, executed by
 Company Manager (`company-manager-internal`, executor type `agent`). It reviews Agno
 releases and this codebase and proposes up to three Backlog Tasks, reusing existing
 proposals. Its instructions prohibit accepting or executing work; `auto_accept=False`.

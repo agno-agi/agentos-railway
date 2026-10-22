@@ -18,6 +18,7 @@ from db import get_postgres_db
 
 runtime_env = getenv("RUNTIME_ENV", "prd")
 agentos_url = getenv("AGENTOS_URL", "http://127.0.0.1:8000")
+agentos_root = Path(__file__).resolve().parent.parent
 db = get_postgres_db()
 
 agent_os = AgentOS(
@@ -31,7 +32,7 @@ agent_os = AgentOS(
     mcp_auth=mcp_auth(agentos_url),
     authorization=runtime_env != "dev",
     manager=OSManager(
-        root=".",
+        root=agentos_root,
         model=manager_model(),
         learning=shared_learning,
     ),
@@ -40,7 +41,7 @@ agent_os = AgentOS(
     knowledge=[shared_knowledge],
     agents=[*engineers],
     registry=registry,
-    config=str(Path(__file__).parent / "config.yaml"),
+    config=str(agentos_root / "app" / "config.yaml"),
 )
 attach_interfaces(agent_os)
 app = agent_os.get_app()

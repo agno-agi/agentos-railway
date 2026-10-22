@@ -237,7 +237,7 @@ The Product also declares the repository URL from `app/sandbox.py`, which Compan
 uses to admit sandboxed engineering Tasks. Keep the local source for reading files.
 
 Ask OS Manager to review relevant releases and recommend the next improvement.
-The declared `agentos-maintenance` Routine runs on Mondays at 09:00 UTC using Company
+The declared `agentos-maintenance` Routine runs every day at 09:00 UTC using Company
 Manager. It is instructed to review Agno releases and the repository, propose up to three
 Tasks in Backlog, and leave acceptance and execution to human review. Automatic acceptance
 is disabled. Scheduled reviews spend model calls; verify the Product's saved ownership,
