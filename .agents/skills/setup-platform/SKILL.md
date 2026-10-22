@@ -46,7 +46,8 @@ If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY`:
 For standard development, `docker compose up -d --build`, then poll http://localhost:8000/docs until 200 (first build takes minutes). If it never comes up, read `docker compose logs agentos-api`.
 
 For sandbox development, follow the host API commands in the README's Engineers
-section. Edit `REPOSITORY` in `app/sandbox.py` for the target repository and branch,
+section. Select `docker_sandbox()` in `sandbox_provider()` and edit `REPOSITORY` in
+`app/sandbox.py` for the target repository and branch,
 and keep the Uvicorn process running in a persistent terminal. The host API
 uses Docker directly. Check `/health` and `/config`; Company should list its four tables,
 OS Manager, and the optional coding executors. Never start two APIs on the same port.

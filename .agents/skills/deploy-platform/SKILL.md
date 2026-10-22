@@ -18,10 +18,15 @@ The JWT verification key is public and may be shared to complete configuration.
   without printing it. The scripts read this file, not `.env` or exported application
   variables. Quoted multiline PEMs are supported; shell expansion is disabled.
 - Require `RUNTIME_ENV=prd` (also the default). There is no unauthenticated deploy mode.
-- For AgentCore, provision the runtime through AWS tooling first, set the ARN and host
-  credentials, and select an account-supported Bedrock model in `agents/engineers.py`.
-  The API needs `/data`; first provisioning adds it when the ARN is present. Add the
-  volume explicitly before enabling AgentCore on an existing deployment.
+- For AgentCore, provision the runtime through AWS tooling first and return
+  `agentcore_sandbox("your-runtime-arn")` from `sandbox_provider()` in `app/sandbox.py`.
+  Configure host AWS credentials. For Bedrock, explicitly set the provider's `env`
+  mapping and Claude's model as described in the README; no cloud flags or private-repo
+  credentials are forwarded automatically. Never put secret values in source.
+- The API needs `/data` for AgentCore checkpoints. Add `--with-checkpoint-volume` to
+  first provisioning. On an existing deployment, create that mount before redeploying
+  the provider change. Remove retired `SANDBOX_ENABLED`, `SANDBOX_IMAGE` and
+  `SANDBOX_RUNTIME_ARN` values from production env files; they no longer select a provider.
 
 ## 2. Determine whether the project exists
 
@@ -58,9 +63,9 @@ Then finish:
 For updates: code only → `redeploy.sh`; settings only → `env-sync.sh`; both → sync
 with `--no-deploy` first, then redeploy. Failed uploads may leave partial settings but
 never trigger deployment; fix and rerun. Omitted keys remain remote. Set optional
-credentials or the sandbox ARN to empty, or explicitly remove them through Railway
-to disable them. PostgreSQL credential rotation is a separate operation; env sync
-updates the API service.
+credentials to empty, or explicitly remove them through Railway to disable them.
+Disable a sandbox by returning `None` from `sandbox_provider()` and redeploying.
+PostgreSQL credential rotation is a separate operation; env sync updates the API service.
 
 ## 4. Verify and hand over
 

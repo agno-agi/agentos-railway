@@ -44,7 +44,10 @@ OS Manager, its members and Company Manager are framework-owned; do not restore
 the old application-owned manager/builder/engineer stack. OS, Company and queue storage
 reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
 
-No maintenance Routines ship by default. Before removing or renaming a component in an
+`app/company.py` declares `agentos-maintenance`: Company Manager reviews releases and
+the codebase on Mondays at 09:00 UTC, proposes up to three Backlog Tasks and has automatic
+acceptance disabled. Verify the declaration against saved schedule state; do not infer
+successful execution from its presence. Before removing or renaming a component in an
 existing deployment, inspect saved schedules and Studio references read-only when access
 is available. Source absence does not establish that a saved record is absent. Preserve
 historical sessions, notes and Company records.

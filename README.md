@@ -206,8 +206,9 @@ railway logs --service agent-os
 When changing both code and settings, run `env-sync.sh --no-deploy` before `redeploy.sh`.
 An upload failure stops before deployment; some earlier variables may already have changed,
 so correct the file and rerun the sync. Removing a line does not delete a remote variable:
-set optional credentials or the sandbox ARN to empty to disable them, or remove them
-explicitly through Railway.
+set optional credentials to empty to disable them, or remove them explicitly through
+Railway. To disable a sandbox, return `None` from `sandbox_provider()` and redeploy;
+clearing an environment variable does not change the provider.
 Database credential changes require a separate PostgreSQL rotation; env sync updates the API.
 Teardown verifies project deletion before unlinking and preserves local env files.
 Review the saved URL and JWT settings before provisioning another project.
@@ -274,16 +275,26 @@ the dictionary; include all metadata when editing it.
 Models are defined directly in `agents/engineers.py`; edit their `model` arguments to change them.
 Both agents are always registered. Without a sandbox, their harnesses run on the
 AgentOS server in the absolute project root (`/app` in the API container). With a sandbox
-configured, they run in its repository checkout. Invalid sandbox configuration fails
-at startup rather than falling back to the server. `RUNTIME_ENV` accepts only `dev`
-or `prd`, and `SANDBOX_ENABLED` accepts only `true` or `false`. An AgentCore ARN is
-production-only; enabling Docker in production is rejected. Claude on AgentCore uses
-Bedrock; set Claude's `model` argument to an inference profile supported by that account. An
-Engineering team is deferred until framework support and delegation have been tested.
+configured, they run in its repository checkout. Select the provider in
+[app/sandbox.py](app/sandbox.py) by changing the return value of `sandbox_provider()`:
+
+| Return value | Execution |
+| --- | --- |
+| `None` (default) | On the AgentOS server |
+| `docker_sandbox()` | In the local Docker image configured in that helper |
+| `agentcore_sandbox("your-runtime-arn")` | In the provisioned AgentCore runtime |
+
+Provider selection, image and runtime ARN are code settings. `RUNTIME_ENV` controls
+application authorization, not sandbox selection. Older `SANDBOX_ENABLED`,
+`SANDBOX_IMAGE` and `SANDBOX_RUNTIME_ARN` settings no longer select or configure a
+provider; remove them from env files. The Railway helper rejects nonempty values for
+these retired settings. Provider errors propagate rather than falling back to the server.
+No Engineering team ships by default.
 
 For local Docker sandboxes, run the API on the host so it can reach the Docker daemon.
 Install [uv](https://docs.astral.sh/uv/) first and configure `.env` as in [Run locally](#run-locally).
-If a venv is active, run `deactivate` before the setup script:
+Set `sandbox_provider()` to return `docker_sandbox()`. If a venv is active, run
+`deactivate` before the setup script:
 
 ```sh
 docker compose up -d agentos-db
@@ -291,7 +302,7 @@ docker compose up -d agentos-db
 docker build --target sandbox --load -t agno-sandbox:local .
 docker image inspect agno-sandbox:local --format '{{.Id}}'
 docker compose stop agentos-api
-RUNTIME_ENV=dev DB_HOST=127.0.0.1 DB_PORT=5432 SANDBOX_ENABLED=true \
+RUNTIME_ENV=dev DB_HOST=127.0.0.1 DB_PORT=5432 \
   AGENTOS_URL=http://127.0.0.1:8000 \
   uv run --no-project --env-file .env --with-requirements requirements.txt \
   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload \
@@ -303,9 +314,12 @@ MCP_CHECK_HOST=1 ./scripts/mcp_check.sh
 Repository configuration, provider selection and checkpoints live in
 [app/sandbox.py](app/sandbox.py). Edit `REPOSITORY` for your fork; it defaults to this
 template's GitHub repository on `main`. Development checkpoints use the absolute project
-`tmp/checkpoints` directory. Server-hosted or local Claude needs `ANTHROPIC_API_KEY`; Codex uses
-`OPENAI_API_KEY`. Private repository cloning can use `GITHUB_READ_TOKEN`, which enters
-the sandbox. Publication credentials are not configured by this template.
+`tmp/checkpoints` directory. Claude can use `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`;
+Codex uses `OPENAI_API_KEY`. Agno forwards these harness credentials into sandboxes.
+Private repository cloning requires `GITHUB_READ_TOKEN` in the chosen provider's `env`
+mapping; this template does not forward it automatically. Load secrets from your runtime
+secret source, never from literals committed to Git. Publication credentials are not
+configured by this template.
 
 The pinned framework admits sandboxed HTTP runs through a durable queue with session
 ordering; the shared PostgreSQL database supplies that capability. Redis is not required
@@ -313,23 +327,42 @@ for this single-replica configuration. API startup alone does not verify executi
 check an engineer HTTP run and Company Task acceptance/completion separately.
 Direct Python harness execution and team delegation are separate verification paths.
 
-Production uses AgentCore, an ARM64 runtime image, and a persistent checkpoint volume.
+For production sandboxing, select AgentCore with an ARM64 runtime image and a persistent
+checkpoint volume.
 The API does not need a Docker daemon. Build an ARM64 image with:
 
 ```sh
-# Set SANDBOX_IMAGE to your ECR URI with an immutable tag.
-docker build --target sandbox --platform linux/arm64 --load -t "${SANDBOX_IMAGE}" .
-docker image inspect "${SANDBOX_IMAGE}" --format '{{.Id}}'
+# Set this shell variable to your ECR URI with an immutable tag.
+SANDBOX_ECR_IMAGE=YOUR-ECR-URI:YOUR-TAG
+docker build --target sandbox --platform linux/arm64 --load -t "${SANDBOX_ECR_IMAGE}" .
+docker image inspect "${SANDBOX_ECR_IMAGE}" --format '{{.Id}}'
 ```
 
 Push the image to ECR and provision the AgentCore runtime and its execution role through
-your AWS tooling. The host AgentCore client uses the region encoded in the runtime ARN.
-`AWS_REGION` is forwarded into the sandbox for Claude/Bedrock and defaults to `us-east-1`;
-set it for the region where your chosen inference profile is available.
-Set `SANDBOX_RUNTIME_ARN` to that runtime's ARN; checkpoints use
-`/data/checkpoints`. First-time Railway provisioning adds the `/data` volume when the ARN
-is configured. When enabling AgentCore on an existing deployment, mount that volume before
-syncing the ARN. Startup rejects AgentCore without the mount. Keep one API replica.
+your AWS tooling. Return `agentcore_sandbox("your-runtime-arn")` from `sandbox_provider()`.
+The host AgentCore client uses the ARN's region and the host's AWS credential chain.
+
+To use Claude through Bedrock, add an `env` mapping to the `AgentCoreSandbox(...)`
+constructor in `app/sandbox.py` with `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
+`AWS_REGION`. Grant model access to the runtime's execution role and set Claude's `model`
+in `agents/engineers.py` to an inference profile supported by that account and region.
+Bedrock settings are not forwarded from the host automatically; without this configuration,
+Claude uses its normal harness credentials.
+
+Checkpoints use `/data/checkpoints`. For a new Railway project, provision the mount with:
+
+```sh
+./scripts/railway/up.sh --workspace <workspace-name-or-id> --with-checkpoint-volume
+```
+
+For an existing project, add the volume before redeploying the provider change:
+
+```sh
+railway volume --service agent-os add --mount-path /data
+```
+
+Skip volume creation if `/data` is already mounted. The helper refuses AgentCore without
+that mount. Keep one API replica.
 Company sandbox integration exists in the pin, but its repository/source contract and
 acceptance/completion still need verification on your deployment.
 
@@ -349,11 +382,7 @@ See [example.env](example.env) for copyable settings. No real credentials belong
 | `PARALLEL_API_KEY` | Optional authenticated web access; otherwise keyless MCP. |
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` | Both enable the Slack interface. |
 | `PORT`, `AGNO_DEBUG`, `WAIT_FOR_DB` | Railway service port (`8000`, matching its start command), debug output, container database wait. |
-| `SANDBOX_ENABLED` | `false`; enable Docker engineering in development. |
-| `SANDBOX_IMAGE` | `agno-sandbox:local` for dev; pushed ECR URI for runtime provisioning. |
-| `SANDBOX_RUNTIME_ARN` | Runs engineers in production AgentCore instead of on the AgentOS server. |
-| `ANTHROPIC_API_KEY`, `GITHUB_READ_TOKEN` | Local Claude and optional private repository read access. |
-| `AWS_REGION` | Claude/Bedrock region inside the sandbox; defaults to `us-east-1`. The host AgentCore client uses the runtime ARN’s region. |
+| `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` | Claude harness credentials; Agno forwards them to the sandbox unless cloud authentication is configured. |
 | `AWS_PROFILE` | Optional host AWS credential profile; it must exist on the API host. |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | Alternative host AWS credentials. |
 | `MCP_CHECK_HOST`, `MCP_CHECK_TOKEN` | Run the probe on the host; optional existing bearer token. |

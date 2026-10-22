@@ -110,10 +110,18 @@ sandbox owns its repository checkout; invalid configuration must fail rather tha
 back to server execution. Keep provider configuration in `app/sandbox.py` and agent
 declarations in `agents/engineers.py`.
 
+Select the provider by returning `None`, `docker_sandbox()`, or
+`agentcore_sandbox("runtime-arn")` from `sandbox_provider()`. Sandbox selection, image
+and runtime ARN are code settings, not environment switches. Supply optional Bedrock
+settings or private-repository credentials explicitly through the provider's `env`;
+never put credential values in source. Agno forwards the harness model credentials.
+
 For Docker engineering, run the API on the host using the [README instructions](README.md#engineers).
 Build the sandbox with `docker build --target sandbox --load -t agno-sandbox:local .`.
 Development checkpoints use the absolute project `tmp/checkpoints` path. Production
 AgentCore requires a persistent `/data` mount; provision its runtime with AWS tooling.
+Use `up.sh --with-checkpoint-volume` for a new Railway deployment using AgentCore;
+mount `/data` on an existing API service before deploying the provider change.
 
 Edit `REPOSITORY` in `app/sandbox.py` for a fork. Company sandbox acceptance requires
 a saved Product Git Source matching `REPOSITORY.url`; retain the local readable Source.
