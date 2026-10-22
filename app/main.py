@@ -26,6 +26,7 @@ agent_os = AgentOS(
     tracing=True,
     scheduler=True,
     user_isolation=True,
+    user_directory=True,
     scheduler_base_url=agentos_url,
     mcp_auth=mcp_auth(agentos_url),
     authorization=runtime_env != "dev",
