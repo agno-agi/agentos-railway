@@ -12,6 +12,7 @@ from agno.tools.calculator import CalculatorTools
 from agno.tools.file import FileGenerationTools
 from agno.tools.mcp import MCPTools
 from agno.tools.parallel import ParallelTools
+from agno.workflow.functions import content_to_file, csv_to_markdown_table, extract_json, extract_urls, json_to_csv
 
 from app.settings import default_model
 from db import create_knowledge, get_postgres_db
@@ -48,11 +49,18 @@ registry = Registry(
     name="AgentOS Registry",
     tools=[
         *get_web_tools(),
-        shared_notes.tools(),
+        shared_notes.tools(add_instructions=True),
         FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False),
         CalculatorTools(),
     ],
     models=[default_model()],
+    functions=[
+        extract_json,
+        extract_urls,
+        json_to_csv,
+        csv_to_markdown_table,
+        content_to_file,
+    ],
     dbs=[get_postgres_db()],
     learning=[shared_learning],
     knowledge=[shared_knowledge],

@@ -16,7 +16,7 @@ FROM base AS sandbox
 ENV HOME=/runtime
 WORKDIR /workspace
 
-# AgentCore's supervisor runs as root; agent commands run as UID 1000.
+# sandbox supervisor runs as root; agent commands run as UID 1000.
 RUN groupadd --gid 1000 sandbox \
     && useradd --uid 1000 --gid 1000 --home-dir /runtime --no-create-home sandbox
 

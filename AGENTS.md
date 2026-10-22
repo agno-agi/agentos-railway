@@ -1,90 +1,158 @@
 # AgentOS Railway template
 
-This is a thin application over Agno. `CLAUDE.md` links here. Agno owns OS Manager
-(`os-manager-internal`), its members, source tools, Studio and Company Product Manager.
-Configure `OSManager(root=".")` in `app/main.py`; never duplicate those components.
-Generic manager instructions belong in Agno. Keep this template to application wiring.
+This is a thin application over Agno. Keep application wiring and policy here;
+generic manager behavior belongs in Agno. `CLAUDE.md` links to this file.
 
-## Layout
+## Working rules
 
-- `app/main.py`: one AgentOS, shared database, manager, Company and durable queue.
-- `app/interfaces.py`: MCP OAuth, `agno` plus built-in MCP tools, optional Slack.
-- `app/company.py`: AgentOS Product and Sources; Agno owns Product Manager.
-- `app/config.yaml`: component descriptions/prompts and optional additional Products.
-- `app/registry.py`: Studio palette, web tools, shared knowledge, per-user learning and shared notes.
-- `app/settings.py`: model factories.
-- `app/sandbox.py`: optional Docker/AgentCore provider and repository configuration.
-- `agents/engineers.py`: Claude and Codex engineers, with stable existing IDs and optional sandboxes.
-- `teams/`: place user-defined teams here; no Engineering team ships yet.
-- `db/`: cached synchronous OS database and distinct knowledge content adapters.
-- `evals/`: a CLI entrypoint and application cases using Agno's built-in eval checks.
-- `scripts/`: local setup, validation, image builds and Railway deployment.
-- `.agents/skills/`: coding-agent workflows; `.claude/skills` links here.
-- `compose.yaml`: PostgreSQL and optional development API. No Redis.
-- `Dockerfile`: shared dependencies with `agentos` (default) and `sandbox` targets.
-- `railway.json`: single-replica Railway deployment.
+- Read the relevant source and inspect `git status` before editing. Preserve unrelated
+  changes and keep work within the requested scope.
+- Agno owns OS Manager (`os-manager-internal`), its members, source tools, Studio,
+  Company Manager (`company-manager-internal`), authorization, durable execution and sandbox lifecycle.
+  Configure `OSManager(root=".")` in `app/main.py`; do not recreate these components
+  or add application-owned queues, lifecycle code or Company state machines.
+- Check framework behavior against the Agno version pinned in `pyproject.toml`.
+  Do not bypass framework rejections or add compatibility adapters to this template.
+- Keep the starter lean. Add abstractions, tests and infrastructure only for a concrete
+  application need. Never print or commit credentials.
 
-## Development
+## Workflows
 
-Use `/setup-platform` for first run. Copy `example.env` to `.env` only if absent,
-set `OPENAI_API_KEY`, then `docker compose up -d --build`. For Docker engineering,
-follow the host API commands in the README's Engineers section. Build sandbox images
-with `docker build --target sandbox --load -t agno-sandbox:local .`; provision AgentCore
-with your AWS tooling.
+Read the relevant local skill before starting. Slash commands refer to coding-agent
+workflows in `.agents/skills/`; `.claude/skills` links to that directory.
 
-Development disables JWT. Production defaults to `prd` and requires verification.
-Never sync `RUNTIME_ENV=dev` to production. Keep application policy in `app/`, settings
-in environment variables, local services in Compose and production in `railway.json`.
+| Task | Skill |
+| --- | --- |
+| First local setup | [setup-platform](.agents/skills/setup-platform/SKILL.md) |
+| Add an agent | [create-agent](.agents/skills/create-agent/SKILL.md) |
+| Change an agent or add a Studio capability | [extend-agent](.agents/skills/extend-agent/SKILL.md) |
+| Add behavioral coverage | [create-evals](.agents/skills/create-evals/SKILL.md) |
+| Repair evals or explore and improve agent behavior | [eval-and-improve](.agents/skills/eval-and-improve/SKILL.md) |
+| Review repository consistency and public readiness | [review-and-improve](.agents/skills/review-and-improve/SKILL.md) |
+| Deploy or change production configuration | [deploy-platform](.agents/skills/deploy-platform/SKILL.md) |
 
-Use `./scripts/venv_setup.sh`, activate `.venv`, then `./scripts/format.sh` and
-`./scripts/validate.sh`. `pyproject.toml` declares dependencies; regenerate the pinned
-`requirements.txt` with `./scripts/generate_requirements.sh`. Do not add a competing
-`uv.lock`. Use `uv run --no-project` outside the activated environment. Both Dockerfile
-targets install the same requirements; rebuild both after dependency changes.
+## Where changes belong
 
-## Capabilities and ownership
+- `app/main.py`: AgentOS registration, shared database, OS Manager, Company and queue.
+- `app/interfaces.py`: MCP OAuth, `agno` and built-in MCP tools, optional Slack.
+- `app/company.py`: Product and Source declarations. `app/config.yaml`: component
+  descriptions, prompts and optional additional Products.
+- `app/registry.py`: Studio palette, web tools, shared knowledge, learning and notes.
+  `app/settings.py`: application model factories.
+- `app/sandbox.py`: providers, repository URL/branch and checkpoint paths.
+- `agents/`: application agents, including the Claude and Codex engineers.
+  `teams/`: user-defined teams; no Engineering team ships by default.
+- `db/`: cached OS database and distinct knowledge content adapters.
+- `evals/`: application cases and the Agno eval CLI entrypoint.
+- `scripts/`: setup, validation and image builds. `scripts/railway/deploy.py` is the
+  shared implementation for production provisioning, env sync, redeploy and teardown.
+- `compose.yaml`: local PostgreSQL and development API. `railway.json`: single-replica
+  production deployment. `Dockerfile`: shared dependencies for `agentos` (default)
+  and `sandbox` targets. No Redis ships with this template.
 
-Use `/create-agent`, `/extend-agent`, `/create-evals`, `/eval-and-improve`, and
-`/deploy-platform` for their respective tasks. Use the Agent shape in `/create-agent`:
-stable ID, explicit instructions/tools, `default_model()`, shared DB, history and datetime.
-Import shared resources from `app.registry`. Add `shared_learning` when agents should
-remember users, and attach `shared_notes.tools()` for a PostgreSQL notebook. Its default
-tools allow reading, writing, appending, replacing, listing, searching and moving notes;
-user scoping follows AgentOS user isolation. Keep personal profiles in learning and
-Company knowledge in Company wiki. Product agents need
-a separate knowledge base declared on demand, never operator documents or shared notes.
-New Studio capabilities enter the registry.
+## Local development
 
-OS, Company, queue, agents and teams MUST reuse `get_postgres_db()` with no arguments.
-Knowledge content adapters have distinct IDs; never introduce a second adapter with the OS ID.
+Run commands from the repository root. Copy `example.env` to `.env` only if absent,
+set `OPENAI_API_KEY`, then use `docker compose up -d --build`. Compose exposes ports
+on loopback and disables JWT for development; application code defaults to `prd`.
+
+For Python development:
+
+```sh
+./scripts/venv_setup.sh
+source .venv/bin/activate
+./scripts/format.sh
+./scripts/validate.sh
+```
+
+`pyproject.toml` declares dependencies. Regenerate `requirements.txt` with
+`./scripts/generate_requirements.sh`; do not add `uv.lock`. Use `uv run --no-project`
+outside the activated environment. Both Dockerfile targets install the same pinned
+requirements; rebuild both after dependency changes.
+
+## Agents and storage
+
+Follow the Agent shape in `create-agent`: stable ID, explicit instructions/tools,
+`default_model()`, shared DB, history and datetime. Register code agents and teams in
+`app/main.py` and their descriptions/prompts in `app/config.yaml`. Put new Studio
+capabilities in `app/registry.py`; import shared resources from there.
+
+OS, Company, queue, agents and teams must reuse `get_postgres_db()` with no arguments.
+Knowledge content adapters need distinct IDs; never create a second adapter with the OS ID.
+
+- `shared_knowledge`: operator documents.
+- `shared_learning`: per-user profiles and memories; attach when an agent should remember users.
+- `shared_notes.tools()`: a PostgreSQL notebook with read/write, append, replace, list,
+  search and move tools. User scoping follows AgentOS user isolation.
+- Company wiki: Company knowledge.
+- Product agents: declare a separate knowledge base on demand; do not use operator
+  documents or shared notes as their product knowledge.
+
 Company Products contain Projects and Routines; Tasks belong to Projects. On the current
-pin, PATCH replaces Product metadata wholesale. No maintenance Routines ship by default;
-the pinned framework cannot use its internal managers as Routine executors.
+pin, Product metadata PATCH replaces the whole dictionary. Preserve existing metadata.
+`app/company.py` declares `agentos-maintenance` for Mondays at 09:00 UTC, executed by
+Company Manager (`company-manager-internal`, executor type `agent`). It reviews Agno
+releases and this codebase and proposes up to three Backlog Tasks, reusing existing
+proposals. Its instructions prohibit accepting or executing work; `auto_accept=False`.
+Scheduled reviews spend model calls. Verify the Product's saved ownership, schedule and
+run history before relying on them; declarations do not overwrite saved edits.
 
-Both engineers are registered and run in the absolute project root on the AgentOS server when
-no sandbox is configured. Repository URL, branch and checkpoint paths are defined in
-`app/sandbox.py`; edit them there for a fork. Development checkpoints use the absolute
-project `tmp/checkpoints` directory; production requires a persistent mount at `/data`.
-A configured sandbox owns its repository checkout; invalid
-configuration must fail rather than silently fall back to the server.
-The Engineering team is deferred. The pinned framework requires
-Redis for sandbox HTTP runs, so that execution path is unavailable in this Redis-free
-template. Document the limitation; never bypass the framework check. Use explicit models
-and keep provider configuration separate from declarations. Direct execution, team delegation and Company acceptance are separate
-verification gates. Never bypass a framework rejection or put a compatibility adapter in
-the template. No application-owned queue, sandbox lifecycle or Company state machine.
+The current pin permits Company Manager as a Routine executor; OS Manager and its
+specialists remain excluded. Before adding a Routine, verify executor support, the
+Product's saved ownership and the caller's authorization. Do not register internal
+manager members to bypass executor restrictions.
+
+## Engineers and sandboxes
+
+Keep the engineers' stable IDs and explicit models. Both are registered and run in the
+absolute project root on the AgentOS server when no sandbox is configured. A configured
+sandbox owns its repository checkout; invalid configuration must fail rather than fall
+back to server execution. Keep provider configuration in `app/sandbox.py` and agent
+declarations in `agents/engineers.py`.
+
+For Docker engineering, run the API on the host using the [README instructions](README.md#engineers).
+Build the sandbox with `docker build --target sandbox --load -t agno-sandbox:local .`.
+Development checkpoints use the absolute project `tmp/checkpoints` path. Production
+AgentCore requires a persistent `/data` mount; provision its runtime with AWS tooling.
+
+Edit `REPOSITORY` in `app/sandbox.py` for a fork. Company sandbox acceptance requires
+a saved Product Git Source matching `REPOSITORY.url`; retain the local readable Source.
+New Source declarations are seeded without replacing saved edits. The pinned framework
+supports sandbox HTTP admission through the durable PostgreSQL queue with session ordering.
+
+## Production and saved state
+
+Use the deployment skill and [Railway instructions](README.md#deploy-on-railway).
+Commands use the project venv, Railway CLI 5.49.0 or newer, and an explicit production
+env file (default `.env.production`). Never sync `RUNTIME_ENV=dev` to production.
+Keep one API replica and require JWT verification before deploying the API.
+
+Provisioning requires a workspace and rejects an already-linked checkout. Use env sync
+and redeploy for an existing project. Keep application policy in `app/`, environment
+settings in env files, local services in Compose and production settings in `railway.json`.
+
+Before removing or renaming components in an existing deployment, inspect saved schedules
+and Studio references. Removing a declaration does not remove persisted records. Preserve
+historical sessions, notes and Company work; migrate saved references deliberately.
 
 ## Verification
 
-Use `./scripts/validate.sh` for format, lint and type checks; CI runs the same command.
-Keep the starter lean: no bundled regression-test suite. Add tests when a user's application needs them.
-Run model cases through `python -m evals`, using the application's configured database
-and workspace. Eval sessions and results persist there for the AgentOS UI. Keep evals
-to `__main__.py` and `cases.py`, using Agno's `criteria` and `expected_tool_calls`.
-Do not add custom isolation, scorers or cleanup machinery by default.
+`./scripts/validate.sh` checks formatting, lint and types; CI uses the same command.
+Also run `git diff --check`. Keep evals in `evals/__main__.py` and `evals/cases.py`, using
+Agno's `criteria` and `expected_tool_calls`. Do not add a bundled regression suite or
+custom isolation, scorers or cleanup machinery by default.
 
-`python -m evals --tag smoke` spends model calls. `scripts/mcp_check.sh` defaults to an
-initialize/list-tools probe; --prompt spends model calls. Record verification in
-`tmp/VERIFY.md`, separating static, deterministic, model, container and hosted results.
-Before upgrading an existing deployment, inspect saved schedules and Studio references to
-removed components. Do not delete historical sessions, notes or Company records.
+- `python -m evals --tag smoke`: runs the three application cases and spends model calls.
+  Uses the application's `.env`, database and workspace; sessions and results persist
+  for the AgentOS UI. The CLI defaults to `dev` unless configured otherwise and does not
+  start the API or scheduler. Even `--help` and `--list` require PostgreSQL because the
+  application initializes knowledge storage on import.
+- Inspect answers, tool results and judge reasons. Additional tool calls are allowed;
+  these cases do not enforce read-only execution. Use owned fixtures for mutating cases.
+- `./scripts/mcp_check.sh`: initializes MCP and checks required tools without model calls.
+  `--prompt` spends model calls. Set `MCP_CHECK_HOST=1` for the host API.
+- Verify direct engineer execution, HTTP execution, team delegation and Company Task
+  acceptance/completion separately. API startup does not establish these capabilities.
+
+Record checks and limits in `tmp/VERIFY.md`, separating static, deterministic, model,
+container and hosted results. Do not infer deployed readiness from local checks.

@@ -18,7 +18,6 @@ def main() -> int:
     from evals.cases import CASES, agent_os
 
     assert agent_os.db is not None and agent_os.manager is not None
-    agent_os.db._create_all_tables()
     mcp_tools: list = []
     collect_mcp_tools_from_team(agent_os.manager, mcp_tools)
     return cli(CASES, db=agent_os.db, judge_model=default_model(), default_timeout=180, mcp_tools=mcp_tools)

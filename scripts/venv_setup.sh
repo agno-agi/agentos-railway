@@ -65,7 +65,7 @@ echo -e "    ${DIM}> uv pip install --python ${VENV_DIR}/bin/python -c requireme
 uv pip install --python "${VENV_DIR}/bin/python" -c "${REPO_ROOT}/requirements.txt" -e "${REPO_ROOT}[dev]" --quiet
 
 # Copy activation command to clipboard
-printf -v ACTIVATE_CMD 'source %q' "${VENV_DIR}/bin/activate"
+ACTIVATE_CMD="source .venv/bin/activate"
 CLIPBOARD_MSG=""
 if command -v pbcopy &> /dev/null; then
     if printf '%s' "${ACTIVATE_CMD}" | pbcopy; then

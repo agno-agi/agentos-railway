@@ -5,7 +5,7 @@
 #    Agno Docker Image Builder
 #
 #    Usage:
-#      ./scripts/build_image.sh
+#      IMAGE_NAME=you/agentos ./scripts/build_image.sh
 #      IMAGE_NAME=you/agentos IMAGE_TAG=3.0.0 ./scripts/build_image.sh
 #
 #    Prerequisites:
@@ -20,7 +20,7 @@ set -euo pipefail
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS_ROOT="$(dirname "${CURR_DIR}")"
 DOCKER_FILE="${OS_ROOT}/Dockerfile"
-IMAGE_NAME="${IMAGE_NAME:-agnohq/agentos}"
+IMAGE_NAME="${IMAGE_NAME:?Set IMAGE_NAME to your registry namespace, for example you/agentos}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 # Colors

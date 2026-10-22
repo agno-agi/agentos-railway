@@ -14,7 +14,7 @@ CASES = (
         "configuration, the startup command, a documented way to chat with OS Manager, and how to add an agent. "
         "Do not claim to have started the application or created an agent.",
         expected_tool_calls=("read_file",),
-        tags=("smoke", "release"),
+        tags=("smoke",),
     ),
     Case(
         name="manager_checks_health",
@@ -23,7 +23,7 @@ CASES = (
         criteria="Report the observed diagnostics accurately, including any problems. Do not present a "
         "configuration/database check as proof that agents executed or that production is healthy.",
         expected_tool_calls=("run_diagnostics",),
-        tags=("smoke", "release"),
+        tags=("smoke",),
     ),
     Case(
         name="manager_explains_configured_learning",
@@ -35,6 +35,6 @@ CASES = (
         "model weights and does not retrain the model. Ground claims in the file; do not invent additional "
         "enabled stores or claim a successful live learning test.",
         expected_tool_calls=("read_file",),
-        tags=("smoke", "release"),
+        tags=("smoke",),
     ),
 )

@@ -45,4 +45,4 @@ attach_interfaces(agent_os)
 app = agent_os.get_app()
 
 if __name__ == "__main__":
-    agent_os.serve(app="app.main:app", reload=False)
+    agent_os.serve(app="app.main:app", host="127.0.0.1", port=8000, reload=False)

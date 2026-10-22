@@ -1,21 +1,31 @@
 ---
 name: create-agent
-description: Add a new agent to this AgentOS. Runs guided discovery or takes a concrete idea, then generates agents/slug.py, registers it in app/main.py, adds its manifest entry (description + quick prompts), restarts the container, and smoke-tests it for you. Covers the product agent too — ingest a product's website/docs into the product knowledge base and build a knowledge-only agent over it. Use whenever the user wants to add or create a new agent, or names a product (theirs or one they use) they want an agent for.
+description: Add a new agent to this AgentOS. Runs guided discovery or takes a concrete idea, then generates agents/slug.py, registers it in app/main.py, adds its manifest entry (description + quick prompts), reloads the selected development runtime, and smoke-tests it for you. Covers the product agent too — ingest a product's website/docs into the product knowledge base and build a knowledge-only agent over it. Use whenever the user wants to add or create a new agent, or names a product (theirs or one they use) they want an agent for.
 ---
 
 # Create a New Agent
 
 > _Coding-agent workflow: run as `/create-agent` or by describing the task._
 
-The platform is on `http://localhost:8000` (`RUNTIME_ENV=dev`); code edits hot-reload.
-When running the API on the host, run Python via `.venv/bin/python` with `.env`
-loaded instead of `docker exec`/`docker compose exec`; inspect the host API log.
-Keep the host process running for sandbox development and restart it after env or
-manifest changes. For MCP checks use `MCP_CHECK_HOST=1 ./scripts/mcp_check.sh`.
+## 0. Select the development runtime
 
-## 0. Preconditions
+Read `AGENTS.md` and inspect `git status`. Use the runtime already serving this checkout;
+do not switch modes or start a second API on port 8000.
 
-`curl -sSf http://localhost:8000/health` returns 200. If not, ask the user to `docker compose up -d --build`.
+- **Compose API:** confirm its bind mount points to this checkout. Run Python with
+  `docker compose exec -T agentos-api python`; inspect `docker compose logs agentos-api`.
+  If setup is needed, follow [setup-platform](../setup-platform/SKILL.md).
+- **Host API:** follow the [README Engineers commands](../../../README.md#engineers).
+  Confirm the process's working directory and startup environment. Run Python with
+  `.venv/bin/python` and the same `.env`/runtime/DB settings as that process; use
+  `uv run --no-project --env-file .env .venv/bin/python` when loading the env file.
+  Keep the API in a persistent terminal and inspect that process's log. No API container
+  or container bind mount is required in this mode.
+
+Check `/health` at the configured endpoint with its existing authentication. If unavailable,
+diagnose the selected runtime rather than assuming Compose is required. Use a bounded startup
+wait and inspect logs on failure. For MCP checks use `scripts/mcp_check.sh` with Compose or
+`MCP_CHECK_HOST=1 ./scripts/mcp_check.sh` with the host API.
 
 ## 1. Find the agent worth building
 
@@ -41,7 +51,7 @@ Decide these yourself:
 
 | Decision | How |
 |---|---|
-| **Pattern** | **Product agent** when the ask names a product. **Direct tools** (the Agent shape below) for ≤2 toolkits — the common case. **Context provider** (`agno.context.workspace.WorkspaceContextProvider`) when it queries one information source. |
+| **Pattern** | **Product agent** when the ask names a product. **Direct tools** (the Agent shape below) for ≤2 toolkits — the common case. For one information source, use the appropriate supported toolkit or knowledge base; verify the pinned API before choosing a different composition. |
 | **Slug** | From the purpose, kebab-case (`pr-reviewer`). |
 | **Model** | `default_model()`. Override only if asked. |
 | **Toolkits** | From the discovery answers, grounded in docs. Prefer what's in the image and keyless: the Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`. |
@@ -53,13 +63,17 @@ Decide these yourself:
 
 For every toolkit or MCP server, search the `agno-docs` MCP (fallback: <https://docs.agno.com/llms.txt>) and capture the import path, the constructor args that matter, required env vars, and pip dependencies. Skip if chat-only.
 
-**Verify every import in the container before writing it** — a missing package is a dead platform, not a degraded agent (`app/main.py` imports every agent at module scope):
+**Verify imports in the selected runtime** before adding them to application startup.
+Run this Python in the Compose container or the host environment selected in Step 0:
 
-```bash
-docker exec agentos-api python -c 'from agno.tools.exa import ExaTools'
+```python
+from agno.tools.exa import ExaTools
 ```
 
-Many key-free toolkits still fail to import here (`ArxivTools`, `WikipediaTools`, `DuckDuckGoTools`); of the usual suspects only `HackerNewsTools` is in the image. Web search without a key or rebuild is the keyless Parallel MCP this platform already runs on:
+Check the installed Agno version against `pyproject.toml`; verify optional dependencies
+instead of assuming that a toolkit is installed.
+
+For web access, reuse `get_web_tools()` from `app.registry` when its contract fits. Its keyless branch uses this MCP configuration:
 
 ```python
 from agno.tools.mcp import MCPTools
@@ -115,14 +129,13 @@ How you <work>:
 
 - No `offload_tool_results` — that's for the OS Manager and its internal members only.
 - Drop `learning=`/`user_id` only for a stated reason. Company knowledge belongs in Company wiki. For a notebook, import `shared_notes` from `app.registry` and add `shared_notes.tools()` to `tools`. User scoping follows AgentOS user isolation; keep personal profiles in per-user learning.
-- Context provider: spread `provider.get_tools()` into `tools=` and append `provider.instructions()` to the instructions.
 - **Every line ≤120 characters, `INSTRUCTIONS` included** — the repo lints `E501` and ruff won't reflow string literals. Wrap long bullets with a two-space hanging indent.
 
 ### The product agent
 
 Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads a dedicated product knowledge base, never `shared-knowledge`** — operator content stays out of an end-user agent's retrieval. No product knowledge base ships by default. Declare one in [`app/registry.py`](../../../app/registry.py) when creating this agent; Studio can use it once registered.
 
-Decide and state: slug from the product; root URL (prefer the docs subdomain); page cap **50** — the sitemap in order up to the cap, never a keyword slice (a skipped page turns a true answer into "not documented"). Cost, said once: embeddings under a cent for 50 pages; Parallel spends about one credit per 8 pages.
+Choose the slug, documentation root URL and an initial page cap (normally 50). Explain that ingestion may incur embedding and extraction charges; do not quote a fixed cost without a current, applicable estimate. A capped crawl can omit relevant pages, so report its actual coverage and expand it when needed.
 
 **Declare the knowledge base** in `app/registry.py` before `registry = Registry(...)`:
 
@@ -130,20 +143,27 @@ Decide and state: slug from the product; root URL (prefer the docs subdomain); p
 product_knowledge = create_knowledge(name="product-knowledge", table_name="product_knowledge")
 ```
 
-Add it to `registry.knowledge` and the `AgentOS(knowledge=[...])` list in `app/main.py`.
+Add it to `registry.knowledge` and the existing `AgentOS(knowledge=[...])` list in `app/main.py`, preserving all current knowledge entries.
 Use a product-specific variable, name and table for additional products. Reuse a matching
 existing declaration; do not mix unrelated products or operator documents. Import the
 knowledge object and `shared_learning` from `app.registry` in the new agent.
 
-**Ingest** through Agno's `KnowledgeManagementTools` bound to that new `product_knowledge`:
+**Ingest** through Agno's `KnowledgeManagementTools` bound to that knowledge base.
+Run this Python using the selected runtime, substituting the product URL and declaration:
 
-```bash
-docker exec agentos-api python -c "import asyncio; from agno.tools.knowledge import KnowledgeManagementTools; from app.registry import product_knowledge; print(asyncio.run(KnowledgeManagementTools(knowledge=product_knowledge).aingest_url(None, 'https://docs.example.com')))"
+```python
+import asyncio
+
+from agno.tools.knowledge import KnowledgeManagementTools
+from app.registry import product_knowledge
+
+tools = KnowledgeManagementTools(knowledge=product_knowledge)
+print(asyncio.run(tools.aingest_url(None, "https://docs.example.com", max_pages=50)))
 ```
 
 Inspect the returned result and verify content was stored before testing retrieval. Do not promise a page count, cost or runtime without measuring it. For host development run the same code with the configured venv and environment.
 
-**The file:** the structure above with `knowledge=product_knowledge` (from [`app/registry.py`](../../../app/registry.py)), `learning=shared_learning`, and no tools. Write `INSTRUCTIONS` yourself in the product's own terms — its name, how its docs speak, the support channel you saw in the pages — and write them against the failure mode that breaks product agents: **the model remembers the real docs and completes gaps from memory under a real citation** — exact flags, prices, and code that were never in the returned text. A prompt that merely says "answer from the docs, say so if not covered" does not stop it; these three guarantees do, at no cost to covered answers. So the instructions must guarantee:
+**The file:** the structure above with `knowledge=product_knowledge` (from [`app/registry.py`](../../../app/registry.py)), `learning=shared_learning`, and no tools. Write `INSTRUCTIONS` yourself in the product's own terms — its name, how its docs speak, the support channel you saw in the pages — and write them against the failure mode that breaks product agents: **the model remembers the real docs and completes gaps from memory under a real citation** — exact flags, prices, and code that were never in the returned text. A prompt that merely says "answer from the docs, say so if not covered" does not stop it; the following rules make that expectation explicit and testable. Include these rules and verify them with probes:
 
 - a detail counts as documented only when it appears in text the search returned — a page that merely mentions a topic (a name in a list, a link, a heading) does not document it;
 - only returned Source URLs get cited, never one from memory, and none on a refusal;
@@ -153,51 +173,57 @@ Step 7: three probes, not one — a covered question (details plus a Source URL)
 
 ## 4. Register in `app/main.py`
 
-Import it and put it **first** in `agents=[…]` — it's what the platform is for; the Claude and Codex agents come after. AgentOS makes it discoverable to OS Manager through the registry.
+Import the new agent and insert it into the existing `agents` list. Preserve every existing
+application agent and `*engineers`; do not replace the list with a starter example. Preserve
+the `teams`, `workflows`, `knowledge`, manager and Company wiring too. Check both code and
+Studio IDs before registration. AgentOS makes registered agents discoverable to OS Manager.
 
-```python
-from agents.<slug_underscore> import <slug_underscore>
+For example, adding a new agent when another already exists is an insertion:
 
-agent_os = AgentOS(
-    ...
-    agents=[<slug_underscore>, *engineers],
-)
+```diff
+ agents=[
++    new_agent,
+     existing_agent,
+     *engineers,
+ ],
 ```
 
 ## 5. Manifest entry
 
 In [`app/config.yaml`](../../../app/config.yaml) under `manifest`, keyed by id: one-line description and three quick prompts (the home card and chat page read these; `Agent(description=)` is unused here).
 
-## 6. Reload
+## 6. Reload the selected runtime
 
-```bash
-docker compose restart agentos-api                                   # no new deps
-./scripts/generate_requirements.sh && docker compose up -d --build   # new deps in pyproject.toml
-curl -s http://localhost:8000/agents | jq -r '.[].id' | grep <slug>  # missing → Step 8
-```
+For Compose, restart `agentos-api` when needed; for the host API, use the existing reload
+process or restart that host process with its original environment. YAML/env changes need
+an explicit restart. Do not run `docker compose up` for a host API.
+
+After dependency changes, regenerate `requirements.txt`, update the host venv if used
+(deactivate before `scripts/venv_setup.sh`), and rebuild both Dockerfile targets as required
+by `AGENTS.md`. Restart the selected API and confirm `/health` within a bounded wait.
+Verify the new agent and all previously registered application agents remain in `/agents`.
 
 ## 7. Smoke test
 
 ```bash
-until curl -sSf http://localhost:8000/health > /dev/null; do sleep 0.5; done
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
   -F "message=<one of the quick_prompts>" -F "user_id=claude-create-agent" -F "stream=false" \
   -o /tmp/agent-out.json -w "HTTP %{http_code} in %{time_total}s\n"
 jq -r '.content // .' < /tmp/agent-out.json
-docker logs agentos-api --since 30s 2>&1 | grep -E "Running: \w+\(" | head -40   # which tools fired
 ```
 
-Pass = 200 and non-empty content. Studio-builder-pattern agents: probe read-only ("What components can you see?") — a "build me X" prompt creates and publishes a real component.
+Use the configured endpoint/authentication if different from this local example. Inspect the run status, answer, tool results and the selected runtime log; HTTP 200 and nonempty content alone are not a pass. A run must complete and satisfy the prompt. Studio probes should be read-only unless mutations are explicitly in scope; a "build me X" prompt creates and publishes a real component.
 
 ## 8. If it fails
 
-- **404** — not registered, not restarted, or the container is bound to another checkout: `docker inspect agentos-api --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}'`.
-- **5xx** — `docker logs agentos-api --tail 50`: usually an import error, a missing env var, or a typo in `tools=`.
-- **Empty response** — tool errors in the logs (rate limit, key, MCP unreachable). Tell the user.
-- **Tool not firing** — the prompt isn't strong enough; suggest [`eval-and-improve`](../eval-and-improve/SKILL.md).
+- **404** — inspect registration, reload status and whether the selected runtime serves this checkout.
+- **5xx** — inspect the selected runtime's logs for import/configuration errors.
+- **Empty, paused or failed run** — inspect run status and tool errors before changing the prompt.
+- **Tool not firing** — inspect tool registration, connection and the scenario's expectations;
+  use [eval-and-improve](../eval-and-improve/SKILL.md) for behavioral diagnosis.
 
 Iterate 2–3 times, then ask.
 
 ## 9. Done
 
-Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). A simple agent takes 5–10 minutes; a product agent about the same, ingestion being most of it.
+Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.

@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import subprocess
 import sys
@@ -105,7 +106,9 @@ def linked_project(*, allow_unlinked: bool = False) -> dict[str, Any] | None:
             return None
         raise DeploymentError("Cannot inspect the linked Railway project. Check railway status and railway login.")
     project = json.loads(result.stdout)
-    if not isinstance(project, dict) or not project.get("id") or not project.get("name"):
+    if not isinstance(project, dict) or any(
+        not isinstance(project.get(key), str) or not project[key] for key in ("id", "name")
+    ):
         raise DeploymentError("Railway returned an invalid project identity; stopping.")
     return project
 
@@ -113,7 +116,16 @@ def linked_project(*, allow_unlinked: bool = False) -> dict[str, Any] | None:
 def upload(service: str, values: dict[str, str]) -> None:
     for key, value in values.items():
         print(f"Setting {service}: {key}", flush=True)
-        railway("variable", "set", key, "--stdin", "--skip-deploys", "--service", service, value=value)
+        try:
+            # Railway rejects empty stdin; KEY= clears a value without exposing a secret.
+            if value == "":
+                railway("variable", "set", f"{key}=", "--skip-deploys", "--service", service, value="")
+            else:
+                railway("variable", "set", key, "--stdin", "--skip-deploys", "--service", service, value=value)
+        except (DeploymentError, subprocess.TimeoutExpired) as error:
+            raise DeploymentError(
+                f"{error} Earlier variables may have changed; no deployment was requested by this upload."
+            ) from error
 
 
 def provision(path: Path, workspace: str | None) -> int:
@@ -158,11 +170,15 @@ def provision(path: Path, workspace: str | None) -> int:
             },
         )
         railway("volume", "--service", DATABASE, "add", "--mount-path", "/var/lib/postgresql")
-        railway("redeploy", "--service", DATABASE, "--yes")
+        # The initial image deployment may still be building and cannot be redeployed.
+        # Deploy from the configured image with the variables and volume now in place.
+        railway("redeploy", "--service", DATABASE, "--from-source", "--yes")
         railway("add", "--service", API)
         if values.get("SANDBOX_RUNTIME_ARN"):
             railway("volume", "--service", API, "add", "--mount-path", "/data")
         domain = json.loads(railway("domain", "--service", API, "--port", "8000", "--json").stdout)
+        if not isinstance(domain, dict):
+            raise DeploymentError("Railway returned invalid domain JSON.")
         url = domain.get("domain") or next(iter(domain.get("domains", [])), None)
         if not isinstance(url, str) or not url.startswith("https://"):
             raise DeploymentError("Railway did not return a public HTTPS domain.")
@@ -175,7 +191,7 @@ def provision(path: Path, workspace: str | None) -> int:
                 "Provisioned; the API has not been deployed.\n"
                 "Connect this URL at https://os.agno.com with token-based authorization, then save the public\n"
                 "JWT_VERIFICATION_KEY as a quoted PEM in the production env file (or configure JWT_JWKS_FILE).\n"
-                f"Finish with: ./scripts/railway/env-sync.sh {path} --no-deploy\n"
+                f"Finish with: ./scripts/railway/env-sync.sh {shlex.quote(str(path))} --no-deploy\n"
                 "Then: ./scripts/railway/redeploy.sh"
             )
             return 2
