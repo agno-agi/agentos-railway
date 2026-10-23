@@ -1,44 +1,27 @@
 manifest:
-  # --- Agents ---
-
-  platform-builder:
-    description: "Creates agents, teams, workflows, and schedules using the AgentOS Studio."
+  os-manager-internal:
+    description: "Build agents, check platform health, and coordinate work across this AgentOS."
     quick_prompts:
-      - "What can you build?"
-      - "Build an agent for my product — the docs are at docs.agno.com"
-      - "Build a daily pulse workflow and schedule it for 9am"
-
-  platform-manager:
-    description: "Monitors and manages your AgentOS: usage, tokens, runs, tools, evals and schedules."
+      - "Show me the available agents and explain when to use each one."
+      - "Check platform health and explain any issues that need my attention."
+      - "Create and publish an agent that turns pasted meeting notes into decisions, action items, and open questions. Use the default model and no tools."
+      - "Summarize the Projects and Tasks for AgentOS, highlighting blockers and decisions awaiting review."
+  company-manager-internal:
+    description: "Review Sources, plan work across Products and Projects, and propose improvements for human review."
     quick_prompts:
-      - "Is the platform healthy?"
-      - "How many runs and tokens over the last 7 days?"
-      - "Which agent is slowest, and is anything failing?"
-
-  platform-engineer:
-    description: "Answers codebase questions: reads the source code, explains the wiring, and generates handoffs for your coding agent."
+      - "Summarize the latest maintenance review for AgentOS and any proposed work. If no review has run, say so."
+      - "Review the configured Sources for AgentOS. Explain relevant changes and their impact without creating work."
+      - "Propose up to three improvements for AgentOS with evidence, expected impact, and acceptance criteria. Check for duplicates first; leave proposals for review without accepting or executing them."
+      - "Review existing Projects and Tasks for AgentOS. Identify overlaps, missing evidence, and unclear acceptance criteria without changing them."
+  claude-engineer:
+    description: "Explain, review, and improve repository code using Claude."
     quick_prompts:
-      - "How does learning work?"
-      - "How does tool offloading work?"
-      - "How does the agno team work?"
-
-  # --- Teams ---
-
-  agno:
-    description: "The platform lead. Agno can build agents, run them and check on the platform."
+      - "Explain how this repository starts AgentOS and connects its agents, database, and sandboxes. Point me to the relevant files."
+      - "Review the repository for concrete bugs and setup problems. Prioritize findings with file references; do not change files."
+      - "Run the documented local checks and fix the first reproducible failure with the smallest change. Report what you changed and verified."
+  codex-engineer:
+    description: "Investigate bugs, implement focused changes, and run repository checks using Codex."
     quick_prompts:
-      - "Tell me about yourself"
-      - "How do I get started?"
-      - "Build an agent for my product, the docs are at docs.agno.com"
-
-  # --- Workflows ---
-
-  deployment-check:
-    description: "Readiness check: database, credentials, auth, scheduler, MCP, Slack. No model calls."
-    quick_prompts:
-      - "Run the deployment check"
-
-  run-evals:
-    description: "Runs the eval cases tagged by EVALS_TAG (default: smoke). Disabled by default."
-    quick_prompts:
-      - "Run the eval suite (spends model calls)"
+      - "Inspect the repository and summarize its setup, validation, and test commands without changing files."
+      - "Review the development scripts for broken assumptions and unnecessary complexity. Recommend focused fixes without editing files."
+      - "Run the documented local checks and fix the first reproducible failure with the smallest change. Report what you changed and verified."

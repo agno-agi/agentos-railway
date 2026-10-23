@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
 #    Agno Container Entrypoint
 #
 ############################################################################
+
+set -euo pipefail
 
 # Colors
 ORANGE='\033[38;5;208m'
@@ -31,7 +33,7 @@ if [[ "${WAIT_FOR_DB:-}" = true || "${WAIT_FOR_DB:-}" = True ]]; then
     echo ""
 fi
 
-case "$1" in
+case "${1:-}" in
     chill)
         echo -e "    ${DIM}Mode: chill${NC}"
         echo -e "    ${BOLD}Container running.${NC}"

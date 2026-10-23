@@ -1,77 +1,99 @@
 ---
 name: review-and-improve
-description: Repo-wide drift sweep for public-readiness — diff docs against code, confirm every agent is registered and reachable, every env var documented, every doc path exists, and scripts behave as advertised; auto-fix mechanical drift and flag the rest. Use before a public release or after a refactor.
+description: Review this AgentOS repository for public readiness after a refactor or before release. Compare documentation, skills, configuration, component wiring and scripts with the implementation; fix clear documentation drift when requested and report behavioral issues with evidence. Use for a repository consistency sweep, not agent-quality tuning or deployment.
 ---
 
 # Review and Improve
 
-> _Coding-agent workflow: run as `/review-and-improve` or by describing the task._
+Review the requested scope against [AGENTS.md](../../../AGENTS.md) and the actual
+implementation. When comparing with a branch or PR, record the base and head SHAs,
+and distinguish committed changes from local edits. A review-only request stays read-only.
+For a review-and-improve request, correct clear documentation and link errors within scope;
+report behavior changes separately unless the user has authorized their repair.
 
-Sweep the repo for docs accuracy, reachability, and consistency. Fix mechanical drift in place; surface the rest. [`AGENTS.md`](../../../AGENTS.md) is the source of truth (`CLAUDE.md` symlinks to it).
+## 1. Establish the scope
 
-**Auto-fix:** stale doc paths; `example.env` entries missing for vars the code reads, or stale ones nothing reads (keep those a comment marks optional/future); a registered agent or workflow missing from an architecture diagram; an agent file on disk not imported in `app/main.py`; a missing `app/config.yaml` manifest entry (draft one and flag it); broken links between docs and skills; a single-line claim in one doc contradicted by another doc or by code (fix the doc).
+Inspect the working tree before editing and preserve concurrent changes. Review the named
+files first. A repository-wide pass covers `README.md`, `AGENTS.md`, `example.env`, skills,
+`app/`, `agents/`, `teams/`, `db/`, `evals/`, `scripts/`, and build/deployment configuration.
+Include user-added workflows or other directories when present. Exclude environments,
+caches, generated files and Git internals from content scans. Do not print env-file values.
 
-**Flag, don't fix:** section-level rewrites; code beyond imports; `pyproject.toml`; anything in `db/`, `compose.yaml`, `Dockerfile`; failing evals or live agents.
+A running API is not required for the source review. Establish whether development uses
+Compose or the host API before attempting runtime checks; use the matching README commands.
+If a runtime is unavailable or belongs to another checkout, continue the source review and
+report the runtime verification gap.
 
-## 0. Preconditions
+## 2. Compare declarations, documentation and behavior
 
-`curl -sSf http://localhost:8000/health` returns 200 (Step 4 needs it). Suggest `git checkout -b review/$(date +%Y%m%d)`.
-
-## 1. Scope
-
-Restate in a few lines: `README.md`, `AGENTS.md`, `example.env`; `.agents/skills/*/SKILL.md`; `app/`, `agents/`, `teams/`, `workflows/`, `db/`, `evals/`, `scripts/`; `compose.yaml`, `Dockerfile`, `pyproject.toml`, `railway.json`. Skip `.venv/`, caches, `.git/`. Fold in any concern the user names.
-
-## 2. Inventory
-
-Read first, fix once. Build the picture: registered agents/teams/workflows in `app/main.py`; files on disk; what [`app/registry.py`](../../../app/registry.py) declares and imports; env vars read (`getenv(`, `os.environ`, plus `env_flag`/`_int_env` helpers); the manifest; eval cases; `register_schedules()` targets; what each script does.
-
-## 3. Consistency pass
-
-| Check | Where |
+| Check | Evidence |
 |---|---|
-| Every agent/team/workflow file is registered | `agents/`, `teams/`, `workflows/` ↔ `app/main.py` |
-| Every registered component has a manifest entry | `app/main.py` ↔ `app/config.yaml` |
-| Every env var in code is documented, and every documented var is read | code ↔ `AGENTS.md` table ↔ `example.env` (`RUNTIME_ENV` is deliberately absent from `example.env`) |
-| Every path and script named in docs exists and does what's claimed | `README.md`, `AGENTS.md`, skills ↔ filesystem |
-| Architecture diagram matches registrations | `AGENTS.md` |
-| Eval cases reference real agents and tools | `evals/cases.py` |
-| Every schedule hits a real workflow id | `app/schedules.py` ↔ `workflows/` |
-| Registry inventory prose matches `app/registry.py` | `AGENTS.md` |
-| Key Files table matches the tree | `AGENTS.md` |
-| Skill `name:` equals its folder; `../../../` links resolve; `.claude/skills` symlink resolves | `.agents/skills/` |
-| `.mcp.json` servers agree with the docs | `.mcp.json` |
-| MCP endpoint claims match `mcp=` in `app/main.py`; `scripts/mcp_check.sh` calls a registered agent | docs ↔ code |
+| Application agents and teams are deliberately registered, with stable IDs | Source declarations, `app/main.py`, `app/config.yaml` |
+| Framework-owned components stay in Agno | `OSManager(...)`, `CompanyConfig(...)`, installed framework source |
+| Shared resources and Studio capabilities match documentation | `app/registry.py`, `db/`, AgentOS registration |
+| Configuration names, defaults and prerequisites agree | Environment reads, `example.env`, README, Compose, deployment scripts |
+| Documented commands and file paths work | Scripts, skills, CLI help and installed signatures |
+| Skills remain discoverable and their routing is coherent | Frontmatter, relative links, `.claude/skills`, `CLAUDE.md` |
+| Eval targets, tool names and CLI examples exist | `evals/cases.py`, `evals/__main__.py`, installed Agno eval APIs |
+| Sandbox documentation matches execution and persistence requirements | `app/sandbox.py`, `agents/engineers.py`, Dockerfile, README |
+| MCP claims match the exposed interface and authentication behavior | `app/interfaces.py`, `app/main.py`, `scripts/mcp_check.sh` |
 
-## 4. Live smoke
+Do not register every file found under `agents/` or invent manifest entries for internal
+components: determine whether it is an intended public component, a helper or framework-owned.
+OS Manager, its members and Company Manager are framework-owned; do not restore
+the old application-owned manager/builder/engineer stack. OS, Company and queue storage
+reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
 
-Confirm the container serves *this* repo's components (code components are `is_component=false`):
+`app/company.py` declares `agentos-maintenance`: Company Manager reviews releases and
+the codebase every day at 09:00 UTC, proposes up to three Backlog Tasks and has automatic
+acceptance disabled. Verify the declaration against saved schedule state; do not infer
+successful execution from its presence. Before removing or renaming a component in an
+existing deployment, inspect saved schedules and Studio references read-only when access
+is available. Source absence does not establish that a saved record is absent. Preserve
+historical sessions, notes and Company records.
 
-```bash
-curl -s http://localhost:8000/agents | jq -r '.[] | select(.is_component == false) | .id' | sort
-curl -s http://localhost:8000/teams  | jq -r '.[] | select(.is_component == false) | .id' | sort
-```
+## 3. Verify proportionately
 
-A mismatch with `app/main.py` means another checkout owns port 8000 — stop and say so.
+Use static checks first:
 
-Smoke every code agent and the team with one quick prompt each (`/agents/<slug>/runs`, `/teams/agno/runs`; `user_id=claude-review`, `stream=false`). Pass = 200, non-empty content, no errors in `docker logs agentos-api --since 30s`. Bracket the whole step with the learning snapshot pair, and `platform-builder`'s run with the builder pair ([improve-agent Step 2](../improve-agent/SKILL.md)); use only the builder's first quick prompt (the others build real components). Workflows stay out — `deployment-check` runs on its cron, `run-evals` spends model budget.
-
-Then `./scripts/mcp_check.sh` → `MCP OK — <n> tools` and a real answer.
-
-Quality issues are out of scope — note them and point at [`improve-agent`](../improve-agent/SKILL.md).
-
-## 5. Format + validate
-
-```bash
+```sh
 source .venv/bin/activate
-./scripts/format.sh && ./scripts/validate.sh
+./scripts/validate.sh
+git diff --check
 ```
 
-Surface validate errors verbatim.
+For shell changes, run `bash -n` on the affected scripts. After authorized edits, format
+only as needed and inspect the resulting diff. Use disposable local fixtures to reproduce
+script failures when useful; keep the starter free of a bundled regression-test suite.
+CLI help and mock fixtures do not establish successful cloud deployment.
 
-## 6. Evals
+For an available local API, verify `/health` and the relevant component listing using its
+configured authentication. Confirm the process or container serves this checkout before
+drawing conclusions. Run `scripts/mcp_check.sh` in Compose mode, or
+`MCP_CHECK_HOST=1 ./scripts/mcp_check.sh` for the host API. The default MCP check proves
+initialization and required tool availability, not an agent answer.
 
-Ask first (hits OpenAI, 1–3 minutes): `python -m evals --tag release`. Failures go to "Needs your call" with [`eval-and-improve`](../eval-and-improve/SKILL.md) as the follow-up.
+Run model probes or evals only within the user's authorized scope and budget. Inspect
+available cases before selecting a tag; do not assume `release` or `live` cases exist.
+Even eval CLI help/list commands import knowledge storage and require PostgreSQL; inspect
+`evals/cases.py` directly when the database is unavailable.
+Evals use the application's database and persist sessions and results. Use explicitly owned
+fixtures for mutating cases; do not restore snapshot-diff cleanup or delete historical data.
+Do not smoke every engineer automatically: those runs can execute code and modify workspaces.
+HTTP availability, direct execution, delegation and Company Task completion are separate checks.
 
-## 7. Report
+## 4. Report
 
-Nothing fixed or flagged → *"Repo is consistent and the live container is healthy. No follow-up needed."* Otherwise: **Fixed automatically** (one line per change, with path); **Needs your call** (ranked, with recommended action); `git diff --stat` and a suggested commit (`chore: review-and-improve sweep` + a bullet per bucket).
+Lead with actionable findings: severity, file and line, triggering condition, observed or
+source-backed consequence, and recommended fix. Label inherited issues separately from
+regressions against the comparison base. Explain what was corrected and what remains.
+Give a sharing or merge recommendation limited to the reviewed scope.
+
+Record verification in `tmp/VERIFY.md` when making changes, separating static,
+deterministic, model, container and hosted results. Report skipped checks and their limits;
+do not equate a passing linter or mock fixture with a healthy deployed platform.
+
+Route agent behavior changes to [extend-agent](../extend-agent/SKILL.md), missing eval
+coverage to [create-evals](../create-evals/SKILL.md), eval failures and agent hardening to
+[eval-and-improve](../eval-and-improve/SKILL.md), and an explicitly requested deployment
+to [deploy-platform](../deploy-platform/SKILL.md).

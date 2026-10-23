@@ -19,7 +19,7 @@ Kicking off /setup-platform. Here's the map:
 1. Docker — confirm it's installed and running
 2. Environment — .env and your OpenAI key
 3. Boot — build and start the platform containers
-4. Prove it — a real agent answer over the MCP endpoint
+4. Prove it — MCP handshake and tools; an optional agent answer
 5. Connect the UI — os.agno.com, one click
 6. First agent — we build it together, live
 7. Make it yours — your platform in its own private repo
@@ -36,18 +36,31 @@ Read [`AGENTS.md`](../../../AGENTS.md) end to end.
 
 ## 2. Environment
 
-`cp example.env .env`, then set `OPENAI_API_KEY`:
+If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY`:
 
 - Already in their shell → say so and copy it across without reading or printing it.
 - Otherwise open `.env` in their editor (`cursor`, `code`) and ask them to paste it. Never open a terminal editor from your shell — it hangs the session.
 
 ## 3. Boot
 
-`docker compose up -d --build`, then poll http://localhost:8000/docs until 200 (first build takes minutes). If it never comes up, read `docker compose logs agentos-api`.
+For standard development, `docker compose up -d --build`, then poll http://localhost:8000/docs until 200 (first build takes minutes). If it never comes up, read `docker compose logs agentos-api`.
+
+For sandbox development, follow the host API commands in the
+[sandbox setup guide](../../../docs/sandboxes.md#local-docker-sandbox).
+Select `docker_sandbox()` in `sandbox_provider()` and edit `REPOSITORY` in
+`app/sandbox.py` for the target repository and branch,
+and keep the Uvicorn process running in a persistent terminal. The host API
+uses Docker directly. Check `/health` and `/config`; Company should list its four tables,
+OS Manager, and the optional coding executors. Never start two APIs on the same port.
+The pinned framework admits sandbox HTTP runs through the durable PostgreSQL queue.
+Configuration and API startup do not prove execution: verify an engineer HTTP run and
+Company Task acceptance/completion separately. Keep the Product repository Source aligned
+with `REPOSITORY.url`; never bypass a framework rejection.
+For this host path use `MCP_CHECK_HOST=1 ./scripts/mcp_check.sh` below.
 
 ## 4. Prove it
 
-`./scripts/mcp_check.sh` prints "MCP OK" and a real agent answer. Quote the answer — it's their Platform Manager — and say the MCP server is live.
+`./scripts/mcp_check.sh` initializes MCP and verifies the required tools without a model call. For an answer, use `--prompt "<read-only prompt>"`; that spends model calls. Report which check was actually run.
 
 ## 5. Connect the AgentOS UI
 
@@ -74,12 +87,12 @@ Below the connect direction, ask the one question that starts it — plain text,
 
 Whatever they type is the first discovery answer for [`create-agent`](../create-agent/SKILL.md): a URL or product name takes its **product-agent pattern** (Step 3 there); anything else takes its normal path. Close the message with the first build move, never with "ready?".
 
-**The product brief** you hand create-agent when they name a product — complete, so it builds without asking more: the product pattern (Step 3 there), ingest with `app/tools.py`'s `ingest_url` inside the container (Parallel-backed when `PARALLEL_API_KEY` is set, the built-in fetcher otherwise — same rows and citations either way), page cap 50, `knowledge=product_knowledge`, `learning=shared_learning`, instructions you write that carry the grounding rules in create-agent's product pattern, no other tools; three smoke probes.
+**The product brief** you hand create-agent when they name a product — complete, so it builds without asking more: the product pattern (Step 3 there), first declare and register a dedicated `product_knowledge` in `app/registry.py` (none ships by default), then ingest with the framework `KnowledgeManagementTools(knowledge=product_knowledge).aingest_url` in the selected Compose or host runtime, initial page cap 50, `knowledge=product_knowledge`, `learning=shared_learning`, instructions you write that carry the grounding rules in create-agent's product pattern, no other tools; three smoke probes.
 
 Follow create-agent through its smoke test, then land where the agent now lives, in the same breath as its first answer:
 
 - **In the UI** — **Refresh** puts it in the Agents list, and its base on the Knowledge page.
-- **On Agno's roster** — registering in `app/main.py` lets Agno run it by name ("Agno, ask the <Product> agent…") from the UI, Slack, or any MCP client.
+- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("Agno, ask the <Product> agent…" through the `agno` MCP tool) from the UI, Slack, or any MCP client.
 - **Ready to serve** — REST inside their product and MCP now; claude.ai and ChatGPT once deployed (Step 8).
 
 Stop before create-agent's own closing — Steps 7 and 8 replace it. If they push back or want to stop, adapt and carry on.
@@ -101,7 +114,7 @@ With `gh` signed in: `gh repo create agent-platform --private --source=. --push`
 Short summary of what you built, then the loop they own — lead with whichever the smoke test suggested:
 
 - [`/extend-agent`](../extend-agent/SKILL.md) — change the agent: a tool, a capability, a known bug.
-- [`/improve-agent`](../improve-agent/SKILL.md) — harden it autonomously with probes.
+- [`/eval-and-improve`](../eval-and-improve/SKILL.md) — repair failing cases or explore simulated user scenarios and improve the agent.
 - [`/create-agent`](../create-agent/SKILL.md) — another agent.
 
 One line: coding agents connect with `uvx agno connect`; claude.ai / ChatGPT connect over OAuth once deployed — [`/deploy-platform`](../deploy-platform/SKILL.md) does that.

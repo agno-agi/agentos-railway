@@ -1,90 +1,92 @@
 ---
 name: deploy-platform
-description: Deploy this AgentOS to production with this template's deploy scripts — preflight the provider CLI and account, run the up.sh script, complete the JWT key step, verify the live platform on its public URL, then hand over the redeploy/logs/teardown instructions. Use this skill when the user asks to deploy, ship to production, go live, or take the platform to prod.
+description: Deploy this AgentOS using its own provider instructions, configure JWT verification, and verify the public service. Use for first deployment, redeployment, or production configuration changes.
 ---
 
 # Deploy the Platform
 
-> _Coding-agent workflow: run as `/deploy-platform` or by describing the task._
+Read `AGENTS.md`, the README deployment section, and this repository's deploy
+configuration and scripts. Use those files to identify the provider and its exact
+commands, required CLI versions, environment file, and teardown behavior.
+Do not assume every template has deploy scripts or supports the same flags.
+For Docker or an existing Kubernetes cluster, follow the repository's Compose or
+Helm instructions.
 
-Take the locally-proven platform to a live public URL. This creates real, billed cloud resources — say so before creating anything, and name the teardown script in the same breath.
+Never print credentials or the MCP connect secret. The JWT verification key is
+public and may be shared to complete configuration.
 
-**Be self-driving:** run every script and check yourself. Stop only for a provider login, a browser-only step, or a key only the user can mint — and tell them to run interactive commands in a separate terminal (CLI logins need a TTY and a browser). Never print secret values; the two exceptions are the JWT verification key (public) and the `MCP_CONNECT_SECRET` the up script prints itself.
+## 1. Prepare
 
-**Narrate:** open with this map plus the cost sentence, then a line per step. On a redeploy (Step 3 finds the platform live) the map is three beats — push, prove, hand back — and the cost sentence is already spent.
+- Check the required tools and the authenticated provider account. Interactive
+  logins belong in the user's terminal.
+- Confirm the intended workspace, account, project, region, or cluster context
+  before making changes. Use the inputs required by this repository's commands.
+- Set up the project environment if the deploy scripts need it. Use the production
+  env file documented in the README; create it from `example.env` only if absent.
+  Configure credentials without printing them. Check how the deploy scripts load
+  settings rather than assuming they read `.env` or exported shell variables.
+- Keep production authentication enabled. Do not upload `RUNTIME_ENV=dev`.
+  Configure `JWT_VERIFICATION_KEY` or a `JWT_JWKS_FILE` available on the server.
+- If a sandbox is requested, configure its provider and `REPOSITORY` in
+  `app/sandbox.py` using the [sandbox setup guide](../../../docs/sandboxes.md).
+  AgentCore needs an existing runtime, host AWS access, and persistent checkpoints at `/data`. Confirm the
+  deployment target supports that mount before enabling it. Use volume flags only
+  if this repository's deploy scripts support them. Bedrock settings and private
+  repository credentials must be supplied explicitly through the provider's `env`.
+  Never put secret values in source.
+- Remove retired `SANDBOX_ENABLED`, `SANDBOX_IMAGE`, and `SANDBOX_RUNTIME_ARN`
+  settings; they no longer select a provider. Keep one API replica and the
+  always-running process needed by the scheduler.
 
-```text
-Kicking off /deploy-platform. Here's the map:
+## 2. Choose first deployment or update
 
-1. Read the deploy layer — scripts + README, pick the mode
-2. Preflight — provider CLI + login, cost and exit, production env
-3. Deploy — the up script (compute + Postgres + public domain)
-4. JWT key — connect os.agno.com Live, land the public key, sync it
-5. Prove it live — logs, /docs 200, /mcp 401 challenge, UI Connect
-6. Hand over — redeploy, logs, teardown, chat + coding-agent connect
+Use the provider's status/list commands, saved project identifiers, and local
+configuration to find an existing deployment. A failed health check does not mean
+its resources are gone. Resolve authentication, permission, and network errors
+before deciding to create anything. Link an existing project where required.
 
-This creates real, billed resources on your account. The exit is one
-command away — the down script deletes everything (asks to confirm; --yes skips).
-```
+For a new deployment, explain which resources will be created, their billing,
+and the actual teardown command and data it deletes. Run the README's first-deploy
+procedure with the intended account and target explicitly selected.
+For owned infrastructure, configure its public URL and JWT key before first boot.
 
-## 1. Read the deploy layer
+For an update, follow the README's code and environment update commands. Read the
+scripts to establish their order and whether updating settings also triggers a
+redeploy. Use flags such as `--no-deploy` only when implemented by that script.
+If a command fails, inspect existing resources and any partial settings changes
+before retrying. Do not create a second project to recover from a failed deploy.
 
-Read [`AGENTS.md`](../../../AGENTS.md), the README's production section, and `scripts/<provider>/` — never invent a step. Pick the mode by who provisions the target: **Conduct** (the up script provisions compute and URL on a managed provider — the main path), **Conduct over owned infra** (same scripts onto the user's own cluster; add Step 7), or **Manual-guide** (no deploy scripts; walk the README's deploy section with Steps 4, 5, and 7).
+## 3. Complete authentication and settings
 
-## 2. Preflight
+Some providers create a URL before the API can start. Follow this repository's
+handoff: use that URL to connect a Live OS at https://os.agno.com/?ref=railway-template, enable token-based
+JWT authorization, and obtain the public verification key. Save the full key as a
+quoted multiline `JWT_VERIFICATION_KEY` in the production settings, or configure
+`JWT_JWKS_FILE`. Then use the documented sync/deploy commands to finish.
+Do not treat an exit code or missing-key stop as identical across providers.
 
-- **CLI + account:** the provider CLI is installed and authed (a `whoami`-style probe). Not logged in → hand over the login command for a separate terminal, re-probe when they say ready.
-- **Cost + exit:** one sentence — billed resources, `down.sh` deletes everything.
-- **Production env:** `.env.production` (`cp example.env .env.production` if missing) with a real `OPENAI_API_KEY` set the setup-platform way (editor paste, never read or print). `RUNTIME_ENV` must **not** be `dev` there — it syncs to the cloud and disables auth.
-- **Unattended-run inputs:** for each provisioning call the up script makes, does it pin the account scope (workspace, org, project, region)? If the account has more than one and nothing pins it, the CLI opens a picker that fails or hangs — **stop before creating anything** and hand the user the pinning flag/env var or the one interactive init/link command. Never let it resolve by guess.
+Ensure `AGENTOS_URL` is the public HTTPS URL used by the scheduler and MCP OAuth.
+Keep `MCP_CONNECT_SECRET` in the production settings for browser MCP connections.
+Check how this provider clears remote variables; removing a local line may not
+remove the saved value. Database credential rotation is separate from updating
+API settings. Disable a sandbox by returning `None` from `sandbox_provider()` and
+redeploying.
 
-## 3. Deploy
+## 4. Verify and hand over
 
-**First or re-deploy?** Read `AGENTOS_URL` from the production env; if it names a domain, probe `<domain>/docs`. 200 → already live; the up script would provision a *second* project. Take the redeploy path: code → `redeploy.sh`; env/secret → `env-sync.sh` (both, in that order, if both changed); skip Step 4; run Steps 5–6. No answer → nothing is serving; continue as a first deploy.
+Build submission is not successful deployment. Inspect bounded provider logs and
+test the public URL: `/health` must succeed; unauthenticated `/agents` requests and
+MCP initialization POSTs must reject access. A plain `GET /mcp` may return public
+server-card metadata; it does not test authorization. With MCP OAuth enabled,
+verify the POST's Bearer challenge. Exercise an authenticated request with an
+existing token, then confirm the UI connects at
+[os.agno.com](https://os.agno.com/?ref=railway-template).
 
-Otherwise run the up script and narrate its phases. First creates can take twenty-plus minutes. If the README names a browser step, relay it first. When it finishes, read the live URL from `AGENTOS_URL` and keep the printed `MCP_CONNECT_SECRET` for Step 6. **A keyless first deploy refusing to start is by design** — auth is on and the app exits without a key; tell the user before they see it, then read the provider logs (bounded, never streaming) and confirm the startup error is the missing key.
+Model prompts spend calls; report exactly what ran. Engineer HTTP runs, delegation,
+and Company Task completion need separate verification before claiming they work.
 
-## 4. The JWT key
-
-Say plainly: deployed, not live yet — this key is the one piece only they can add, and the platform comes up the moment it lands. Render the table and the click path fresh in that message:
-
-| Setting | Value |
-|---|---|
-| AgentOS UI | https://os.agno.com/?ref=railway-template |
-| Connection type | **Live** |
-| Endpoint | `https://<the AGENTOS_URL domain>` |
-| Name | `Live AgentOS` |
-
-1. **Connect OS** → **Live** → enter the endpoint → name it. (Live connections are a paid feature — `PLATFORM30` takes a month off.)
-2. Flip **Token-Based Authorization (JWT)** on — on the connect panel — then **Connect**. Copy the public key the UI generates.
-3. Already connected or can't find the toggle? **Settings → OS & Security → Token-Based Authorization (JWT)**.
-
-These clicks are canonical; if the up script's copy differs, relay these and note the drift. Offer both hand-offs: paste the key here (it's public) and you write it into `.env.production`, or they paste it on the `JWT_VERIFICATION_KEY=` line. The PEM must land quoted, multi-line. Then `env-sync.sh` applies it.
-
-Name the alternative once, clearly not recommended: `authorization=False` in `app/main.py` makes the platform public; the scripts refuse `RUNTIME_ENV=dev` unless `ALLOW_UNAUTHENTICATED_DEPLOY=1`.
-
-## 5. Prove it live
-
-Every probe against the public domain, never localhost:
-
-- Provider logs (bounded): clean boot, schedules registered.
-- `/docs` → 200 (excluded from JWT on purpose).
-- `/mcp` → **401** — with `MCP_CONNECT_SECRET` set, plus a `WWW-Authenticate: Bearer resource_metadata="…"` header; without it a plain JSON 401. **200 means the endpoint is open — stop.**
-- `/agents` → **401**. A 200 means `RUNTIME_ENV=dev` reached the synced env — stop and fix.
-- Tell the user to hit **Connect** on the [os.agno.com](https://os.agno.com/?ref=railway-template) Live screen — the end-to-end proof.
-
-Show what you verified, compactly.
-
-## 6. Hand over
-
-- code → `redeploy.sh`; config/secrets → edit `.env.production`, then `env-sync.sh`
-- logs → the README's provider command
-- teardown → `down.sh` (type the name to confirm; `--yes` skips)
-- chat apps → claude.ai / ChatGPT connect to `https://<domain>/mcp` over OAuth; **print `MCP_CONNECT_SECRET` on its own line** (from the env file if the summary is gone). If none is set, say so: the web connectors cannot connect until it is.
-- coding agents → `uvx agno connect --url https://<domain>`
-
-## 7. Owned-infrastructure inversions
-
-- **Key before first boot** — no control plane retries a keyless boot; do Step 4 into the env file first, then deploy.
-- **The public URL is an input** — the user supplies it (ingress host, tunnel) and `AGENTOS_URL` must be set to it, or scheduled jobs never fire.
-- **Check the aim** — on Kubernetes, confirm the kubectl context is the intended cluster before anything mutates.
+Provide the URL, verification results, and this repository's commands for code
+updates, settings, logs, and teardown. For browser MCP, use `<AGENTOS_URL>/mcp` and
+tell the user to enter `MCP_CONNECT_SECRET` from the production settings into the
+consent page; do not print it. For coding clients, use
+`uvx agno connect --url <AGENTOS_URL>`.

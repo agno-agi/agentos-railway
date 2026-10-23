@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
@@ -8,7 +8,7 @@
 #
 ############################################################################
 
-set -e
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "${CURR_DIR}")"
@@ -23,12 +23,12 @@ echo ""
 echo -e "${ORANGE}▸${NC} ${BOLD}Formatting workspace${NC}"
 echo ""
 
-echo -e "${DIM}> ruff format ${REPO_ROOT}${NC}"
-ruff format "${REPO_ROOT}"
-
-echo ""
 echo -e "${DIM}> ruff check --select I --fix ${REPO_ROOT}${NC}"
 ruff check --select I --fix "${REPO_ROOT}"
+
+echo ""
+echo -e "${DIM}> ruff format ${REPO_ROOT}${NC}"
+ruff format "${REPO_ROOT}"
 
 echo ""
 echo -e "${BOLD}Done.${NC}"

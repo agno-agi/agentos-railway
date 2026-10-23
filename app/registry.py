@@ -1,47 +1,59 @@
 """
 AgentOS Registry
 ================
-
-The tools, functions, models, databases, and agents available to AgentOS Studio.
 """
 
+from os import getenv
+
+from agno.fs import FileSystem
+from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 from agno.registry import Registry
 from agno.tools.calculator import CalculatorTools
+from agno.tools.file import FileGenerationTools
+from agno.tools.mcp import MCPTools
+from agno.tools.parallel import ParallelTools
+from agno.workflow.functions import content_to_file, csv_to_markdown_table, extract_json, extract_urls, json_to_csv
 
-from agents.manager import platform_manager
-from app.functions import (
-    content_to_file,
-    csv_to_markdown_table,
-    extract_json,
-    extract_urls,
-    json_to_csv,
-)
-from app.knowledge import product_knowledge, shared_knowledge
-from app.learning import shared_learning
-from app.notes import get_shared_notes_tools
 from app.settings import default_model
-from app.tools import (
-    get_agno_docs_tools,
-    get_file_generation_tools,
-    get_media_tools,
-    get_parallel_tools,
-    get_slack_tools,
+from db import create_knowledge, get_postgres_db
+
+
+def get_web_tools() -> list[ParallelTools | MCPTools]:
+    if getenv("PARALLEL_API_KEY"):
+        return [ParallelTools()]
+    return [
+        MCPTools(
+            url="https://search.parallel.ai/mcp",
+            transport="streamable-http",
+            name="parallel_tools",
+            timeout_seconds=30,
+        )
+    ]
+
+
+shared_knowledge = create_knowledge(name="shared-knowledge", table_name="shared_knowledge")
+
+shared_learning = LearningMachine(
+    db=get_postgres_db(),
+    name="shared-learning",
+    user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),
+    user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),
 )
-from db import get_postgres_db
+
+shared_notes = FileSystem(
+    db=get_postgres_db(),
+    namespace="shared-notes",
+)
 
 registry = Registry(
     name="AgentOS Registry",
     tools=[
-        *get_agno_docs_tools(),
-        *get_parallel_tools(),
-        *get_shared_notes_tools(),
-        *get_slack_tools(),
-        *get_media_tools(),
-        *get_file_generation_tools(),
+        *get_web_tools(),
+        shared_notes.tools(add_instructions=True),
+        FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False),
         CalculatorTools(),
     ],
     models=[default_model()],
-    dbs=[get_postgres_db()],
     functions=[
         extract_json,
         extract_urls,
@@ -49,7 +61,7 @@ registry = Registry(
         csv_to_markdown_table,
         content_to_file,
     ],
+    dbs=[get_postgres_db()],
     learning=[shared_learning],
-    knowledge=[shared_knowledge, product_knowledge],
-    agents=[platform_manager],
+    knowledge=[shared_knowledge],
 )

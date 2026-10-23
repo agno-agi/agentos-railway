@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
 #    Agno Docker Image Builder
 #
 #    Usage:
-#      ./scripts/build_image.sh
+#      IMAGE_NAME=you/agentos ./scripts/build_image.sh
 #      IMAGE_NAME=you/agentos IMAGE_TAG=3.0.0 ./scripts/build_image.sh
 #
 #    Prerequisites:
@@ -15,12 +15,12 @@
 #
 ############################################################################
 
-set -e
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS_ROOT="$(dirname "${CURR_DIR}")"
 DOCKER_FILE="${OS_ROOT}/Dockerfile"
-IMAGE_NAME="${IMAGE_NAME:-agnohq/agentos}"
+IMAGE_NAME="${IMAGE_NAME:?Set IMAGE_NAME to your registry namespace, for example you/agentos}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 # Colors
@@ -47,8 +47,8 @@ echo -e "    ${DIM}Image: ${IMAGE_NAME}:${IMAGE_TAG}${NC}"
 echo -e "    ${DIM}Platforms: linux/amd64, linux/arm64${NC}"
 echo ""
 
-echo -e "    ${DIM}> docker buildx build --platform=linux/amd64,linux/arm64 -t ${IMAGE_NAME}:${IMAGE_TAG} -f ${DOCKER_FILE} ${OS_ROOT} --push${NC}"
-docker buildx build --platform=linux/amd64,linux/arm64 -t "${IMAGE_NAME}:${IMAGE_TAG}" -f "${DOCKER_FILE}" "${OS_ROOT}" --push
+echo -e "    ${DIM}> docker buildx build --target agentos --platform=linux/amd64,linux/arm64 -t ${IMAGE_NAME}:${IMAGE_TAG} -f ${DOCKER_FILE} ${OS_ROOT} --push${NC}"
+docker buildx build --target agentos --platform=linux/amd64,linux/arm64 -t "${IMAGE_NAME}:${IMAGE_TAG}" -f "${DOCKER_FILE}" "${OS_ROOT}" --push
 
 echo ""
 echo -e "    ${BOLD}Done.${NC}"

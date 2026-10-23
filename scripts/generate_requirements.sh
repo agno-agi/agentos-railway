@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
@@ -11,7 +11,7 @@
 #
 ############################################################################
 
-set -e
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "${CURR_DIR}")"
@@ -26,16 +26,14 @@ echo ""
 echo -e "    ${ORANGE}▸${NC} ${BOLD}Generating requirements.txt${NC}"
 echo ""
 
-if [[ "$1" = "upgrade" ]]; then
+if [[ "${1:-}" = "upgrade" ]]; then
     echo -e "    ${DIM}Mode: upgrade${NC}"
     echo -e "    ${DIM}> uv pip compile pyproject.toml --no-cache --upgrade -o requirements.txt${NC}"
     echo ""
     UV_CUSTOM_COMPILE_COMMAND="./scripts/generate_requirements.sh upgrade" \
         uv pip compile "${REPO_ROOT}/pyproject.toml" --no-cache --upgrade -o "${REPO_ROOT}/requirements.txt"
 elif [[ $# -gt 0 ]]; then
-    # Refresh only the named packages; every other pin stays put. Needed when a pin
-    # is held by a floor rather than the pyproject pin (agno floors agnoctl at the
-    # previous published release, so a plain regen never moves it).
+    # Refresh only the named packages.
     UPGRADE_FLAGS=()
     for pkg in "$@"; do
         UPGRADE_FLAGS+=("--upgrade-package" "$pkg")

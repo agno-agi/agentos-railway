@@ -4,7 +4,7 @@ services:
     container_name: agentos-db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     environment:
@@ -18,15 +18,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: agentos
     container_name: agentos-api
     image: ${IMAGE_NAME:-agentos}:${IMAGE_TAG:-latest}
     # --reload-dir limits the watcher to dirs that contain runtime code.
     command: >
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-      --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals --reload-dir teams --reload-dir workflows
+      --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
     env_file:

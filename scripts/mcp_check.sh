@@ -1,190 +1,129 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
-#    MCP Smoke Check
+#    Agno MCP Smoke Check
 #
-#    Runs the AgentOS MCP endpoint end to end: handshake, tool surface,
-#    then one run_agent call. The default question tells the agent to skip
-#    its tools, so the whole check finishes in seconds. Runs the client
-#    inside the container.
-#
-#    The tool count is asserted, not just printed — this script is the verify
-#    gate across every agentos-* sibling, and a shrunk /mcp surface reads
-#    exactly like a pass when the number only goes to the terminal.
-#
-#    When /mcp is auth-gated (MCP_CONNECT_SECRET set, or prd JWT), the
-#    check mints a short-lived probe service account, runs authenticated,
-#    and deletes the account afterwards — even on failure.
+#    Checks the handshake and required tools. Additional tools are welcome.
+#    Model calls happen only when --prompt is supplied.
 #
 #    Usage:
-#      ./scripts/mcp_check.sh                            # quick default probe
-#      ./scripts/mcp_check.sh "What does the platform run?"  # your own question
-#      MCP_EXPECTED_TOOLS=10 ./scripts/mcp_check.sh      # you extended /mcp
+#      ./scripts/mcp_check.sh
+#      ./scripts/mcp_check.sh --prompt "Introduce yourself briefly."
+#      MCP_CHECK_HOST=1 ./scripts/mcp_check.sh
+#
+#    The client runs inside agentos-api by default; host mode uses uv/.env.
+#    Set AGENTOS_URL to override the endpoint and export MCP_CHECK_TOKEN
+#    for an authenticated endpoint (an existing JWT or PAT).
 #
 ############################################################################
 
-set -e
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-# Colors
-ORANGE='\033[38;5;208m'
-RED='\033[31m'
-DIM='\033[2m'
-BOLD='\033[1m'
-NC='\033[0m'
+usage() {
+    echo 'Usage: ./scripts/mcp_check.sh [--prompt "message"]'
+    echo 'Default: handshake and required tools only (no model call).'
+    echo 'Use MCP_CHECK_HOST=1 for a host client, AGENTOS_URL for the server,'
+    echo 'and MCP_CHECK_TOKEN for an existing bearer token.'
+}
 
-DEFAULT_QUESTION="Without using any tools, introduce yourself and this platform in two short sentences."
-QUESTION="${1:-$DEFAULT_QUESTION}"
+prompt=""
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    --prompt)
+        if [[ $# -ne 2 || -z "${2:-}" ]]; then usage >&2; exit 2; fi
+        prompt="$2"
+        ;;
+    *) if [[ $# -ne 0 ]]; then usage >&2; exit 2; fi ;;
+esac
 
-# The eight built-in tools agno registers by default — get_agentos_config, run_agent,
-# run_team, run_workflow, continue_run, cancel_run, get_sessions, get_session_runs —
-# plus the agno front-door tool app/main.py publishes via MCPConfig(tools=[...]).
-# Scoping them (include_tags/exclude_tags) or adding your own moves the number — set
-# MCP_EXPECTED_TOOLS to your own surface then.
-EXPECTED_TOOLS="${MCP_EXPECTED_TOOLS:-9}"
+runner=(docker compose exec -T)
+for name in MCP_CHECK_TOKEN AGENTOS_URL; do
+    if [[ -n "${!name:-}" ]]; then runner+=(-e "$name"); fi
+done
+runner+=(agentos-api python -u)
+if [[ "${MCP_CHECK_HOST:-0}" == 1 ]]; then
+    runner=(uv run --no-project --env-file .env --with-requirements requirements.txt python -u)
+fi
 
 echo ""
-echo -e "${ORANGE}▸${NC} ${BOLD}MCP Check${NC}"
-echo ""
-echo -e "${DIM}> http://localhost:8000/mcp  (client runs inside agentos-api)${NC}"
-echo ""
-
-if docker compose exec -T agentos-api python -u - "$QUESTION" "$EXPECTED_TOOLS" <<'PY'
+echo -e '\033[38;5;208m▸\033[0m \033[1mMCP Check\033[0m'
+if [[ -n "$prompt" ]]; then echo 'Mode: includes a model call (--prompt).'; fi
+exec "${runner[@]}" - "$prompt" <<'PY'
 import asyncio
+import os
 import sys
-import time
 
+from httpx2 import AsyncClient, HTTPStatusError, RequestError, TimeoutException
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
+from mcp.types import PaginatedRequestParams
 
-ORANGE = "\033[38;5;208m"
-RED = "\033[31m"
-DIM = "\033[2m"
-BOLD = "\033[1m"
-NC = "\033[0m"
-
-EXPECTED_TOOLS = int(sys.argv[2])
+REQUIRED = {
+    "agno", "get_agentos_config", "run_agent", "run_team", "run_workflow",
+    "continue_run", "cancel_run", "get_sessions", "get_session_runs",
+}
 
 
-class ToolSurfaceMismatch(Exception):
-    """/mcp served a different set of tools than the gate expects."""
+def explain(error):
+    if isinstance(error, BaseExceptionGroup):
+        return "; ".join(dict.fromkeys(explain(item) for item in error.exceptions))
+    if isinstance(error, HTTPStatusError):
+        status = error.response.status_code
+        if status in (401, 403):
+            return f"HTTP {status}: check MCP_CHECK_TOKEN and its permissions"
+        return f"HTTP {status}: check AGENTOS_URL and the API logs"
+    if isinstance(error, (TimeoutError, TimeoutException)):
+        return "timed out waiting for MCP; check the API logs"
+    if isinstance(error, RequestError):
+        return "cannot reach MCP; check AGENTOS_URL and that the API is running"
+    return " ".join(str(error).split()) or type(error).__name__
 
 
-def step(text: str) -> None:
-    print(f"{ORANGE}✓{NC} {text}", flush=True)
+async def check_response(response):
+    # Preserve HTTP diagnostics before the MCP transport turns them into a
+    # generic protocol error. GET/DELETE may legitimately be unsupported.
+    if response.request.method == "POST":
+        response.raise_for_status()
 
 
-async def run_check(headers: dict | None, auth_note: str) -> None:
-    async with streamablehttp_client("http://localhost:8000/mcp", headers=headers, timeout=180) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            step(f"Handshake — {auth_note}")
-            names = sorted(tool.name for tool in (await session.list_tools()).tools)
-            # Assert before spending the run_agent call: if the surface is wrong the
-            # answer proves nothing, and naming what was actually served is the whole
-            # diagnostic — a count alone can't tell a scoped config from a regression.
-            if len(names) != EXPECTED_TOOLS:
-                raise ToolSurfaceMismatch(
-                    f"expected {EXPECTED_TOOLS} tools, /mcp served {len(names)}: {', '.join(names) or '(none)'}"
-                )
-            step(f"MCP OK — {len(names)} tools")
-            start = time.perf_counter()
-            result = await session.call_tool(
-                "run_agent",
-                {"agent_id": "platform-manager", "message": sys.argv[1]},
-                read_timeout_seconds=None,
-            )
-            elapsed = time.perf_counter() - start
-            step(f"run_agent — platform-manager answered in {elapsed:.1f}s")
-            # run_agent returns a trimmed ToolResult: content[0].text is the plain
-            # answer, and structuredContent carries {run_id, session_id, status}.
-            print(flush=True)
-            print(f"{DIM}Agent response:{NC}", flush=True)
-            print(flush=True)
-            print(result.content[0].text, flush=True)
-
-
-def is_unauthorized(exc: BaseException) -> bool:
-    """True when the failure chain contains an HTTP 401 (auth-gated /mcp)."""
-    if isinstance(exc, BaseExceptionGroup):
-        return any(is_unauthorized(e) for e in exc.exceptions)
-    return "401" in str(exc) or any(is_unauthorized(e) for e in (exc.__cause__, exc.__context__) if e)
-
-
-def find_mismatch(exc: BaseException) -> ToolSurfaceMismatch | None:
-    """Dig the mismatch out of the nested ExceptionGroups the transport wraps it in."""
-    if isinstance(exc, ToolSurfaceMismatch):
-        return exc
-    nested: tuple[BaseException, ...] = tuple(exc.exceptions) if isinstance(exc, BaseExceptionGroup) else ()
-    for candidate in nested + tuple(e for e in (exc.__cause__, exc.__context__) if e):
-        found = find_mismatch(candidate)
-        if found is not None:
-            return found
-    return None
-
-
-async def run_check_with_probe_pat() -> None:
-    """Mint a probe service account, run authenticated, always delete it."""
-    import time as _time
-    import uuid
-
-    from agno.db.schemas.service_accounts import ServiceAccount
-    from agno.os.service_accounts import DEFAULT_SERVICE_ACCOUNT_SCOPES, generate_token
-    from db import get_postgres_db
-
-    db = get_postgres_db()
-    plaintext, token_hash, token_prefix = generate_token()
-    now = int(_time.time())
-    account = ServiceAccount(
-        id=str(uuid.uuid4()),
-        name=f"mcp-check-probe-{now}",
-        token_hash=token_hash,
-        token_prefix=token_prefix,
-        scopes=list(DEFAULT_SERVICE_ACCOUNT_SCOPES),
-        created_at=now,
-        expires_at=now + 600,
-        created_by="mcp_check.sh",
-        user_id=None,
-    )
-    db.create_service_account(account.to_dict())
-    try:
-        await run_check(
-            {"Authorization": f"Bearer {plaintext}"},
-            "auth-gated; connected with a short-lived probe token",
-        )
-    finally:
-        db.delete_service_account(account.id)
-
-
-async def main() -> None:
-    try:
-        await run_check(None, "open (dev)")
-    except BaseException as exc:  # ExceptionGroup from the transport on 401
-        # A wrong tool surface fails under every auth mode — never retry it as a 401.
-        if find_mismatch(exc) is not None or not is_unauthorized(exc):
-            raise
-        await run_check_with_probe_pat()
+async def main():
+    prompt = sys.argv[1]
+    url = os.getenv("AGENTOS_URL", "http://localhost:8000").rstrip("/") + "/mcp"
+    print(f"Endpoint: {url}")
+    token = os.getenv("MCP_CHECK_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    timeout = 180 if prompt else 30
+    async with asyncio.timeout(timeout), AsyncClient(
+        headers=headers, timeout=timeout, event_hooks={"response": [check_response]}
+    ) as client:
+        async with streamable_http_client(url, http_client=client) as (read, write, *_):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                print("✓ Handshake")
+                names, cursor = set(), None
+                while True:
+                    page = await session.list_tools(params=PaginatedRequestParams(cursor=cursor))
+                    names.update(tool.name for tool in page.tools)
+                    cursor = page.next_cursor
+                    if not cursor:
+                        break
+                if missing := REQUIRED - names:
+                    raise RuntimeError(f"missing required tools: {', '.join(sorted(missing))}")
+                print(f"✓ {len(names)} tools; required tools available")
+                if prompt:
+                    result = await session.call_tool("agno", {"message": prompt})
+                    answer = "\n".join(item.text for item in result.content if hasattr(item, "text"))
+                    if result.is_error:
+                        raise RuntimeError(f"agno tool failed: {answer or 'see API logs'}")
+                    print(f"✓ agno responded\n\n{answer}")
+    print("\nDone.")
 
 
 try:
     asyncio.run(main())
-except BaseException as exc:
-    # The transport buries the raise under two layers of ExceptionGroup; a gate failure
-    # deserves one readable line, not that traceback.
-    mismatch = find_mismatch(exc)
-    if mismatch is None:
-        raise
-    print(f"\n{RED}{BOLD}MCP tool surface mismatch{NC} — {mismatch}", flush=True)
-    print(f"{DIM}Set MCP_EXPECTED_TOOLS if you scoped or extended /mcp on purpose.{NC}", flush=True)
+except Exception as error:
+    print(f"Failed: {explain(error)}", file=sys.stderr)
     sys.exit(1)
 PY
-then
-    echo ""
-    echo -e "${BOLD}Done.${NC}"
-    echo ""
-else
-    echo ""
-    echo -e "${RED}${BOLD}Failed.${NC} ${DIM}Check the container: docker compose logs agentos-api${NC}"
-    echo ""
-    exit 1
-fi

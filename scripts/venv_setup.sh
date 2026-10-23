@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ############################################################################
 #
@@ -8,7 +8,7 @@
 #
 ############################################################################
 
-set -e
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "${CURR_DIR}")"
@@ -46,38 +46,35 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Setup
-echo -e "    ${DIM}Removing old environment...${NC}"
-echo -e "    ${DIM}> rm -rf ${VENV_DIR}${NC}"
-rm -rf "${VENV_DIR}"
-
-echo ""
-echo -e "    ${DIM}Creating Python 3.14 venv...${NC}"
-echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.14${NC}"
-uv venv "${VENV_DIR}" --python 3.14 --quiet
+if [[ -x "${VENV_DIR}/bin/python" ]]; then
+    echo -e "    ${DIM}Using existing environment: ${VENV_DIR}${NC}"
+else
+    echo -e "    ${DIM}Creating Python 3.14 venv...${NC}"
+    echo -e "    ${DIM}> uv venv ${VENV_DIR} --python 3.14${NC}"
+    uv venv "${VENV_DIR}" --python 3.14 --quiet
+fi
 
 echo ""
 echo -e "    ${DIM}Installing requirements...${NC}"
-echo -e "    ${DIM}> uv pip install -r requirements.txt${NC}"
-VIRTUAL_ENV="${VENV_DIR}" uv pip install -r "${REPO_ROOT}/requirements.txt" --quiet
+echo -e "    ${DIM}> uv pip install --python ${VENV_DIR}/bin/python -r requirements.txt${NC}"
+uv pip install --python "${VENV_DIR}/bin/python" -r "${REPO_ROOT}/requirements.txt" --quiet
 
 echo ""
 echo -e "    ${DIM}Installing project in editable mode with dev dependencies...${NC}"
-echo -e "    ${DIM}> uv pip install -e .[dev]${NC}"
-# Quotes matter twice here: a clone path with a space, and `[dev]` — unquoted, bash
-# reads it as a glob character class and silently rewrites the path when a sibling
-# file happens to match.
-VIRTUAL_ENV="${VENV_DIR}" uv pip install -e "${REPO_ROOT}[dev]" --quiet
+echo -e "    ${DIM}> uv pip install --python ${VENV_DIR}/bin/python -c requirements.txt -e .[dev]${NC}"
+uv pip install --python "${VENV_DIR}/bin/python" -c "${REPO_ROOT}/requirements.txt" -e "${REPO_ROOT}[dev]" --quiet
 
 # Copy activation command to clipboard
 ACTIVATE_CMD="source .venv/bin/activate"
+CLIPBOARD_MSG=""
 if command -v pbcopy &> /dev/null; then
-    echo -n "${ACTIVATE_CMD}" | pbcopy
-    CLIPBOARD_MSG="(Copied to clipboard)"
+    if printf '%s' "${ACTIVATE_CMD}" | pbcopy; then
+        CLIPBOARD_MSG="(Copied to clipboard)"
+    fi
 elif command -v xclip &> /dev/null; then
-    echo -n "${ACTIVATE_CMD}" | xclip -selection clipboard
-    CLIPBOARD_MSG="(Copied to clipboard)"
-else
-    CLIPBOARD_MSG=""
+    if printf '%s' "${ACTIVATE_CMD}" | xclip -selection clipboard; then
+        CLIPBOARD_MSG="(Copied to clipboard)"
+    fi
 fi
 
 echo ""

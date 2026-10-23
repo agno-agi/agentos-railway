@@ -23,7 +23,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
+          cache-dependency-glob: "requirements.txt"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -33,9 +33,9 @@ jobs:
       - name: Install the project with dev dependencies
         run: |
           uv pip install --system -r requirements.txt
-          uv pip install --system -e .[dev]
+          uv pip install --system -c requirements.txt -e '.[dev]'
 
       # scripts/validate.sh owns the whole gate — format, lint, type. Keeping CI to
       # that one call is what makes local and CI the same check by construction.
       - name: Validate (format + lint + type)
-        run: uv run bash scripts/validate.sh
+        run: bash scripts/validate.sh
