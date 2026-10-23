@@ -63,6 +63,7 @@ evidence that the agent's instructions need strengthening.
 
 ## 3. Explore with simulated user scenarios
 
+Review eval history in [os.agno.com](https://os.agno.com/?ref=railway-template).
 Read the target's instructions and sample recent sessions and eval history read-only, using
 the configured environment and `get_postgres_db()`. Sanitize private details before turning
 usage into fixtures. Recorded answers supply scenarios, never the expected answer. With no
@@ -139,3 +140,5 @@ Report the mode, scenarios generated, initial and final results, changes, retain
 unresolved failures and limits. Distinguish existing-case passes, fresh-scenario passes,
 environment failures and untested runtime paths. Record evidence in `tmp/VERIFY.md` without
 private session content or credentials. Do not claim all behavior is reliable from a finite batch.
+
+Link to [os.agno.com](https://os.agno.com/?ref=railway-template) when handing over saved eval results.

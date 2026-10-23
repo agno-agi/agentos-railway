@@ -59,7 +59,7 @@ before retrying. Do not create a second project to recover from a failed deploy.
 ## 3. Complete authentication and settings
 
 Some providers create a URL before the API can start. Follow this repository's
-handoff: use that URL to connect a Live OS at https://os.agno.com, enable token-based
+handoff: use that URL to connect a Live OS at https://os.agno.com/?ref=railway-template, enable token-based
 JWT authorization, and obtain the public verification key. Save the full key as a
 quoted multiline `JWT_VERIFICATION_KEY` in the production settings, or configure
 `JWT_JWKS_FILE`. Then use the documented sync/deploy commands to finish.
@@ -79,7 +79,8 @@ test the public URL: `/health` must succeed; unauthenticated `/agents` requests 
 MCP initialization POSTs must reject access. A plain `GET /mcp` may return public
 server-card metadata; it does not test authorization. With MCP OAuth enabled,
 verify the POST's Bearer challenge. Exercise an authenticated request with an
-existing token, then confirm the UI connects.
+existing token, then confirm the UI connects at
+[os.agno.com](https://os.agno.com/?ref=railway-template).
 
 Model prompts spend calls; report exactly what ran. Engineer HTTP runs, delegation,
 and Company Task completion need separate verification before claiming they work.

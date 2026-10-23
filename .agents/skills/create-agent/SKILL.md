@@ -226,4 +226,4 @@ Iterate 2–3 times, then ask.
 
 ## 9. Done
 
-Lead with the smoke-test answer. Then where it lives: `https://os.agno.com` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.
+Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.
