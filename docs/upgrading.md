@@ -3,6 +3,19 @@
 This version replaces the old template-owned manager and workflows with Agno's
 OS Manager and Company. Saved database records are kept when you upgrade.
 
+## Company permissions in Agno 3.1.10
+
+Company records are shared. Write permissions now depend on the caller's scopes,
+not on who created the record. For example, a member with `products:delete` can
+archive any Product, and a member with `wiki:write` can edit Company wiki pages.
+If your deployment relied on creator-only edits, review the scopes you grant
+before upgrading. See the [permission change](https://github.com/agno-agi/agno/pull/11270).
+
+Task run sessions keep their existing ownership checks. Manually triggering a
+Routine with automatic acceptance still requires the user who authorized that acceptance.
+
+## Upgrade from an older template
+
 Before deploying:
 
 - Disable old `deployment-check` and `run-evals` schedules, whose workflows have been removed.

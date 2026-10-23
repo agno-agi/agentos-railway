@@ -94,13 +94,17 @@ pin, Product metadata PATCH replaces the whole dictionary. Preserve existing met
 Company Manager (`company-manager-internal`, executor type `agent`). It reviews Agno
 releases and this codebase and proposes up to three Backlog Tasks, reusing existing
 proposals. Its instructions prohibit accepting or executing work; `auto_accept=False`.
-Scheduled reviews spend model calls. Verify the Product's saved ownership, schedule and
-run history before relying on them; declarations do not overwrite saved edits.
+Scheduled reviews spend model calls. Verify the saved creator, schedule, authorization
+and run history before relying on them; declarations do not overwrite saved edits.
+
+Company writes are governed by permission scopes, not record ownership; `user_id`
+records the creator. Task run sessions retain their ownership checks. Manual triggers
+for auto-accept Routines require the acceptance grantor.
 
 The current pin permits Company Manager as a Routine executor; OS Manager and its
-specialists remain excluded. Before adding a Routine, verify executor support, the
-Product's saved ownership and the caller's authorization. Do not register internal
-manager members to bypass executor restrictions.
+specialists remain excluded. Before adding a Routine, verify executor support and
+the caller's authorization. Do not register internal manager members to bypass
+executor restrictions.
 
 ## Engineers and sandboxes
 
