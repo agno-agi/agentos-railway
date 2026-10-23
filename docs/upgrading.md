@@ -27,7 +27,6 @@ Before deploying:
   Its ID is still `this-agentos`. Code declarations do not overwrite saved edits.
 - Remove `ENABLE_MAINTENANCE`, `SANDBOX_ENABLED`, `SANDBOX_IMAGE`, and `SANDBOX_RUNTIME_ARN`
   from env files. Select a sandbox in [app/sandbox.py](../app/sandbox.py); return `None` to turn it off.
-  Railway scripts reject nonempty values for the retired sandbox settings.
 
 Keep historical conversations, notes, and Company work. Update old references rather
 than deleting the data they belong to.
@@ -38,4 +37,4 @@ for that URL; it doesn't remove previously saved Sources. Keep the local Source
 so Company can read the code. Sandbox Company Tasks also need the saved Git Source
 to match the configured repository. See the [sandbox guide](sandboxes.md#company-tasks).
 
-Return to the [Railway deployment instructions](../README.md#deploy-on-railway).
+Return to the [deployment instructions](../README.md#deploy-in-production).

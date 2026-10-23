@@ -176,6 +176,8 @@ and review them before merging.
 If you use sandboxes, also set the repository URL and branch in
 [the sandbox configuration](docs/sandboxes.md#choose-your-repository).
 
+<a id="deploy-in-production"></a>
+
 ## Deploy on Railway
 
 Ask your coding agent to follow [deploy-platform](.agents/skills/deploy-platform/SKILL.md),
@@ -255,6 +257,21 @@ uvx agno connect --url https://YOUR-DOMAIN
 Once connected, the app can talk to OS Manager through the `agno` tool.
 Try asking it about your platform to check the connection. Opening `/mcp`
 in a browser is not enough to check that an agent can respond.
+
+### Sandbox storage
+
+If you use AWS AgentCore for engineers, the API needs a persistent `/data` volume.
+For a new Railway deployment, add `--with-checkpoint-volume` to `up.sh`:
+
+```sh
+./scripts/railway/up.sh --workspace YOUR_WORKSPACE --with-checkpoint-volume
+```
+
+For an existing deployment, add the volume before enabling AgentCore:
+
+```sh
+railway volume --service agent-os add --mount-path /data
+```
 
 ### Update or remove the deployment
 

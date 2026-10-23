@@ -63,20 +63,10 @@ AWS tools. Set `sandbox_provider()` to return `agentcore_sandbox("your-runtime-a
 Update `REPOSITORY` to your repository and branch. The API host needs AWS credentials;
 the runtime ARN determines the region. It does not need a Docker daemon.
 
-The API also needs a persistent volume at `/data` to save checkpoints. For a new
-Railway deployment, add `--with-checkpoint-volume` to the deploy command:
-
-```sh
-./scripts/railway/up.sh --workspace YOUR_WORKSPACE --with-checkpoint-volume
-```
-
-For an existing Railway deployment without that mount, add it before redeploying:
-
-```sh
-railway volume --service agent-os add --mount-path /data
-```
-
-Keep one API replica. The application refuses to use AgentCore without the `/data` mount.
+The API also needs a persistent volume mounted at `/data` to save checkpoints.
+Follow your template's [deployment instructions](../README.md#sandbox-storage) to
+configure that storage before enabling AgentCore. Keep one API replica. The
+application refuses to use AgentCore without the `/data` mount.
 
 To use Claude through Bedrock, add `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
 `AWS_REGION` to the `AgentCoreSandbox` provider's `env` mapping. Give its execution role
