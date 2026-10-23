@@ -3,6 +3,19 @@
 This version replaces the old template-owned manager and workflows with Agno's
 OS Manager and Company. Saved database records are kept when you upgrade.
 
+## Shared notes database migration
+
+When upgrading from Agno 3.0.x, the filesystem table used by shared notes may
+still have the old schema. Agno 3.1 requires `(namespace, user_id, path)` as its
+key and refuses the old schema with `SchemaOutdatedError`. It does not migrate
+this table automatically.
+
+Back up the database and stop the API before upgrading an existing filesystem
+table. Follow the [Agno 3.1 migration instructions](https://github.com/agno-agi/agno/releases/tag/v3.1.0)
+and use the [PostgreSQL filesystem migration](https://github.com/agno-agi/agno/blob/v3.1.10/libs/agno/migrations/migrate_filesystem_postgres.py)
+against the correct database. Test the migration on a database copy first.
+New databases use the new schema automatically.
+
 ## Company permissions in Agno 3.1.10
 
 Company records are shared. Write permissions now depend on the caller's scopes,
