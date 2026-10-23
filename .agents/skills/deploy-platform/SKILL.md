@@ -28,8 +28,8 @@ public and may be shared to complete configuration.
 - Keep production authentication enabled. Do not upload `RUNTIME_ENV=dev`.
   Configure `JWT_VERIFICATION_KEY` or a `JWT_JWKS_FILE` available on the server.
 - If a sandbox is requested, configure its provider and `REPOSITORY` in
-  `app/sandbox.py` using the README's instructions. AgentCore needs an existing
-  runtime, host AWS access, and persistent checkpoints at `/data`. Confirm the
+  `app/sandbox.py` using the [sandbox setup guide](../../../docs/sandboxes.md).
+  AgentCore needs an existing runtime, host AWS access, and persistent checkpoints at `/data`. Confirm the
   deployment target supports that mount before enabling it. Use volume flags only
   if this repository's deploy scripts support them. Bedrock settings and private
   repository credentials must be supplied explicitly through the provider's `env`.

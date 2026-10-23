@@ -116,7 +116,7 @@ and runtime ARN are code settings, not environment switches. Supply optional Bed
 settings or private-repository credentials explicitly through the provider's `env`;
 never put credential values in source. Agno forwards the harness model credentials.
 
-For Docker engineering, run the API on the host using the [README instructions](README.md#engineers).
+For Docker engineering, run the API on the host using the [sandbox setup guide](docs/sandboxes.md#local-docker-sandbox).
 Build the sandbox with `docker build --target sandbox --load -t agno-sandbox:local .`.
 Development checkpoints use the absolute project `tmp/checkpoints` path. Production
 AgentCore requires a persistent `/data` mount; provision its runtime with AWS tooling.

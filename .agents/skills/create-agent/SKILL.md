@@ -15,7 +15,7 @@ do not switch modes or start a second API on port 8000.
 - **Compose API:** confirm its bind mount points to this checkout. Run Python with
   `docker compose exec -T agentos-api python`; inspect `docker compose logs agentos-api`.
   If setup is needed, follow [setup-platform](../setup-platform/SKILL.md).
-- **Host API:** follow the [README Engineers commands](../../../README.md#engineers).
+- **Host API:** follow the [sandbox setup commands](../../../docs/sandboxes.md#local-docker-sandbox).
   Confirm the process's working directory and startup environment. Run Python with
   `.venv/bin/python` and the same `.env`/runtime/DB settings as that process; use
   `uv run --no-project --env-file .env .venv/bin/python` when loading the env file.

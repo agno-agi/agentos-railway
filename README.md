@@ -126,98 +126,24 @@ change the saved schedule too—editing the file does not overwrite it.
 
 ## Engineers
 
-The platform includes **Claude Engineer** and **Codex Engineer** for coding tasks.
-Claude needs `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`; Codex uses `OPENAI_API_KEY`.
-Their models are set in [agents/engineers.py](agents/engineers.py).
+The platform includes **Claude Engineer** and **Codex Engineer**. They can read your
+code, make changes, and run commands.
 
-By default, they run in this project's directory on the AgentOS server and can edit
-its files. You can instead run them in a Docker or AWS AgentCore sandbox.
-Choose where they run in [app/sandbox.py](app/sandbox.py).
+Chat with either engineer in AgentOS, or ask OS Manager to use one:
 
-Before enabling a sandbox, set `REPOSITORY` in that file to your own repo and branch:
+> Ask Codex Engineer to review this project and suggest improvements. Don't change any files yet.
 
-```python
-REPOSITORY = Repository("https://github.com/YOUR-ORG/YOUR-REPO", branch="main")
-```
+Codex uses the `OPENAI_API_KEY` you added during setup. To use Claude, add
+`ANTHROPIC_API_KEY` to `.env`. After changing `.env`, run `docker compose up -d` again.
 
-It starts unset. You don't need it when engineers run directly on the AgentOS server.
+By default, engineers work in this project's folder. When running locally with
+Docker Compose, their file changes appear in your local checkout. Review those
+changes before committing them.
 
-<details>
-<summary>Run engineers in a local Docker sandbox</summary>
+You don't need to configure a sandbox or repository URL to get started.
 
-Set `sandbox_provider()` to return `docker_sandbox()`. Update `REPOSITORY` to your
-GitHub repository and branch. The sandbox checks out that repository.
-
-Run the API on your computer so it can reach Docker. Install [uv](https://docs.astral.sh/uv/)
-and configure `.env` as above. If a Python environment is active, run `deactivate` first.
-
-```sh
-docker compose up -d agentos-db
-./scripts/venv_setup.sh
-docker build --target sandbox --load -t agno-sandbox:local .
-docker compose stop agentos-api
-RUNTIME_ENV=dev DB_HOST=127.0.0.1 DB_PORT=5432 \
-  AGENTOS_URL=http://127.0.0.1:8000 \
-  uv run --no-project --env-file .env --with-requirements requirements.txt \
-  uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload \
-  --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals
-```
-
-Keep that terminal running. From another terminal, check the API's MCP connection:
-
-```sh
-MCP_CHECK_HOST=1 ./scripts/mcp_check.sh
-```
-
-Checkpoints are saved in `tmp/checkpoints`. Agno passes the engineers' model credentials
-to the sandbox. For a private repository, also supply `GITHUB_READ_TOKEN` through the
-provider's `env` mapping. Read its value from your environment or secret store;
-never put the token itself in code. Git push credentials need separate configuration.
-
-</details>
-
-<details>
-<summary>Run engineers in AWS AgentCore</summary>
-
-Build an ARM64 sandbox image, using your ECR image URL and tag:
-
-```sh
-SANDBOX_ECR_IMAGE=YOUR-ECR-URI:YOUR-TAG
-docker build --target sandbox --platform linux/arm64 --load -t "${SANDBOX_ECR_IMAGE}" .
-```
-
-Push the image to ECR, then create an AgentCore runtime and execution role with your
-AWS tools. Set `sandbox_provider()` to return `agentcore_sandbox("your-runtime-arn")`.
-Update `REPOSITORY` to your repository and branch. The API host needs AWS credentials;
-the runtime ARN determines the region. It does not need a Docker daemon.
-
-The API also needs a persistent volume at `/data` to save checkpoints. For a new
-Railway deployment, add `--with-checkpoint-volume` to the deploy command:
-
-```sh
-./scripts/railway/up.sh --workspace YOUR_WORKSPACE --with-checkpoint-volume
-```
-
-For an existing Railway deployment without that mount, add it before redeploying:
-
-```sh
-railway volume --service agent-os add --mount-path /data
-```
-
-Keep one API replica. The application refuses to use AgentCore without the `/data` mount.
-
-To use Claude through Bedrock, add `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
-`AWS_REGION` to the `AgentCoreSandbox` provider's `env` mapping. Give its execution role
-access to the model, and set Claude's model to a supported Bedrock inference profile.
-These settings are not copied from the host automatically. For a private repository,
-supply `GITHUB_READ_TOKEN` through the same mapping, reading it from your secret store.
-
-Before using a sandbox for Company Tasks, check that the Product's saved Git Source
-matches `REPOSITORY.url`. Keep its local source too, so Company can read the files.
-Test an engineer run and a Company Task through completion on your deployment;
-a successful API startup does not prove either one works.
-
-</details>
+To have engineers work on a separate copy of your repository, follow the
+[sandbox setup guide](docs/sandboxes.md) for Docker or AWS AgentCore.
 
 ## Make it yours
 
