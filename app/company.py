@@ -10,7 +10,7 @@ from agno.company import Product, Routine, Source
 from app.sandbox import REPOSITORY
 
 MAINTENANCE = """\
-Find worthwhile ways to improve this AgentOS. Read the Product context, existing work
+Create Projects and Tasks to improve this AgentOS. Read the Product context, existing work
 and AGENTS.md, then review Agno releases since the pinned version and this codebase.
 Look for useful SDK capabilities, bugs, stale configuration and opportunities to simplify.
 Propose up to three high-value improvements as Backlog Tasks in suitable Projects.

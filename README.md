@@ -52,7 +52,7 @@ Run the commands below in a terminal.
 ```sh
 git clone https://github.com/agno-agi/agentos-railway agent-platform
 cd agent-platform
-[ -f .env ] || cp example.env .env
+cp example.env .env
 ```
 
 Open `.env` and set `OPENAI_API_KEY`. Then start the platform:
@@ -63,6 +63,7 @@ docker compose up -d --build
 
 The first build can take a few minutes. When it's ready, open
 [http://localhost:8000/docs](http://localhost:8000/docs) to see the API.
+
 Check that AI apps can connect through MCP:
 
 ```sh
@@ -70,10 +71,6 @@ Check that AI apps can connect through MCP:
 ```
 
 The check should report `9 tools; required tools available`.
-
-If the platform doesn't start, check `docker compose logs agentos-api agentos-db`.
-Local development doesn't require login tokens. The API and database are only exposed
-on your machine; [production requires authentication](#deploy-on-railway).
 
 ### 2. Connect the UI
 
