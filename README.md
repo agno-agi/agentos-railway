@@ -11,17 +11,19 @@ agent platform that you can run locally or deploy to Railway.
 
 1. **Use a coding agent.** Open the repo in Claude Code, Codex, or Cursor. The included
    skills help it create, test, and improve your agents.
-2. **Describe what you need.** Ask the built-in OS Manager to build an agent for you.
+2. **Describe what you need.** Chat with OS Manager, the built-in agent that helps you
+   manage the platform and build new agents.
 3. **Use Studio.** Build agents visually in [AgentOS Studio](https://os.agno.com).
 
 **Three ways to use your agents.**
 
 1. **In your product.** Call your agents through the REST API.
-2. **In AI apps.** Connect Claude, ChatGPT, and other MCP clients to your agents.
-3. **In Slack.** Add your Slack credentials to talk to OS Manager from your workspace.
+2. **In AI apps.** Connect apps such as Claude and ChatGPT through MCP.
+3. **In Slack.** Connect a Slack app to talk to OS Manager from your workspace.
 
-The AgentOS UI lets you chat with your agents, review past conversations, and trace
-what happened during a run. PostgreSQL stores your conversations, agent memories, and work.
+The AgentOS UI lets you chat with your agents, review past conversations, and see
+the steps an agent took. Your PostgreSQL database stores conversations, memories,
+and Company work.
 
 ## Get started
 
@@ -35,14 +37,15 @@ cd into it, and follow .agents/skills/setup-platform/SKILL.md.
 ```
 
 It checks Docker, helps you add your API key, starts the platform, and walks you
-through building your first agent. Already cloned the repo? Run
-[/setup-platform](.agents/skills/setup-platform/SKILL.md).
+through building your first agent. Already cloned the repo? Ask your coding agent
+to follow [setup-platform](.agents/skills/setup-platform/SKILL.md) in that folder.
 
 Prefer to set it up yourself? Follow the steps below.
 
 ## Run locally
 
 You'll need Git, Docker with Compose, and an OpenAI API key. Make sure Docker is running.
+Run the commands below in a terminal.
 
 ### 1. Start the platform
 
@@ -60,11 +63,13 @@ docker compose up -d --build
 
 The first build can take a few minutes. When it's ready, open
 [http://localhost:8000/docs](http://localhost:8000/docs) to see the API.
-Check that the MCP server is working:
+Check that AI apps can connect through MCP:
 
 ```sh
 ./scripts/mcp_check.sh
 ```
+
+The check should report `9 tools; required tools available`.
 
 If the platform doesn't start, check `docker compose logs agentos-api agentos-db`.
 Local development doesn't require login tokens. The API and database are only exposed
@@ -89,7 +94,8 @@ or ask OS Manager to run it for you.
 ## Build and improve your agents
 
 You can keep working through OS Manager, use Studio, or edit Python files in this repo.
-These skills help your coding agent handle the work:
+The repo includes instructions, called skills, for common coding tasks.
+Ask your coding agent to follow the relevant skill:
 
 | What you want to do | Skill |
 | --- | --- |
@@ -99,30 +105,37 @@ These skills help your coding agent handle the work:
 | Fix failing tests or try more scenarios | [/eval-and-improve](.agents/skills/eval-and-improve/SKILL.md) |
 | Check the repo before sharing or releasing it | [/review-and-improve](.agents/skills/review-and-improve/SKILL.md) |
 
-Put Python agents in `agents/` and register them in [app/main.py](app/main.py).
-Add their descriptions and suggested prompts in [app/config.yaml](app/config.yaml).
-The tools, models, and other building blocks available to Studio live in
-[app/registry.py](app/registry.py).
+If you write an agent in Python, put it in `agents/` and add it to
+[app/main.py](app/main.py) so the platform can run it. Set its description and
+suggested prompts in [app/config.yaml](app/config.yaml). To make a tool or model
+available in Studio, add it to [app/registry.py](app/registry.py).
 
-The platform includes a knowledge base for your documents, a shared notebook, and
-per-user memory that you can add to your agents. For an agent that answers questions
-about a product, create a separate knowledge base for that product's documentation.
+You can give agents documents to search, a notebook to keep notes, and memory
+to remember each user. Keep a product's documentation in its own knowledge base,
+separate from the platform's documents.
 
 ## Company
 
-Company helps you organize work into Products, Projects, and Tasks. Ask OS Manager:
+Company organizes ongoing work. A **Product** is what you're working on, a
+**Project** groups related work, and a **Task** is one piece of work to complete.
+A **Routine** is a set of instructions that can run on a schedule.
+
+This template includes an **AgentOS** Product for improving the platform itself.
+To get started, ask OS Manager:
 
 > Review this codebase and recent Agno releases. Suggest the most useful improvements.
 
-This template includes an **AgentOS** Product for improving the platform itself.
-Its daily review is scheduled for **09:00 UTC**. Company Manager reads the code and
-Agno release notes, then proposes up to three improvements as Backlog Tasks.
-It is instructed to leave approval and execution to you; automatic acceptance is off.
-These reviews use model calls, so check the saved schedule and run history in your deployment.
+It also includes a daily review at **09:00 UTC**. Company Manager reads the code
+and Agno release notes, then proposes up to three Tasks for you to review.
+The review is instructed to suggest work and leave approval and execution to you.
+Automatic acceptance is off.
 
-Change the review instructions or schedule in [app/company.py](app/company.py).
-That file sets the starting values for new records. For an existing deployment,
-change the saved schedule too—editing the file does not overwrite it.
+Scheduled reviews use your model API keys and incur usage costs. Check the saved
+schedule and run history in Company to see when a review will run and what it did.
+
+[app/company.py](app/company.py) sets the initial review instructions and schedule.
+Once they're saved in the database, update the saved Routine to change them;
+editing the Python file alone won't change an existing Routine.
 
 ## Engineers
 
@@ -147,8 +160,9 @@ To have engineers work on a separate copy of your repository, follow the
 
 ## Make it yours
 
-Create an empty private GitHub repository for your platform. For a fresh clone,
-keep this template as `upstream` and point `origin` at your new repo:
+To save your work in your own GitHub repository, create an empty private repo.
+From a fresh clone of this template, run the commands below with your repo URL.
+This makes `origin` your repo and keeps the original template as `upstream`:
 
 ```sh
 git remote rename origin upstream
@@ -156,17 +170,19 @@ git remote add origin https://github.com/YOUR-ORG/YOUR-REPO.git
 git push -u origin HEAD
 ```
 
-You can fetch future template updates from `upstream` and review them before merging.
-Set `REPOSITORY` in [app/sandbox.py](app/sandbox.py) to your repo and branch when you
-want to use sandboxes or add the repo as a Company source. Company keeps a local
-source for reading this codebase and adds the remote Git source when configured.
-For an existing deployment, check the Product's saved Sources and retire any old
-template URL; changing the code does not remove saved Sources.
+Future pushes go to your repository. You can still fetch updates from `upstream`
+and review them before merging.
+
+If you use sandboxes, also set the repository URL and branch in
+[the sandbox configuration](docs/sandboxes.md#choose-your-repository).
 
 ## Deploy on Railway
 
-Run [/deploy-platform](.agents/skills/deploy-platform/SKILL.md) in your coding agent
-for help with deployment. To do it yourself, follow these steps.
+Ask your coding agent to follow [deploy-platform](.agents/skills/deploy-platform/SKILL.md),
+or follow the steps below yourself.
+
+Already deployed? Use the [update commands](#update-or-remove-the-deployment).
+Upgrading from an older template? Read the [upgrade guide](docs/upgrading.md) first.
 
 ### 1. Prepare your production settings
 
@@ -179,8 +195,9 @@ Install [uv](https://docs.astral.sh/uv/) and Railway CLI **5.49.0 or newer**, th
 [ -f .env.production ] || cp example.env .env.production
 ```
 
-Open `.env.production` and set your production API keys. The deploy scripts read this
-file, separately from your local `.env`. Keep `RUNTIME_ENV=prd`, or leave it unset.
+Open `.env.production` and add `OPENAI_API_KEY`, plus any other API keys you use.
+This file holds your Railway settings; `.env` holds your local settings.
+Keep `RUNTIME_ENV=prd`, or leave it unset.
 
 ### 2. Create the Railway project
 
@@ -194,9 +211,9 @@ This creates the API service, PostgreSQL database, and public URL. Railway start
 billing for these resources. The script saves the URL and connection settings in
 `.env.production`.
 
-If authentication isn't configured yet, the script stops with exit code `2` before
-deploying the API. Complete the next step to finish. If the checkout is already linked
-to a Railway project, use the update commands below instead of creating another one.
+On a first deployment without authentication settings, the script creates the
+resources and URL, then stops before starting the API. This is expected
+(exit code `2`). Continue with step 3 to finish setup; don't run `up.sh` again.
 
 ### 3. Set up authentication
 
@@ -211,8 +228,8 @@ to a Railway project, use the update commands below instead of creating another 
 ./scripts/railway/redeploy.sh
 ```
 
-Production requires a valid token to access your agents and data. You can also use
-`JWT_JWKS_FILE` instead of a public key, provided the file is available on the server.
+Your deployed agents and data require a valid login token. The verification key
+lets the server check those tokens.
 
 Check the deployment logs:
 
@@ -225,26 +242,27 @@ check that a request to `/agents` without a token is rejected and one with a val
 
 ### 4. Connect your AI apps
 
-For a browser MCP client, add `https://YOUR-DOMAIN/mcp` as a connector.
-On the OAuth consent page, enter the `MCP_CONNECT_SECRET` saved in `.env.production`.
+To connect an AI app that supports MCP, use your Railway URL followed by `/mcp`
+(for example, `https://YOUR-DOMAIN/mcp`). When the connection page asks for a
+secret, enter the `MCP_CONNECT_SECRET` saved in `.env.production`.
 
-For coding clients, run:
+To connect a supported coding client from your terminal, use your Railway URL:
 
 ```sh
 uvx agno connect --url https://YOUR-DOMAIN
 ```
 
-OS Manager is available as the `agno` MCP tool alongside the eight built-in tools.
-Check MCP with an authenticated client before sharing the connection. Opening `/mcp`
-in a browser only checks discovery; it doesn't test authentication or an agent run.
+Once connected, the app can talk to OS Manager through the `agno` tool.
+Try asking it about your platform to check the connection. Opening `/mcp`
+in a browser is not enough to check that an agent can respond.
 
 ### Update or remove the deployment
 
-| What changed | Command |
+| What you want to do | Command |
 | --- | --- |
-| Code | `./scripts/railway/redeploy.sh` |
-| Production settings | `./scripts/railway/env-sync.sh` |
-| Both | Run `env-sync.sh --no-deploy`, then `redeploy.sh` |
+| Deploy code changes | `./scripts/railway/redeploy.sh` |
+| Upload settings and redeploy | `./scripts/railway/env-sync.sh` |
+| Deploy code and settings together | Run `./scripts/railway/env-sync.sh --no-deploy`, then `./scripts/railway/redeploy.sh` |
 | View logs | `railway logs --service agent-os` |
 | Delete the project | `./scripts/railway/down.sh` |
 
@@ -257,8 +275,9 @@ Changing the database password needs a separate database update.
 
 ## Verify and develop
 
-Install [uv](https://docs.astral.sh/uv/), then set up and activate the Python environment.
-If another environment is active, run `deactivate` first.
+To check your Python code and test agent responses, install [uv](https://docs.astral.sh/uv/)
+and run these commands from the project folder. Keep the local platform running.
+If another Python environment is active, run `deactivate` first.
 
 ```sh
 ./scripts/venv_setup.sh
@@ -267,9 +286,10 @@ source .venv/bin/activate
 python -m evals --tag smoke
 ```
 
-The smoke tests check OS Manager's onboarding, diagnostics, and explanation of agent memory.
-They use model calls and save results in the database, where you can review them in the UI.
-Keep PostgreSQL running—even listing the tests needs a database connection.
+`validate.sh` checks Python formatting, lint rules, and types. The smoke tests ask
+OS Manager to explain setup, check platform health, and explain agent memory.
+They use your model API keys and save results in the database for review in the UI.
+PostgreSQL must be running, even when you only want to list the tests.
 
 Add your own cases in [evals/cases.py](evals/cases.py), or use
 [/create-evals](.agents/skills/create-evals/SKILL.md). To save a report, add
@@ -282,44 +302,20 @@ See [AGENTS.md](AGENTS.md) for the code layout and development conventions.
 
 ## Configuration
 
-[example.env](example.env) lists the available settings. Start with `OPENAI_API_KEY`;
-add the others when you need them.
+[example.env](example.env) shows the main settings. Start with `OPENAI_API_KEY`;
+add the others when you need them. Use `.env` locally and `.env.production` for Railway.
 
 | Setting | What it's for |
 | --- | --- |
 | `OPENAI_API_KEY` | OS Manager, embeddings, and Codex Engineer. |
 | `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` | Claude Engineer. |
 | `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` | Connect OS Manager to Slack. Set both. |
-| `PARALLEL_API_KEY` | Optional key for web search; without it, the template uses keyless MCP access. |
-| `JWT_VERIFICATION_KEY` or `JWT_JWKS_FILE` | Verify login tokens in production. |
+| `PARALLEL_API_KEY` | Optional web search key. Without it, search uses Parallel's MCP server without an API key. |
+| `JWT_VERIFICATION_KEY` or `JWT_JWKS_FILE` | Check login tokens in production. A JWKS file must be available on the server. |
 | `AGENTOS_URL` | Public URL used by scheduled jobs and MCP. Railway setup saves it for you. |
 | `MCP_CONNECT_SECRET` | Connect browser MCP clients. Railway setup generates it for you. |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE` | PostgreSQL connection settings. Local Compose configures these for you. |
 | `RUNTIME_ENV` | `prd` by default. Local Compose uses `dev`, which disables token checks. |
-
-<details>
-<summary>Upgrading an existing deployment</summary>
-
-This version replaces the old template-owned manager and workflows with Agno's
-OS Manager and Company. Saved database records are kept when you upgrade.
-
-Before deploying:
-
-- Disable old `deployment-check` and `run-evals` schedules, whose workflows have been removed.
-- Disable or update schedules that use `company-analyst`, including Release intake,
-  Daily refresh, Weekly summary, and Weekly review.
-- Check saved Studio components for references to removed functions, tools, or knowledge
-  bases. Restore what they need or update them before use. Existing product knowledge is kept.
-- Check the AgentOS Product's saved settings, owner, Sources, and maintenance schedule.
-  Its ID is still `this-agentos`. Code declarations do not overwrite saved edits.
-- Remove `ENABLE_MAINTENANCE`, `SANDBOX_ENABLED`, `SANDBOX_IMAGE`, and `SANDBOX_RUNTIME_ARN`
-  from env files. Select a sandbox in `app/sandbox.py`; return `None` to turn it off.
-  Railway scripts reject nonempty values for the retired sandbox settings.
-
-Keep historical conversations, notes, and Company work. Update old references rather
-than deleting the data they belong to.
-
-</details>
 
 ## Learn more
 
