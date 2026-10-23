@@ -31,7 +31,7 @@ report the runtime verification gap.
 | Application agents and teams are deliberately registered, with stable IDs | Source declarations, `app/main.py`, `app/config.yaml` |
 | Framework-owned components stay in Agno | `OSManager(...)`, `CompanyConfig(...)`, installed framework source |
 | Shared resources and Studio capabilities match documentation | `app/registry.py`, `db/`, AgentOS registration |
-| Configuration names, defaults and prerequisites agree | Environment reads, `example.env`, README, Compose, Railway scripts |
+| Configuration names, defaults and prerequisites agree | Environment reads, `example.env`, README, Compose, deployment scripts |
 | Documented commands and file paths work | Scripts, skills, CLI help and installed signatures |
 | Skills remain discoverable and their routing is coherent | Frontmatter, relative links, `.claude/skills`, `CLAUDE.md` |
 | Eval targets, tool names and CLI examples exist | `evals/cases.py`, `evals/__main__.py`, installed Agno eval APIs |
