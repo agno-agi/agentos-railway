@@ -57,6 +57,12 @@ def validate_env(values: dict[str, str], *, require_auth: bool) -> None:
     values["RUNTIME_ENV"] = "prd"
     if not values.get("OPENAI_API_KEY") or values["OPENAI_API_KEY"] == "sk-***":
         raise DeploymentError("Set OPENAI_API_KEY in the production env file.")
+    # example.env ships the Claude key as a placeholder; upload an empty value instead so a
+    # copied template clears the variable rather than shipping a bogus key.
+    if values.get("ANTHROPIC_API_KEY") == "sk-***":
+        values["ANTHROPIC_API_KEY"] = ""
+    # AWS_PROFILE names a profile on this machine and means nothing inside the container.
+    values.pop("AWS_PROFILE", None)
     for key in ("SANDBOX_ENABLED", "SANDBOX_IMAGE", "SANDBOX_RUNTIME_ARN"):
         if values.get(key):
             raise DeploymentError(f"{key} no longer configures a sandbox; select the provider in app/sandbox.py.")
