@@ -167,7 +167,7 @@ Inspect the returned result and verify content was stored before testing retriev
 
 - a detail counts as documented only when it appears in text the search returned — a page that merely mentions a topic (a name in a list, a link, a heading) does not document it;
 - only returned Source URLs get cited, never one from memory, and none on a refusal;
-- when the docs do not answer, the agent says so, names the closest page, and points to support rather than writing a partial how-to — and it declines anything off topic, easy asks included, without adopting another name or product.
+- when the docs do not answer, the agent says so, names the closest page by title only (no Source line), and points to support rather than writing a partial how-to — and it declines anything off topic, easy asks included, without adopting another name or product.
 
 Step 7: three probes, not one — a covered question (details plus a Source URL), an in-scope question the cap probably excluded (a grounded refusal pointing at support — the pass that matters most), an off-topic one (a scoped refusal). Before calling a refusal-probe answer a leak, check the base — `select count(*) from ai.product_knowledge where content ilike '%<detail>%'` — index and cheat-sheet pages cover far more than their titles. Thin covered answers → raise the cap and re-ingest before touching the prompt. Step 9: lead with the serving story — live in the UI, over MCP, on Agno's roster; claude.ai/ChatGPT via connectors once deployed; for their end users, REST with per-user JWTs (`user_isolation=True` ships on; `JWT_JWKS_FILE` lets their login mint the tokens).
 
@@ -226,4 +226,4 @@ Iterate 2–3 times, then ask.
 
 ## 9. Done
 
-Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); Agno's roster — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.
+Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); OS Manager's roster, so the `agno` MCP tool runs it by name — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.

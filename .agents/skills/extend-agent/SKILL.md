@@ -78,13 +78,15 @@ Repo-specific rules per branch:
 - **Learning / memory** — the lever is `learning=shared_learning` ([`app/registry.py`](../../../app/registry.py)). `enable_user_memories` is not an `Agent` parameter; `enable_agentic_memory` must stay off beside a LearningMachine. Entities are Agno's — don't index them from a second component. `add_history_to_context` includes session history; it does not replace per-user learning.
 - **Knowledge** — wire `knowledge=shared_knowledge` ([`app/registry.py`](../../../app/registry.py)) as one object (a list on an agent searches nothing). A product agent gets its own base — see create-agent's product pattern.
 - **Shared notes** — import `shared_notes` from `app.registry` and add `shared_notes.tools()` to `tools`. Studio uses the declared toolkit name `filesystem`. Default tools read, write, append, replace, list, search and move PostgreSQL notes. User scoping follows AgentOS user isolation; keep personal profiles in learning and Company knowledge in Company wiki. Do not attach it to end-user product agents.
-- **Sub-agent / context** — choose a supported Agent/Team composition or tool interface from the pinned framework. Verify the import and constructor before wiring it; do not use the removed `WorkspaceContextProvider` API.
+- **Sub-agent / context** — choose a supported Agent/Team composition or tool interface from the pinned framework, and verify the import and constructor before wiring it. For read access to a directory, use `WorkspaceContextProvider` (`agno.context.workspace`) with `mode=ContextMode.tools` (`agno.context.mode`): spread `provider.get_tools()` into `tools=` and append `provider.instructions()` to the instructions. Default exclusions block env and credential files.
 - **Scheduled task** — [agno scheduler docs](https://docs.agno.com/agent-os/scheduler); `scheduler=True` is already on in `app/main.py`.
 - **Grow the registry** — the bucket you declare into decides how a built component references it (`tool_names`, `model_id`, `knowledge_name`, `learning_name`, `function_name`). Tool names are global to an agent, so a toolkit exposing a name another declared toolkit already has is silently dropped — check first, enable `add_instructions=True` when the toolkit supports and supplies useful instructions:
 
   Inspect `registry.tools` and the proposed toolkit's registered functions in the selected
   runtime. Verify name collisions and the Studio-visible catalog rather than assuming a
-  successfully imported toolkit is buildable.
+  successfully imported toolkit is buildable. MCP toolkits (such as `parallel_tools`) register
+  their functions only after connecting, so an empty function list from a fresh Python process
+  is expected for them; confirm those with the OS Manager `list_tools` check in Step 6.
 
 
 - **Refine instructions** — propose a minimal diff; narrow ("on recent-events questions, follow up with a `web_fetch`") rather than forbid.

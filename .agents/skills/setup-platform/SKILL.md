@@ -92,7 +92,7 @@ Whatever they type is the first discovery answer for [`create-agent`](../create-
 Follow create-agent through its smoke test, then land where the agent now lives, in the same breath as its first answer:
 
 - **In the UI** — **Refresh** puts it in the Agents list, and its base on the Knowledge page.
-- **On Agno's roster** — registering in `app/main.py` lets Agno run it by name ("Agno, ask the <Product> agent…") from the UI, Slack, or any MCP client.
+- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("Agno, ask the <Product> agent…" through the `agno` MCP tool) from the UI, Slack, or any MCP client.
 - **Ready to serve** — REST inside their product and MCP now; claude.ai and ChatGPT once deployed (Step 8).
 
 Stop before create-agent's own closing — Steps 7 and 8 replace it. If they push back or want to stop, adapt and carry on.
