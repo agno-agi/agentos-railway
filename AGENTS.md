@@ -123,8 +123,12 @@ AgentCore requires a persistent `/data` mount; provision its runtime with AWS to
 Use `up.sh --with-checkpoint-volume` for a new Railway deployment using AgentCore;
 mount `/data` on an existing API service before deploying the provider change.
 
-Edit `REPOSITORY` in `app/sandbox.py` for a fork. Company sandbox acceptance requires
-a saved Product Git Source matching `REPOSITORY.url`; retain the local readable Source.
+`REPOSITORY` in `app/sandbox.py` defaults to `None`. Set it to a `Repository` with
+the user's URL and branch before enabling a sandbox; startup rejects a sandbox
+without a repository. Direct server execution does not need one. Company always
+declares the local readable Source and only declares a remote Git Source when
+`REPOSITORY` is set. Company sandbox acceptance requires a saved Product Git Source
+matching `REPOSITORY.url`; retain the local readable Source.
 New Source declarations are seeded without replacing saved edits. The pinned framework
 supports sandbox HTTP admission through the durable PostgreSQL queue with session ordering.
 

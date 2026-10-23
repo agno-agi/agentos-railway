@@ -11,6 +11,8 @@ from db import get_postgres_db
 
 db = get_postgres_db()
 sandbox = sandbox_provider()
+if sandbox is not None and REPOSITORY is None:
+    raise ValueError("Set REPOSITORY in app/sandbox.py before enabling a sandbox.")
 repository = None if sandbox is None else REPOSITORY
 cwd = str(Path(__file__).resolve().parents[1]) if sandbox is None else None
 

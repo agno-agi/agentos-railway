@@ -6,7 +6,8 @@ from agno.sandbox import Repository, Sandbox
 from agno.sandbox.checkpoint import FileCheckpointStore
 from agno.sandbox.docker import DockerSandbox
 
-REPOSITORY = Repository("https://github.com/agno-agi/agentos-railway.git", branch="main")
+# Set to Repository("https://github.com/YOUR-ORG/YOUR-REPO", branch="main") before enabling a sandbox.
+REPOSITORY: Repository | None = None
 LOCAL_CHECKPOINTS = Path(__file__).resolve().parents[1] / "tmp" / "checkpoints"
 PRODUCTION_VOLUME = Path("/data")
 

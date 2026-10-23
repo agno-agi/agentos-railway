@@ -27,7 +27,7 @@ products = [
         sources=[
             Source(type="website", reference="https://github.com/agno-agi/agno/releases"),
             Source(type="git", reference=str(Path(__file__).resolve().parents[1])),
-            Source(type="git", reference=REPOSITORY.url),
+            *([Source(type="git", reference=REPOSITORY.url)] if REPOSITORY is not None else []),
         ],
         routines=[
             Routine(

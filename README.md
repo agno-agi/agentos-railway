@@ -134,6 +134,14 @@ By default, they run in this project's directory on the AgentOS server and can e
 its files. You can instead run them in a Docker or AWS AgentCore sandbox.
 Choose where they run in [app/sandbox.py](app/sandbox.py).
 
+Before enabling a sandbox, set `REPOSITORY` in that file to your own repo and branch:
+
+```python
+REPOSITORY = Repository("https://github.com/YOUR-ORG/YOUR-REPO", branch="main")
+```
+
+It starts unset. You don't need it when engineers run directly on the AgentOS server.
+
 <details>
 <summary>Run engineers in a local Docker sandbox</summary>
 
@@ -223,8 +231,11 @@ git push -u origin HEAD
 ```
 
 You can fetch future template updates from `upstream` and review them before merging.
-Also update `REPOSITORY` in [app/sandbox.py](app/sandbox.py) to your repo and branch.
-For an existing deployment, update the Product's saved Git Source as well.
+Set `REPOSITORY` in [app/sandbox.py](app/sandbox.py) to your repo and branch when you
+want to use sandboxes or add the repo as a Company source. Company keeps a local
+source for reading this codebase and adds the remote Git source when configured.
+For an existing deployment, check the Product's saved Sources and retire any old
+template URL; changing the code does not remove saved Sources.
 
 ## Deploy on Railway
 
