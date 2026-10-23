@@ -35,7 +35,6 @@ products = [
                 executor_type="agent",
                 executor_id="company-manager-internal",
                 cron_expr="0 9 * * *",
-                timezone="UTC",
                 instructions=MAINTENANCE,
                 auto_accept=False,
             ),
