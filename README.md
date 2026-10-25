@@ -42,6 +42,34 @@ to follow [setup-platform](.agents/skills/setup-platform/SKILL.md) in that folde
 
 Prefer to set it up yourself? Follow the steps below.
 
+## Engineers
+
+The platform includes **Claude Engineer** and **Codex Engineer**. They can read your
+code, make changes, and run commands.
+
+Chat with either engineer in AgentOS, or ask OS Manager to use one:
+
+> Ask Codex Engineer to review this project and suggest improvements. Don't change any files yet.
+
+Codex uses the `OPENAI_API_KEY` you added during setup. To use Claude, add
+`ANTHROPIC_API_KEY` to `.env`. After changing `.env`, run `docker compose up -d` again.
+
+By default, engineers work in this project's folder. With Docker Compose, they
+can change files in your local checkout, including the code serving the platform.
+Review those changes before committing them.
+
+For engineers to work in a separate environment, configure a sandbox with your
+own repository URL and branch:
+
+- [Local Docker sandbox](docs/sandboxes.md#local-docker-sandbox): run the API on
+  your computer and engineering work in a separate Docker container.
+- [AWS AgentCore sandbox](docs/sandboxes.md#aws-agentcore-sandbox): run engineering
+  work remotely when the platform is deployed. The API host needs AWS credentials
+  and persistent checkpoint storage at `/data`.
+
+Both engineers stay available with either setup. Sandboxes are optional and are
+not enabled by the default Compose configuration.
+
 ## Run locally
 
 You'll need Git, Docker with Compose, and an OpenAI API key. Make sure Docker is running.
@@ -133,27 +161,6 @@ schedule and run history in Company to see when a review will run and what it di
 [app/company.py](app/company.py) sets the initial review instructions and schedule.
 Once they're saved in the database, update the saved Routine to change them;
 editing the Python file alone won't change an existing Routine.
-
-## Engineers
-
-The platform includes **Claude Engineer** and **Codex Engineer**. They can read your
-code, make changes, and run commands.
-
-Chat with either engineer in AgentOS, or ask OS Manager to use one:
-
-> Ask Codex Engineer to review this project and suggest improvements. Don't change any files yet.
-
-Codex uses the `OPENAI_API_KEY` you added during setup. To use Claude, add
-`ANTHROPIC_API_KEY` to `.env`. After changing `.env`, run `docker compose up -d` again.
-
-By default, engineers work in this project's folder. When running locally with
-Docker Compose, their file changes appear in your local checkout. Review those
-changes before committing them.
-
-You don't need to configure a sandbox or repository URL to get started.
-
-To have engineers work on a separate copy of your repository, follow the
-[sandbox setup guide](docs/sandboxes.md) for Docker or AWS AgentCore.
 
 ## Make it yours
 

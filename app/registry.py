@@ -50,7 +50,7 @@ registry = Registry(
     tools=[
         *get_web_tools(),
         shared_notes.tools(add_instructions=True),
-        FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False),
+        FileGenerationTools(enable_pdf_generation=True, enable_docx_generation=False),
         CalculatorTools(),
     ],
     models=[default_model()],
