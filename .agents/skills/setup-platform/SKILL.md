@@ -36,10 +36,16 @@ Read [`AGENTS.md`](../../../AGENTS.md) end to end.
 
 ## 2. Environment
 
-If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY`:
+If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY` and
+`ANTHROPIC_API_KEY` for the platform and its two engineers:
 
-- Already in their shell → say so and copy it across without reading or printing it.
+- Already in their shell → copy the credentials across without displaying or logging their values.
 - Otherwise open `.env` in their editor (`cursor`, `code`) and ask them to paste it. Never open a terminal editor from your shell — it hangs the session.
+
+Claude Engineer needs its own credentials. If the user chooses Claude Code OAuth, remove
+the `ANTHROPIC_API_KEY` placeholder and set `CLAUDE_CODE_OAUTH_TOKEN` instead. The API
+container does not inherit a host Claude login. If Claude credentials are unavailable,
+report that Claude Engineer cannot run; do not present API startup as verification of it.
 
 ## 3. Boot
 
@@ -92,7 +98,7 @@ Whatever they type is the first discovery answer for [`create-agent`](../create-
 Follow create-agent through its smoke test, then land where the agent now lives, in the same breath as its first answer:
 
 - **In the UI** — **Refresh** puts it in the Agents list, and its base on the Knowledge page.
-- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("Agno, ask the <Product> agent…" through the `agno` MCP tool) from the UI, Slack, or any MCP client.
+- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("OS Manager, ask the <Product> agent…" through the `os_manager` MCP tool) from the UI, Slack, or any MCP client.
 - **Ready to serve** — REST inside their product and MCP now; claude.ai and ChatGPT once deployed (Step 8).
 
 Stop before create-agent's own closing — Steps 7 and 8 replace it. If they push back or want to stop, adapt and carry on.
@@ -114,7 +120,7 @@ With `gh` signed in: `gh repo create agent-platform --private --source=. --push`
 Short summary of what you built, then the loop they own — lead with whichever the smoke test suggested:
 
 - [`/extend-agent`](../extend-agent/SKILL.md) — change the agent: a tool, a capability, a known bug.
-- [`/eval-and-improve`](../eval-and-improve/SKILL.md) — repair failing cases or explore simulated user scenarios and improve the agent.
+- [`/improve`](../improve/SKILL.md) — harden the agent through simulations, diagnosis and verified fixes; optionally turn useful scenarios into evals.
 - [`/create-agent`](../create-agent/SKILL.md) — another agent.
 
 One line: coding agents connect with `uvx agno connect`; claude.ai / ChatGPT connect over OAuth once deployed — [`/deploy-platform`](../deploy-platform/SKILL.md) does that.

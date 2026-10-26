@@ -45,7 +45,8 @@ MCP_CHECK_HOST=1 ./scripts/mcp_check.sh
 ```
 
 Checkpoints are saved in `tmp/checkpoints`. Agno passes the engineers' model credentials
-to the sandbox. For a private repository, also supply `GITHUB_READ_TOKEN` through the
+to the sandbox. These files are local: deleting them loses that recovery point.
+For a private repository, also supply `GITHUB_READ_TOKEN` through the
 provider's `env` mapping. Read its value from your environment or secret store;
 never put the token itself in code. Git push credentials need separate configuration.
 
@@ -59,14 +60,48 @@ docker build --target sandbox --platform linux/arm64 --load -t "${SANDBOX_ECR_IM
 ```
 
 Push the image to ECR, then create an AgentCore runtime and execution role with your
-AWS tools. Set `sandbox_provider()` to return `agentcore_sandbox("your-runtime-arn")`.
-Update `REPOSITORY` to your repository and branch. The API host needs AWS credentials;
-the runtime ARN determines the region. It does not need a Docker daemon.
+AWS tools. Use the image's existing entrypoint. Create a private S3 bucket for
+checkpoints, then configure [app/sandbox.py](../app/sandbox.py):
 
-The API also needs a persistent volume mounted at `/data` to save checkpoints.
-Follow your template's [deployment instructions](../README.md#sandbox-storage) to
-configure that storage before enabling AgentCore. Keep one API replica. The
-application refuses to use AgentCore without the `/data` mount.
+```python
+def sandbox_provider() -> Sandbox | None:
+    return agentcore_sandbox(
+        "arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
+        "your-checkpoint-bucket",
+        checkpoint_prefix="your-platform/checkpoints/",
+    )
+```
+
+Set `REPOSITORY` to your repository and branch. Use a distinct prefix per platform
+and the same bucket/prefix on every replica of that platform. The bucket must
+already exist; the template does not provision AWS resources.
+
+The API host needs AWS access to invoke and stop this runtime and to read/write
+its S3 checkpoint prefix. The runtime ARN determines the compute region; set
+`AWS_DEFAULT_REGION` to your bucket's region for S3. Use the SDK credential chain
+(profile locally, role or securely supplied credentials when hosted).
+
+For S3, grant `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and
+`s3:AbortMultipartUpload` on that prefix. Without appropriate `s3:ListBucket`
+permission, S3 can report a missing object as access denied rather than not found.
+If you configure
+customer-managed KMS encryption, also provide the required key permissions.
+Keep the bucket private. Do not expire active checkpoint objects with a bucket
+lifecycle rule. Agno retains a bounded number of checkpoints per session.
+
+No API disk or Docker daemon is required. The API uses temporary local files while
+transferring archives; S3 is the durable store. API credentials are not automatically
+forwarded into the sandbox. Code inside AgentCore can use its execution role, so
+give that role only the permissions the engineering work needs, not the API's
+production database or checkpoint-store credentials.
+
+After configuring the provider, redeploy and test both engineers. Save a file,
+complete a turn, then replace the API and sandbox and verify that the next turn
+restores the saved file and native session. Recovery starts at the last successfully
+saved checkpoint; unfinished edits, live processes and external side effects are
+not restored. Missing or inaccessible checkpoints must be investigated rather than
+silently restarting the engineer conversation. See the [scaling guide](scaling.md)
+before adding API replicas.
 
 To use Claude through Bedrock, add `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
 `AWS_REGION` to the `AgentCoreSandbox` provider's `env` mapping. Give its execution role

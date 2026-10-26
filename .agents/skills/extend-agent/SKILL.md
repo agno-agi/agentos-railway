@@ -1,6 +1,6 @@
 ---
 name: extend-agent
-description: User-driven loop to change an existing agent in this AgentOS — add a tool/MCP server/toolkit, add a capability (knowledge base, learning/memory, sub-agent, scheduled task), grow the safe Studio registry so components built at runtime gain a new capability, refine its instructions, or fix a specific known bug, verifying each change against the selected development runtime. Use whenever the user names a concrete change to an agent, or wants a new building block available to the platform. For autonomous hardening with no specific change in mind, use eval-and-improve.
+description: User-driven loop to change an existing agent in this AgentOS — add a tool/MCP server/toolkit, add a capability (knowledge base, learning/memory, sub-agent, scheduled task), grow the safe Studio registry so components built at runtime gain a new capability, refine its instructions, or fix a specific known bug, verifying each change against the selected development runtime. Use whenever the user names a concrete change to an agent, or wants a new building block available to the platform. For agent hardening without a specific change in mind, use improve.
 ---
 
 # Extend an Agent
@@ -8,7 +8,7 @@ description: User-driven loop to change an existing agent in this AgentOS — ad
 > _Coding-agent workflow: run as `/extend-agent` or by describing the task._
 
 Implement the concrete requested change and verify the affected behavior. Use
-[eval-and-improve](../eval-and-improve/SKILL.md) for broader exploratory hardening when
+[improve](../improve/SKILL.md) for broader agent hardening when
 requested; a narrow change does not require a separate hardening campaign.
 
 ## 0. Select the development runtime
@@ -113,11 +113,16 @@ if startup fails. Confirm the intended code and component IDs are served before 
 
 ## 6. Smoke test
 
+Use `--form-string` for literal fields so semicolons and leading `@` in user input
+are sent unchanged. Check the saved input when a response seems to ignore part of the request.
+
 Pick a prompt that exercises the change. Use `/agents/<id>/runs` for agents or `/teams/<id>/runs` for the actual target team (OS Manager is `os-manager-internal`). The example assumes the local development endpoint:
 
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
-  -F "message=<the targeted prompt>" -F "user_id=claude-extend-agent" -F "stream=false" \
+  --form-string "message=<the targeted prompt>" \
+  --form-string "user_id=claude-extend-agent" \
+  --form-string "stream=false" \
   -o /tmp/extend-out.json -w "HTTP %{http_code} in %{time_total}s\n"
 jq -r '.content // .' < /tmp/extend-out.json
 ```
@@ -136,4 +141,4 @@ Report completion once the requested change and relevant checks are handled. Con
 
 ## 8. Report
 
-One line per accepted change, `git diff --stat` plus the agent-file diff, a suggested commit (`feat(<slug>): …`, `fix(<slug>): …`, `chore(<slug>): refine instructions`), and any remaining verification. Suggest [`eval-and-improve`](../eval-and-improve/SKILL.md) only when broader hardening would be useful. Update [`AGENTS.md`](../../../AGENTS.md) only when the change affects its documented conventions.
+One line per accepted change, `git diff --stat` plus the agent-file diff, a suggested commit (`feat(<slug>): …`, `fix(<slug>): …`, `chore(<slug>): refine instructions`), and any remaining verification. Suggest [`improve`](../improve/SKILL.md) only when broader agent hardening would be useful. Update [`AGENTS.md`](../../../AGENTS.md) only when the change affects its documented conventions.

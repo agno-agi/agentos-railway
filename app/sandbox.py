@@ -9,11 +9,10 @@ from agno.sandbox.docker import DockerSandbox
 # Set to Repository("https://github.com/YOUR-ORG/YOUR-REPO", branch="main") before enabling a sandbox.
 REPOSITORY: Repository | None = None
 LOCAL_CHECKPOINTS = Path(__file__).resolve().parents[1] / "tmp" / "checkpoints"
-PRODUCTION_VOLUME = Path("/data")
 
 
 def sandbox_provider() -> Sandbox | None:
-    """Choose None, docker_sandbox(), or agentcore_sandbox("your-runtime-arn")."""
+    """Choose None, docker_sandbox(), or agentcore_sandbox("runtime-arn", "checkpoint-bucket")."""
     return None
 
 
@@ -26,12 +25,13 @@ def docker_sandbox() -> DockerSandbox:
     )
 
 
-def agentcore_sandbox(runtime_arn: str) -> Sandbox:
+def agentcore_sandbox(
+    runtime_arn: str, checkpoint_bucket: str, *, checkpoint_prefix: str = "agentos/checkpoints/"
+) -> Sandbox:
     from agno.sandbox.agentcore import AgentCoreSandbox
+    from agno.sandbox.s3 import S3CheckpointStore
 
-    if not PRODUCTION_VOLUME.is_mount():
-        raise ValueError(f"Mount a persistent volume at {PRODUCTION_VOLUME} before enabling AgentCore")
     return AgentCoreSandbox(
         runtime_arn=runtime_arn,
-        checkpoints=FileCheckpointStore(PRODUCTION_VOLUME / "checkpoints"),
+        checkpoints=S3CheckpointStore(bucket=checkpoint_bucket, prefix=checkpoint_prefix),
     )

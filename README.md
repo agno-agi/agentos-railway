@@ -65,14 +65,15 @@ own repository URL and branch:
   your computer and engineering work in a separate Docker container.
 - [AWS AgentCore sandbox](docs/sandboxes.md#aws-agentcore-sandbox): run engineering
   work remotely when the platform is deployed. The API host needs AWS credentials
-  and persistent checkpoint storage at `/data`.
+  and an S3 bucket for checkpoints. No disk is attached to the API service.
 
 Both engineers stay available with either setup. Sandboxes are optional and are
 not enabled by the default Compose configuration.
 
 ## Run locally
 
-You'll need Git, Docker with Compose, and an OpenAI API key. Make sure Docker is running.
+You'll need Git, Docker with Compose, an OpenAI API key and an Anthropic API key
+for Claude Engineer. Make sure Docker is running.
 Run the commands below in a terminal.
 
 ### 1. Start the platform
@@ -83,7 +84,9 @@ cd agent-platform
 cp example.env .env
 ```
 
-Open `.env` and set `OPENAI_API_KEY`. Then start the platform:
+Open `.env` and set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` so both engineers can
+authenticate. For Claude Code OAuth instead, remove `ANTHROPIC_API_KEY` and set
+`CLAUDE_CODE_OAUTH_TOKEN`. Then start the platform:
 
 ```sh
 docker compose up -d --build
@@ -127,7 +130,7 @@ Ask your coding agent to follow the relevant skill:
 | Build an agent | [/create-agent](.agents/skills/create-agent/SKILL.md) |
 | Add a tool, change behavior, or fix a bug | [/extend-agent](.agents/skills/extend-agent/SKILL.md) |
 | Write tests for your agent's answers | [/create-evals](.agents/skills/create-evals/SKILL.md) |
-| Fix failing tests or try more scenarios | [/eval-and-improve](.agents/skills/eval-and-improve/SKILL.md) |
+| Harden an agent with simulations and targeted fixes | [/improve](.agents/skills/improve/SKILL.md) |
 | Check the repo before sharing or releasing it | [/review-and-improve](.agents/skills/review-and-improve/SKILL.md) |
 
 If you write an agent in Python, put it in `agents/` and add it to
@@ -188,7 +191,6 @@ Ask your coding agent to follow [deploy-platform](.agents/skills/deploy-platform
 or follow the steps below yourself.
 
 Already deployed? Use the [update commands](#update-or-remove-the-deployment).
-Upgrading from an older template? Read the [upgrade guide](docs/upgrading.md) first.
 
 ### 1. Prepare your production settings
 
@@ -258,24 +260,24 @@ To connect a supported coding client from your terminal, use your Railway URL:
 uvx agno connect --url https://YOUR-DOMAIN
 ```
 
-Once connected, the app can talk to OS Manager through the `agno` tool.
+Once connected, the app can talk to OS Manager through the `os_manager` tool.
 Try asking it about your platform to check the connection. Opening `/mcp`
 in a browser is not enough to check that an agent can respond.
 
 ### Sandbox storage
 
-If you use AWS AgentCore for engineers, the API needs a persistent `/data` volume.
-For a new Railway deployment, add `--with-checkpoint-volume` to `up.sh`:
+The API service needs no attached disk. Conversations, memories and Company work
+are stored in PostgreSQL. Without a sandbox, engineers run inside the API container;
+their edited files and native sessions can be lost on redeploy or replacement.
+Database conversation history does not reconstruct that working directory.
 
-```sh
-./scripts/railway/up.sh --workspace YOUR_WORKSPACE --with-checkpoint-volume
-```
+For durable, isolated engineering, configure [AWS AgentCore and S3](docs/sandboxes.md#aws-agentcore-sandbox).
+S3 stores the last saved workspace and native-session checkpoint. Recovery does
+not preserve unfinished edits at the instant of a crash or replay external actions
+safely. AWS is optional for getting started. Local Docker isolation is also
+available in the [sandbox guide](docs/sandboxes.md#local-docker-sandbox).
 
-For an existing deployment, add the volume before enabling AgentCore:
-
-```sh
-railway volume --service agent-os add --mount-path /data
-```
+Before running multiple API instances, follow [Scaling](docs/scaling.md).
 
 ### Update or remove the deployment
 
