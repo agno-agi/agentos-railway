@@ -27,7 +27,7 @@ workflows in `.agents/skills/`; `.claude/skills` links to that directory.
 | Add an agent | [create-agent](.agents/skills/create-agent/SKILL.md) |
 | Change an agent or add a Studio capability | [extend-agent](.agents/skills/extend-agent/SKILL.md) |
 | Add behavioral coverage | [create-evals](.agents/skills/create-evals/SKILL.md) |
-| Repair evals or explore and improve agent behavior | [improve](.agents/skills/improve/SKILL.md) |
+| Harden an agent with simulations and targeted fixes | [improve](.agents/skills/improve/SKILL.md) |
 | Review repository consistency and public readiness | [review-and-improve](.agents/skills/review-and-improve/SKILL.md) |
 | Deploy or change production configuration | [deploy-platform](.agents/skills/deploy-platform/SKILL.md) |
 
