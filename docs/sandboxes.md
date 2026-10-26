@@ -47,7 +47,7 @@ MCP_CHECK_HOST=1 ./scripts/mcp_check.sh
 Checkpoints are saved in `tmp/checkpoints`. Agno passes the engineers' model credentials
 to the sandbox. These files are local: deleting them loses that recovery point.
 For a private repository, also supply `GITHUB_READ_TOKEN` through the
-provider's `env` mapping. Read its value from your environment or secret store;
+`env` argument of `docker_sandbox()`. Read its value from your environment or secret store;
 never put the token itself in code. Git push credentials need separate configuration.
 
 ## AWS AgentCore sandbox
@@ -103,9 +103,20 @@ not restored. Missing or inaccessible checkpoints must be investigated rather th
 silently restarting the engineer conversation. See the [scaling guide](scaling.md)
 before adding API replicas.
 
-To use Claude through Bedrock, add `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
-`AWS_REGION` to the `AgentCoreSandbox` provider's `env` mapping. Give its execution role
-access to the model, and set Claude's model to a supported Bedrock inference profile.
+To use Claude through Bedrock, pass `CLAUDE_CODE_USE_BEDROCK="1"` and an explicit
+`AWS_REGION` in the `env` argument of `agentcore_sandbox()`. Give its execution role
+access to the model, and set Claude's model to a supported Bedrock inference profile,
+such as `us.anthropic.claude-opus-5-5`:
+
+```python
+return agentcore_sandbox(
+    "arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
+    "your-checkpoint-bucket",
+    checkpoint_prefix="your-platform/checkpoints/",
+    env={"CLAUDE_CODE_USE_BEDROCK": "1", "AWS_REGION": "us-east-1"},
+)
+```
+
 These settings are not copied from the host automatically. For a private repository,
 supply `GITHUB_READ_TOKEN` through the same mapping, reading it from your secret store.
 
