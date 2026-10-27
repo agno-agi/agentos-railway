@@ -1,5 +1,6 @@
 """Optional Docker and AgentCore sandboxes."""
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from agno.sandbox import Repository, Sandbox
@@ -16,17 +17,22 @@ def sandbox_provider() -> Sandbox | None:
     return None
 
 
-def docker_sandbox() -> DockerSandbox:
+def docker_sandbox(*, env: Mapping[str, str] | None = None) -> DockerSandbox:
     return DockerSandbox(
         image="agno-sandbox:local",
         network="isolated",
         workspace_mb=2048,
         checkpoints=FileCheckpointStore(LOCAL_CHECKPOINTS),
+        env=env,
     )
 
 
 def agentcore_sandbox(
-    runtime_arn: str, checkpoint_bucket: str, *, checkpoint_prefix: str = "agentos/checkpoints/"
+    runtime_arn: str,
+    checkpoint_bucket: str,
+    *,
+    checkpoint_prefix: str = "agentos/checkpoints/",
+    env: Mapping[str, str] | None = None,
 ) -> Sandbox:
     from agno.sandbox.agentcore import AgentCoreSandbox
     from agno.sandbox.s3 import S3CheckpointStore
@@ -34,4 +40,5 @@ def agentcore_sandbox(
     return AgentCoreSandbox(
         runtime_arn=runtime_arn,
         checkpoints=S3CheckpointStore(bucket=checkpoint_bucket, prefix=checkpoint_prefix),
+        env=env,
     )
