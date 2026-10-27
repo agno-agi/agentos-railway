@@ -13,11 +13,11 @@ LOCAL_CHECKPOINTS = Path(__file__).resolve().parents[1] / "tmp" / "checkpoints"
 
 
 def sandbox_provider() -> Sandbox | None:
-    """Choose None, docker_sandbox(), or agentcore_sandbox() with explicit keyword arguments."""
+    """Choose None, docker_sandbox(), or agentcore_sandbox()."""
     return None
 
 
-def docker_sandbox(*, env: Mapping[str, str] | None = None) -> DockerSandbox:
+def docker_sandbox(env: Mapping[str, str] | None = None) -> DockerSandbox:
     return DockerSandbox(
         image="agno-sandbox:local",
         network="isolated",
@@ -28,7 +28,6 @@ def docker_sandbox(*, env: Mapping[str, str] | None = None) -> DockerSandbox:
 
 
 def agentcore_sandbox(
-    *,
     runtime_arn: str,
     checkpoint_bucket: str,
     checkpoint_prefix: str = "agentos/checkpoints/",
