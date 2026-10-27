@@ -115,8 +115,8 @@ back to server execution. Keep provider configuration in `app/sandbox.py` and ag
 declarations in `agents/engineers.py`.
 
 Select the provider by returning `None`, `docker_sandbox()`, or
-`agentcore_sandbox("runtime-arn", "checkpoint-bucket")` from `sandbox_provider()`. Sandbox selection, image
-and runtime ARN are code settings, not environment switches. Supply optional Bedrock
+`agentcore_sandbox(runtime_arn="runtime-arn", checkpoint_bucket="checkpoint-bucket")` from `sandbox_provider()`.
+Sandbox selection, image and runtime ARN are code settings, not environment switches. Supply optional Bedrock
 settings or private-repository credentials explicitly through the provider's `env`;
 never put credential values in source. Agno forwards the harness model credentials.
 

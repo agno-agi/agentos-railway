@@ -66,8 +66,8 @@ checkpoints, then configure [app/sandbox.py](../app/sandbox.py):
 ```python
 def sandbox_provider() -> Sandbox | None:
     return agentcore_sandbox(
-        "arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
-        "your-checkpoint-bucket",
+        runtime_arn="arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
+        checkpoint_bucket="your-checkpoint-bucket",
         checkpoint_prefix="your-platform/checkpoints/",
     )
 ```
@@ -110,8 +110,8 @@ such as `us.anthropic.claude-opus-5-5`:
 
 ```python
 return agentcore_sandbox(
-    "arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
-    "your-checkpoint-bucket",
+    runtime_arn="arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/YOUR-RUNTIME",
+    checkpoint_bucket="your-checkpoint-bucket",
     checkpoint_prefix="your-platform/checkpoints/",
     env={"CLAUDE_CODE_USE_BEDROCK": "1", "AWS_REGION": "us-east-1"},
 )
