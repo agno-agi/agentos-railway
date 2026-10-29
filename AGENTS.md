@@ -93,7 +93,9 @@ pin, Product metadata PATCH replaces the whole dictionary. Preserve existing met
 `app/company.py` declares `agentos-maintenance` for every day at 09:00 UTC, executed by
 Company Manager (`company-manager-internal`, executor type `agent`). It reviews Agno
 releases and this codebase and proposes up to three Backlog Tasks, reusing existing
-proposals. Its instructions prohibit accepting or executing work; `auto_accept=False`.
+proposals. The routine is disabled by default (`enabled=False`);
+enable it from the Company page in the AgentOS UI.
+Its instructions prohibit accepting or executing work; `auto_accept=False`.
 Scheduled reviews spend model calls. Verify the saved creator, schedule, authorization
 and run history before relying on them; declarations do not overwrite saved edits.
 

@@ -130,7 +130,8 @@ describes a specific job to complete. Routines give agents instructions to carry
 out on a schedule.
 
 This template includes an `AgentOS` Product for improving the platform itself,
-with a daily review routine scheduled for 09:00 UTC. Company Manager reads the
+with a daily review routine scheduled for 09:00 UTC. It is disabled by default;
+enable it from the Company page in the AgentOS UI. Company Manager reads the
 code and Agno release notes, then proposes up to three Tasks for you to review.
 The review is instructed to suggest work and leave approval and execution to you.
 

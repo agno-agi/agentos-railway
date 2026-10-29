@@ -44,13 +44,11 @@ OS Manager, its members and Company Manager are framework-owned; do not restore
 the old application-owned manager/builder/engineer stack. OS, Company and queue storage
 reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
 
-`app/company.py` declares `agentos-maintenance`: Company Manager reviews releases and
-the codebase every day at 09:00 UTC, proposes up to three Backlog Tasks and has automatic
-acceptance disabled. Verify the declaration against saved schedule state; do not infer
-successful execution from its presence. Before removing or renaming a component in an
-existing deployment, inspect saved schedules and Studio references read-only when access
-is available. Source absence does not establish that a saved record is absent. Preserve
-historical sessions, notes and Company records.
+`app/company.py` defines the daily `agentos-maintenance` review, disabled by default.
+To start it, enable it from the Company page in the AgentOS UI.
+Proposed Tasks are not automatically accepted.
+Check saved schedules and Studio references before renaming or removing components.
+Preserve historical sessions, notes and Company records.
 
 ## 3. Verify proportionately
 
