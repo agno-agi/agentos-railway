@@ -26,28 +26,6 @@ Try:
 [agents/engineers.py](../agents/engineers.py) defines their models and harness options.
 To disable an agent, comment out its import and factory call and redeploy.
 
-### Permission requests
-
-Claude uses `permission_mode="auto"`; Codex uses `approval_mode="auto_review"`.
-Their native policies review commands independently of whether a sandbox is enabled.
-Automatic review does not mean every command is permitted.
-
-With Agno 3.1.12, native requests for human permission appear in AgentOS chat and
-**Approvals**. Review the exact action, approve or reject it, then choose
-**Continue Run** to deliver the decision to the waiting execution.
-
-To test human approval, use Claude `permission_mode="default"` or replace Codex's
-`approval_mode="auto_review"` with `approval_policy="on-request"`. Start a new
-conversation directly with that coding agent and use an action its policy asks to
-approve. Do not expect every action to pause. Human permission requests inside
-teams or workflows are not supported; test the coding agent directly.
-
-Upgrade the API and sandbox images together. Rebuild the local sandbox below;
-for AgentCore, run `scripts/aws.py apply` from the updated checkout to publish the
-new sandbox image. Existing sandbox sessions may still use the old image, so start
-a fresh conversation after upgrading. An older runtime without approval support
-is rejected rather than silently skipping permission checks.
-
 ## Sandboxes and checkpoints
 
 Without a sandbox, coding agents run directly on the API host with access to its

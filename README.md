@@ -130,15 +130,13 @@ describes a specific job to complete. Routines give agents instructions to carry
 out on a schedule.
 
 This template includes an `AgentOS` Product for improving the platform itself,
-with a daily review Routine configured for 09:00 UTC and **disabled by default**.
-Open Company in AgentOS, review its instructions and schedule, then enable it when
-you want recurring reviews. Company Manager reads the code and Agno release notes,
-then proposes up to three Tasks. Automatic acceptance is off; you choose what to
-approve and implement.
+with a daily review routine scheduled for 09:00 UTC. It is disabled by default;
+enable it from the Company page in the AgentOS UI. Company Manager reads the
+code and Agno release notes, then proposes up to three Tasks for you to review.
+The review is instructed to suggest work and leave approval and execution to you.
 
 Scheduled reviews use your model API keys and incur usage costs. Check the saved
-schedule and run history in Company. Upgrading an existing platform preserves its
-saved Routine state; pause it in the UI if you want to stop scheduled reviews.
+schedule and run history in Company to see when a review will run and what it did.
 
 [app/company.py](app/company.py) sets the initial review instructions and schedule.
 Once they're saved in the database, update the saved Routine to change them;
