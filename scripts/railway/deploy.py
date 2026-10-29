@@ -55,6 +55,7 @@ def validate_env(values: dict[str, str], *, require_auth: bool) -> None:
     if values.get("RUNTIME_ENV", "prd") != "prd":
         raise DeploymentError("Railway requires RUNTIME_ENV=prd. Development authorization cannot be deployed.")
     values["RUNTIME_ENV"] = "prd"
+    values.setdefault("SANDBOX_PROVIDER", "agentcore")
     if not values.get("OPENAI_API_KEY") or values["OPENAI_API_KEY"] == "sk-***":
         raise DeploymentError("Set OPENAI_API_KEY in the production env file.")
     # example.env ships the Claude key as a placeholder; upload an empty value instead so a
