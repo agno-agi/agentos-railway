@@ -76,7 +76,7 @@ configure [GitHub access](#publish-changes-to-github).
 
 ### AWS AgentCore sandbox
 
-Your API stays on its current host (Render). AgentCore runs coding sessions, and S3 stores
+Your API stays on its current host. AgentCore runs coding sessions, and S3 stores
 their checkpoints. Run [scripts/aws.py](../scripts/aws.py) locally to set this up.
 It creates the runtime, image repository, checkpoint bucket, and required IAM identities.
 
