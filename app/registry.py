@@ -23,7 +23,7 @@ def get_web_tools() -> list[ParallelTools | MCPTools]:
         return [ParallelTools()]
     return [
         MCPTools(
-            url="https://search.parallel.ai/mcp",
+            url="https://mcp.parallel.ai/mcp",
             transport="streamable-http",
             name="parallel_tools",
             timeout_seconds=30,

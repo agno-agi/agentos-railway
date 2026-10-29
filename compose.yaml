@@ -30,11 +30,13 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - path: .env
         required: false
     environment:
       RUNTIME_ENV: dev
+      SANDBOX_PROVIDER: docker
       AGNO_DEBUG: "True"
       WAIT_FOR_DB: "True"
       AGENTOS_URL: http://127.0.0.1:8000

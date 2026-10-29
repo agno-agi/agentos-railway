@@ -79,7 +79,7 @@ Even eval CLI help/list commands import knowledge storage and require PostgreSQL
 `evals/cases.py` directly when the database is unavailable.
 Evals use the application's database and persist sessions and results. Use explicitly owned
 fixtures for mutating cases; do not restore snapshot-diff cleanup or delete historical data.
-Do not smoke every engineer automatically: those runs can execute code and modify workspaces.
+Do not smoke every coding agent automatically: those runs can execute code and modify workspaces.
 HTTP availability, direct execution, delegation and Company Task completion are separate checks.
 
 ## 4. Report

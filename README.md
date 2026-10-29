@@ -42,38 +42,32 @@ to follow [setup-platform](.agents/skills/setup-platform/SKILL.md) in that folde
 
 Prefer to set it up yourself? Follow the steps below.
 
-## Engineers
+## Coding agents
 
-The platform includes **Claude Engineer** and **Codex Engineer**. They can read your
-code, make changes, and run commands.
+The platform includes **Claude Engineer** and **Codex Engineer**, disabled by default.
+They can read code, make changes, and run commands. Enable the ones you need in
+`app/main.py`, with `ANTHROPIC_API_KEY` for Claude or `OPENAI_API_KEY` for Codex.
+Follow the [harness setup guide](docs/harnesses.md) for the steps.
 
-Chat with either engineer in AgentOS, or ask OS Manager to use one:
+Once enabled, chat with a coding agent in AgentOS or ask OS Manager to use one:
 
 > Ask Codex Engineer to review this project and suggest improvements. Don't change any files yet.
 
-Codex uses the `OPENAI_API_KEY` you added during setup. To use Claude, add
-`ANTHROPIC_API_KEY` to `.env`. After changing `.env`, run `docker compose up -d` again.
-
-By default, engineers work in this project's folder. With Docker Compose, they
-can change files in your local checkout, including the code serving the platform.
-Review those changes before committing them.
-
-For engineers to work in a separate environment, configure a sandbox with your
-own repository URL and branch:
-
-- [Local Docker sandbox](docs/sandboxes.md#local-docker-sandbox): run the API on
-  your computer and engineering work in a separate Docker container.
-- [AWS AgentCore sandbox](docs/sandboxes.md#aws-agentcore-sandbox): run engineering
-  work remotely when the platform is deployed. The API host needs AWS credentials
-  and an S3 bucket for checkpoints. No disk is attached to the API service.
-
-Both engineers stay available with either setup. Sandboxes are optional and are
-not enabled by the default Compose configuration.
+Without a sandbox, coding agents run on the API host with its file and credential
+access. For isolation and checkpoint recovery, the same guide covers local Docker
+and [AWS AgentCore](docs/harnesses.md#aws-agentcore-sandbox). The included
+[scripts/aws.py](scripts/aws.py) prepares the AWS resources;
+preview with `plan`, provision with `apply`, and retrieve configuration with `status`.
+Set `SANDBOX_ENABLED = True` and your repository in `app/sandbox.py` to enable sandboxes.
+`SANDBOX_PROVIDER` selects `docker` locally or `agentcore` on your host, independently
+of JWT authorization. Configure the backend before deploying the enabled code.
+Local sandboxes use the same Compose API, with Docker daemon access through its socket.
+GitHub CLI is included. Set `GH_TOKEN` to enable repository access and PR publishing;
+see [GitHub access](docs/harnesses.md#publish-changes-to-github) for permissions and commit identity.
 
 ## Run locally
 
-You'll need Git, Docker with Compose, an OpenAI API key and an Anthropic API key
-for Claude Engineer. Make sure Docker is running.
+You'll need Git, Docker with Compose, and an OpenAI API key. Make sure Docker is running.
 Run the commands below in a terminal.
 
 ### 1. Start the platform
@@ -84,9 +78,7 @@ cd agent-platform
 cp example.env .env
 ```
 
-Open `.env` and set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` so both engineers can
-authenticate. For Claude Code OAuth instead, remove `ANTHROPIC_API_KEY` and set
-`CLAUDE_CODE_OAUTH_TOKEN`. Then start the platform:
+Open `.env` and set `OPENAI_API_KEY`, then start the platform:
 
 ```sh
 docker compose up -d --build
@@ -181,7 +173,7 @@ Future pushes go to your repository. You can still fetch updates from `upstream`
 and review them before merging.
 
 If you use sandboxes, also set the repository URL and branch in
-[the sandbox configuration](docs/sandboxes.md#choose-your-repository).
+[the sandbox configuration](docs/harnesses.md#sandboxes-and-checkpoints).
 
 <a id="deploy-in-production"></a>
 
@@ -266,16 +258,22 @@ in a browser is not enough to check that an agent can respond.
 
 ### Sandbox storage
 
+For AgentCore, add `SANDBOX_PROVIDER=agentcore` and the settings printed by
+`scripts/aws.py status` to `.env.production`, then run
+`./scripts/railway/env-sync.sh`. Set the repository and `SANDBOX_ENABLED = True`
+in code only after backend setup; deploy the code with `./scripts/railway/redeploy.sh`.
+Keep local provisioning profiles in `.env`; do not upload `AWS_PROFILE` to Railway.
+
 The API service needs no attached disk. Conversations, memories and Company work
 are stored in PostgreSQL. Without a sandbox, engineers run inside the API container;
 their edited files and native sessions can be lost on redeploy or replacement.
 Database conversation history does not reconstruct that working directory.
 
-For durable, isolated engineering, configure [AWS AgentCore and S3](docs/sandboxes.md#aws-agentcore-sandbox).
+For durable, isolated engineering, configure [AWS AgentCore and S3](docs/harnesses.md#aws-agentcore-sandbox).
 S3 stores the last saved workspace and native-session checkpoint. Recovery does
 not preserve unfinished edits at the instant of a crash or replay external actions
 safely. AWS is optional for getting started. Local Docker isolation is also
-available in the [sandbox guide](docs/sandboxes.md#local-docker-sandbox).
+available in the [sandbox guide](docs/harnesses.md#local-docker-sandbox).
 
 Before running multiple API instances, follow [Scaling](docs/scaling.md).
 

@@ -40,7 +40,7 @@ authorized, contained effects. Preserve historical sessions, notes, schedules an
 
 Choose a supported execution path for the target. Native Agno agents and teams can use the
 existing [eval CLI](../../../evals/__main__.py) and [cases](../../../evals/cases.py).
-For external engineers, workflows or HTTP/Company behavior, verify the runner supports that
+For external coding agents, workflows or HTTP/Company behavior, verify the runner supports that
 path; do not force them into `Case` or add a template adapter. Exercise the actual path when
 it matters to the question, and distinguish direct agent results from API/Company results.
 

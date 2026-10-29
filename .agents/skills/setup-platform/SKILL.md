@@ -36,13 +36,13 @@ Read [`AGENTS.md`](../../../AGENTS.md) end to end.
 
 ## 2. Environment
 
-If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY` and
-`ANTHROPIC_API_KEY` for the platform and its two engineers:
+If `.env` does not exist, `cp example.env .env`, then set `OPENAI_API_KEY`:
 
 - Already in their shell → copy the credentials across without displaying or logging their values.
 - Otherwise open `.env` in their editor (`cursor`, `code`) and ask them to paste it. Never open a terminal editor from your shell — it hangs the session.
 
-Claude Engineer needs its own credentials. If the user chooses Claude Code OAuth, remove
+Coding agents are opt-in; see [harness setup](../../../docs/harnesses.md).
+If enabled, Claude Engineer needs its own credentials. If the user chooses Claude Code OAuth, remove
 the `ANTHROPIC_API_KEY` placeholder and set `CLAUDE_CODE_OAUTH_TOKEN` instead. The API
 container does not inherit a host Claude login. If Claude credentials are unavailable,
 report that Claude Engineer cannot run; do not present API startup as verification of it.
@@ -51,18 +51,14 @@ report that Claude Engineer cannot run; do not present API startup as verificati
 
 For standard development, `docker compose up -d --build`, then poll http://localhost:8000/docs until 200 (first build takes minutes). If it never comes up, read `docker compose logs agentos-api`.
 
-For sandbox development, follow the host API commands in the
-[sandbox setup guide](../../../docs/sandboxes.md#local-docker-sandbox).
-Select `docker_sandbox()` in `sandbox_provider()` and edit `REPOSITORY` in
-`app/sandbox.py` for the target repository and branch,
-and keep the Uvicorn process running in a persistent terminal. The host API
-uses Docker directly. Check `/health` and `/config`; Company should list its four tables,
-OS Manager, and the optional coding executors. Never start two APIs on the same port.
+For sandbox development, follow the [sandbox setup guide](../../../docs/harnesses.md#local-docker-sandbox).
+Set `SANDBOX_ENABLED = True` and `REPOSITORY` in `app/sandbox.py`, build the sandbox
+image, and use the same Compose API. Compose selects `SANDBOX_PROVIDER=docker` and
+mounts the daemon socket into the API only; do not mount it into coding sandboxes.
 The pinned framework admits sandbox HTTP runs through the durable PostgreSQL queue.
-Configuration and API startup do not prove execution: verify an engineer HTTP run and
+Configuration and API startup do not prove execution: verify a coding agent HTTP run and
 Company Task acceptance/completion separately. Keep the Product repository Source aligned
 with `REPOSITORY.url`; never bypass a framework rejection.
-For this host path use `MCP_CHECK_HOST=1 ./scripts/mcp_check.sh` below.
 
 ## 4. Prove it
 
@@ -85,20 +81,20 @@ Don't gate on the click and don't ask "connect or build first?" — bridge strai
 
 ## 6. Build their first agent
 
-Below the connect direction, ask the one question that starts it — plain text, no structured choice control:
+If the user already described the agent they want, pass that request directly to
+[`create-agent`](../create-agent/SKILL.md). Otherwise, below the connect direction,
+ask one plain-text question and wait for the answer:
 
-> Now let's build your first agent. Do you have a product you'd like to build an agent for — or a product you use that you'd like an agent for? Give me its docs or website URL and I'll build an agent that answers questions about it from its own docs, ready to serve in your product, in claude.ai and ChatGPT, and over MCP.
->
-> Or if you have something else in mind — issue triage, release notes, your weekly update — say it in your own words and I'll build that instead.
+> What would you like your first agent to do?
 
-Whatever they type is the first discovery answer for [`create-agent`](../create-agent/SKILL.md): a URL or product name takes its **product-agent pattern** (Step 3 there); anything else takes its normal path. Close the message with the first build move, never with "ready?".
-
-**The product brief** you hand create-agent when they name a product — complete, so it builds without asking more: the product pattern (Step 3 there), first declare and register a dedicated `product_knowledge` in `app/registry.py` (none ships by default), then ingest with the framework `KnowledgeManagementTools(knowledge=product_knowledge).aingest_url` in the selected Compose or host runtime, initial page cap 50, `knowledge=product_knowledge`, `learning=shared_learning`, instructions you write that carry the grounding rules in create-agent's product pattern, no other tools; three smoke probes.
+Use their answer as create-agent's discovery input and follow that skill immediately.
+Do not ask them to invoke it separately or repeat a brief they already supplied.
+A product name or URL is context; it does not by itself request a documentation Q&A agent.
 
 Follow create-agent through its smoke test, then land where the agent now lives, in the same breath as its first answer:
 
-- **In the UI** — **Refresh** puts it in the Agents list, and its base on the Knowledge page.
-- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("OS Manager, ask the <Product> agent…" through the `os_manager` MCP tool) from the UI, Slack, or any MCP client.
+- **In the UI** — **Refresh** puts it in the Agents list. Show its knowledge base only if one was created.
+- **On OS Manager's roster** — registering in `app/main.py` lets OS Manager run it by name ("OS Manager, ask the <agent name>…" through the `os_manager` MCP tool) from the UI or an MCP client; Slack when configured.
 - **Ready to serve** — REST inside their product and MCP now; claude.ai and ChatGPT once deployed (Step 8).
 
 Stop before create-agent's own closing — Steps 7 and 8 replace it. If they push back or want to stop, adapt and carry on.
