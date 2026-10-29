@@ -1,6 +1,6 @@
 # AgentOS: The self-driving agent platform
 
-Build agents for your product, your company, or your customers. Run them as durable
+Build agents for your company, product, or customers. Run them as durable
 services on AgentOS. Put them to work automating company operations.
 
 - **Build** agents with the Agno, Claude Agent, or Codex SDKs. Combine agents into
