@@ -77,7 +77,7 @@ def sandbox_env(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
     )
     values = {name: value for name in names if (value := getenv(name))}
     values.update(overrides or {})
-    # Agno's repository checkout uses a separate variable from the GitHub CLI.
+
     if values.get("GH_TOKEN") and not values.get("GITHUB_READ_TOKEN"):
         values["GITHUB_READ_TOKEN"] = values["GH_TOKEN"]
     return values

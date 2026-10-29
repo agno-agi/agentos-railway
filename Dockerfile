@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN uv pip sync requirements.txt --system
 
-# GitHub access is enabled by a runtime GH_TOKEN, never an image credential.
+# GitHub access is enabled by a GH_TOKEN.
 # Git and gh are included in agnohq/python:3.14.
 RUN git config --system credential.https://github.com.helper '!gh auth git-credential' \
     && git config --system user.name 'AgentOS' \
