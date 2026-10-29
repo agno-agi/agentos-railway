@@ -45,12 +45,13 @@ the old application-owned manager/builder/engineer stack. OS, Company and queue 
 reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
 
 `app/company.py` declares `agentos-maintenance`: Company Manager reviews releases and
-the codebase every day at 09:00 UTC, proposes up to three Backlog Tasks and has automatic
-acceptance disabled. Verify the declaration against saved schedule state; do not infer
-successful execution from its presence. Before removing or renaming a component in an
-existing deployment, inspect saved schedules and Studio references read-only when access
-is available. Source absence does not establish that a saved record is absent. Preserve
-historical sessions, notes and Company records.
+the codebase on a daily 09:00 UTC schedule and proposes up to three Backlog Tasks.
+New Routines are disabled until enabled in the UI; automatic acceptance is also off.
+Existing saved enabled/paused state is preserved. Verify the declaration against saved
+schedule state; do not infer successful execution from its presence. Before removing
+or renaming a component in an existing deployment, inspect saved schedules and Studio
+references read-only when access is available. Source absence does not establish that
+a saved record is absent. Preserve historical sessions, notes and Company records.
 
 ## 3. Verify proportionately
 

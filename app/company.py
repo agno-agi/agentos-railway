@@ -36,6 +36,7 @@ products = [
                 executor_id="company-manager-internal",
                 cron_expr="0 9 * * *",
                 instructions=MAINTENANCE,
+                enabled=False,
                 auto_accept=False,
             ),
         ],
