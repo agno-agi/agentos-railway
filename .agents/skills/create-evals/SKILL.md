@@ -1,13 +1,13 @@
 ---
 name: create-evals
-description: Author eval coverage for an agent in this AgentOS — map what the agent promises, mine real sessions and eval history from Postgres for scenarios, propose capabilities worth testing, then write, run, and audit Case entries in evals/cases.py. Use when the user wants evals created, coverage added, or an agent's behavior pinned down as tests. For failing suites or exploratory simulation-driven hardening, use eval-and-improve instead.
+description: Author eval coverage for an agent in this AgentOS — map what the agent promises, mine real sessions and eval history from Postgres for scenarios, propose capabilities worth testing, then write, run, and audit Case entries in evals/cases.py. Use when the user wants evals created, coverage added, or an agent's behavior pinned down as tests. For failing suites or agent hardening, use improve instead.
 ---
 
 # Create Evals
 
 > _Coding-agent workflow: run as `/create-evals` or by describing the task._
 
-Turn what an agent promises into `Case` entries in [`evals/cases.py`](../../../evals/cases.py). The template's cases cover the reference components only; a user-built agent is invisible to the suite until this skill writes one. Failing suite → [`eval-and-improve`](../eval-and-improve/SKILL.md); agent needs hardening → [`eval-and-improve`](../eval-and-improve/SKILL.md).
+Turn what an agent promises into `Case` entries in [`evals/cases.py`](../../../evals/cases.py). The template's cases cover the reference components only; a user-built agent is invisible to the suite until this skill writes one. Failing suite → [`improve`](../improve/SKILL.md); harden an agent → [`improve`](../improve/SKILL.md).
 
 Preconditions: configured PostgreSQL reachable, venv active (`source .venv/bin/activate`; `./scripts/venv_setup.sh` if missing), `.env` populated. Even CLI `--help`/`--list` imports application knowledge storage and requires PostgreSQL; no API server is needed for native agent/team cases.
 
@@ -78,10 +78,10 @@ Use unique fixture names and users. A fixture user does not isolate global tools
 python -m evals --name <case>
 ```
 
-Run through `python -m evals`; results persist in the application's database for the UI. Read both sides of the verdict: the response and tools fired, and `judge_reason` (`--json-output`). Repeat when a changed prompt, an unstable verdict or a specific reliability question justifies the extra calls. Replace vague criteria such as "compact" with observable expectations; investigate conflicting verdicts. If the agent, not the case, is wrong, say so — that's [`eval-and-improve`](../eval-and-improve/SKILL.md).
+Run through `python -m evals`; results persist in the application's database for the UI. Read both sides of the verdict: the response and tools fired, and `judge_reason` (`--json-output`). Repeat when a changed prompt, an unstable verdict or a specific reliability question justifies the extra calls. Replace vague criteria such as "compact" with observable expectations; investigate conflicting verdicts. If the agent, not the case, is wrong, say so — that's [`improve`](../improve/SKILL.md).
 
 Loop to Step 4 or finish.
 
 ## 7. Hand over
 
-New cases by name and tag, `git diff evals/cases.py`, suggested commit `eval(<agent>): …`. `smoke` cases run on demand through `python -m evals`; failures go to [`/eval-and-improve`](../eval-and-improve/SKILL.md).
+New cases by name and tag, `git diff evals/cases.py`, suggested commit `eval(<agent>): …`. `smoke` cases run on demand through `python -m evals`; failures go to [`/improve`](../improve/SKILL.md).

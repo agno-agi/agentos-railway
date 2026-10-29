@@ -55,6 +55,7 @@ def validate_env(values: dict[str, str], *, require_auth: bool) -> None:
     if values.get("RUNTIME_ENV", "prd") != "prd":
         raise DeploymentError("Railway requires RUNTIME_ENV=prd. Development authorization cannot be deployed.")
     values["RUNTIME_ENV"] = "prd"
+    values.setdefault("SANDBOX_PROVIDER", "agentcore")
     if not values.get("OPENAI_API_KEY") or values["OPENAI_API_KEY"] == "sk-***":
         raise DeploymentError("Set OPENAI_API_KEY in the production env file.")
     # example.env ships the Claude key as a placeholder; upload an empty value instead so a
@@ -63,9 +64,6 @@ def validate_env(values: dict[str, str], *, require_auth: bool) -> None:
         values["ANTHROPIC_API_KEY"] = ""
     # AWS_PROFILE names a profile on this machine and means nothing inside the container.
     values.pop("AWS_PROFILE", None)
-    for key in ("SANDBOX_ENABLED", "SANDBOX_IMAGE", "SANDBOX_RUNTIME_ARN"):
-        if values.get(key):
-            raise DeploymentError(f"{key} no longer configures a sandbox; select the provider in app/sandbox.py.")
     if bool(values.get("SLACK_BOT_TOKEN")) != bool(values.get("SLACK_SIGNING_SECRET")):
         raise DeploymentError("Set both SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET, or neither.")
     if values.get("MCP_CONNECT_SECRET") and len(values["MCP_CONNECT_SECRET"]) < 16:
@@ -135,7 +133,7 @@ def upload(service: str, values: dict[str, str]) -> None:
             ) from error
 
 
-def provision(path: Path, workspace: str | None, with_checkpoint_volume: bool = False) -> int:
+def provision(path: Path, workspace: str | None) -> int:
     values = read_env(path)
     validate_env(values, require_auth=False)
     if not workspace:
@@ -181,8 +179,6 @@ def provision(path: Path, workspace: str | None, with_checkpoint_volume: bool = 
         # Deploy from the configured image with the variables and volume now in place.
         railway("redeploy", "--service", DATABASE, "--from-source", "--yes")
         railway("add", "--service", API)
-        if with_checkpoint_volume:
-            railway("volume", "--service", API, "add", "--mount-path", "/data")
         domain = json.loads(railway("domain", "--service", API, "--port", "8000", "--json").stdout)
         if not isinstance(domain, dict):
             raise DeploymentError("Railway returned invalid domain JSON.")
@@ -263,9 +259,6 @@ def main() -> int:
         command.add_argument("env_file", nargs="?", type=Path, default=ROOT / ".env.production")
         if name == "up":
             command.add_argument("--workspace", default=os.getenv("RAILWAY_WORKSPACE"))
-            command.add_argument(
-                "--with-checkpoint-volume", action="store_true", help="Mount /data on the API for AgentCore checkpoints"
-            )
         else:
             command.add_argument("--no-deploy", action="store_true")
     commands.add_parser("redeploy")
@@ -273,7 +266,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "up":
-            return provision(args.env_file.resolve(), args.workspace, args.with_checkpoint_volume)
+            return provision(args.env_file.resolve(), args.workspace)
         if args.command == "env-sync":
             sync_env(args.env_file.resolve(), args.no_deploy)
         elif args.command == "redeploy":

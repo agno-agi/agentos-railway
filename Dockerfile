@@ -8,6 +8,12 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN uv pip sync requirements.txt --system
 
+# GitHub access is enabled by a GH_TOKEN.
+# Git and gh are included in agnohq/python:3.14.
+RUN git config --system credential.https://github.com.helper '!gh auth git-credential' \
+    && git config --system user.name 'AgentOS' \
+    && git config --system user.email 'agentos@localhost'
+
 # ===========================================================================
 # Sandbox (Docker and AgentCore)
 # ===========================================================================
@@ -28,6 +34,9 @@ CMD []
 # AgentOS (default target)
 # ===========================================================================
 FROM base AS agentos
+
+# The local API uses the host Docker daemon to manage sibling sandboxes.
+COPY --from=docker:29-cli /usr/local/bin/docker /usr/local/bin/docker
 
 ENV PYTHONPATH=/app
 COPY . .

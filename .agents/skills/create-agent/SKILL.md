@@ -1,6 +1,6 @@
 ---
 name: create-agent
-description: Add a new agent to this AgentOS. Runs guided discovery or takes a concrete idea, then generates agents/slug.py, registers it in app/main.py, adds its manifest entry (description + quick prompts), reloads the selected development runtime, and smoke-tests it for you. Covers the product agent too — ingest a product's website/docs into the product knowledge base and build a knowledge-only agent over it. Use whenever the user wants to add or create a new agent, or names a product (theirs or one they use) they want an agent for.
+description: Create and register a code-defined agent in this AgentOS from a concrete request or guided discovery, add its UI prompts, reload the development runtime, and verify a real run. Use when the user wants to build or add an agent.
 ---
 
 # Create a New Agent
@@ -15,7 +15,7 @@ do not switch modes or start a second API on port 8000.
 - **Compose API:** confirm its bind mount points to this checkout. Run Python with
   `docker compose exec -T agentos-api python`; inspect `docker compose logs agentos-api`.
   If setup is needed, follow [setup-platform](../setup-platform/SKILL.md).
-- **Host API:** follow the [sandbox setup commands](../../../docs/sandboxes.md#local-docker-sandbox).
+- **Existing host API:** reuse its startup command; local sandbox setup now uses Compose.
   Confirm the process's working directory and startup environment. Run Python with
   `.venv/bin/python` and the same `.env`/runtime/DB settings as that process; use
   `uv run --no-project --env-file .env .venv/bin/python` when loading the env file.
@@ -43,7 +43,11 @@ curl -s http://localhost:8000/agents | jq -r '.[] | "\(.id)\t\(.is_component)"'
 
 > Building **PR Reviewer** (`pr-reviewer`) — reads open PRs on a repo and summarizes what changed and what looks risky. Uses `GithubTools`; needs `GITHUB_ACCESS_TOKEN`, already in your `.env`. Building now — stop me if I've read it wrong.
 
-**They named a product** (a URL, "an agent for Acme") → the product-agent pattern in Step 3. Ask nothing beyond the URL.
+**Setup handed off a request** → reuse the user's brief and collected answers. Continue here without restarting discovery.
+
+**They asked for product-documentation Q&A** → the product-agent pattern in Step 3.
+A product name or URL alone does not select that pattern. If the job is unclear, ask what
+it should do; a daily brief about a company uses current web research, not docs ingestion.
 
 **They want guidance** → one question: *"What's something you do every week that you'd rather hand off?"* Dig once with a grounded follow-up (where do you look? what do you do with the result? what's the annoying part?), then propose one recommendation plus two alternates — name, one sentence, toolkit — grounded in the `agno-docs` MCP ([`.mcp.json`](../../../.mcp.json)). Skip the demo classics.
 
@@ -51,13 +55,19 @@ Decide these yourself:
 
 | Decision | How |
 |---|---|
-| **Pattern** | **Product agent** when the ask names a product. **Direct tools** (the Agent shape below) for ≤2 toolkits — the common case. For one information source, use the appropriate supported toolkit or knowledge base; verify the pinned API before choosing a different composition. |
+| **Pattern** | **Product agent** for explicit documentation Q&A requests. **Direct tools** (the Agent shape below) for ≤2 toolkits — the common case. For one information source, use the appropriate supported toolkit or knowledge base; verify the pinned API before choosing a different composition. |
 | **Slug** | From the purpose, kebab-case (`pr-reviewer`). |
 | **Model** | `default_model()`. Override only if asked. |
 | **Toolkits** | From the discovery answers, grounded in docs. Prefer what's in the image and keyless: the Parallel MCP for anything web-facing, `HackerNewsTools`, `CalculatorTools`. |
 | **Memory** | `learning=shared_learning` whenever the agent should know its person across sessions — most agents. Off only when its durable state is the platform's, not a person's (a ledger, a queue). Say which. |
 
 **Stop only for** an API key the chosen toolkit requires that isn't in `.env` (check yourself). Offer: add it to `.env` (never read or print it), or a keyless toolkit already in the image.
+
+For recurring work, use the existing AgentOS scheduler. Carry over the requested
+cadence and timezone, asking only if missing. Check for an existing matching schedule
+before creating one. Verify a completed run and show where to inspect or pause it;
+local schedules run only while the platform is running. Scheduling alone does not
+configure delivery to Slack or another channel.
 
 ## 2. Ground the design in agno docs
 
@@ -79,7 +89,7 @@ For web access, reuse `get_web_tools()` from `app.registry` when its contract fi
 from agno.tools.mcp import MCPTools
 
 web_tools = MCPTools(
-    url="https://search.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
+    url="https://mcp.parallel.ai/mcp", transport="streamable-http", name="parallel_tools", timeout_seconds=30
 )
 ```
 
@@ -133,7 +143,7 @@ How you <work>:
 
 ### The product agent
 
-Answers questions about one product from that product's docs, and nothing else. The recommended first agent (setup-platform hands off here). Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads a dedicated product knowledge base, never `shared-knowledge`** — operator content stays out of an end-user agent's retrieval. No product knowledge base ships by default. Declare one in [`app/registry.py`](../../../app/registry.py) when creating this agent; Studio can use it once registered.
+Answers questions about one product from that product's docs, and nothing else. Use this pattern when the user asks for documentation-grounded product Q&A. Two trust rules: **knowledge search is its only tool** (no web tools, no notes — it can answer badly but must not act badly; `learning=shared_learning` stays, so it knows each person across sessions), and **it reads a dedicated product knowledge base, never `shared-knowledge`** — operator content stays out of an end-user agent's retrieval. No product knowledge base ships by default. Declare one in [`app/registry.py`](../../../app/registry.py) when creating this agent; Studio can use it once registered.
 
 Choose the slug, documentation root URL and an initial page cap (normally 50). Explain that ingestion may incur embedding and extraction charges; do not quote a fixed cost without a current, applicable estimate. A capped crawl can omit relevant pages, so report its actual coverage and expand it when needed.
 
@@ -174,7 +184,7 @@ Step 7: three probes, not one — a covered question (details plus a Source URL)
 ## 4. Register in `app/main.py`
 
 Import the new agent and insert it into the existing `agents` list. Preserve every existing
-application agent and `*engineers`; do not replace the list with a starter example. Preserve
+agent; do not replace the list with a starter example. Preserve
 the `teams`, `workflows`, `knowledge`, manager and Company wiring too. Check both code and
 Studio IDs before registration. AgentOS makes registered agents discoverable to OS Manager.
 
@@ -184,7 +194,6 @@ For example, adding a new agent when another already exists is an insertion:
  agents=[
 +    new_agent,
      existing_agent,
-     *engineers,
  ],
 ```
 
@@ -205,9 +214,14 @@ Verify the new agent and all previously registered application agents remain in 
 
 ## 7. Smoke test
 
+Use `--form-string` for literal fields so semicolons and leading `@` in user input
+are sent unchanged. Check the saved input when a response seems to ignore part of the request.
+
 ```bash
 curl -sS -X POST http://localhost:8000/agents/<slug>/runs \
-  -F "message=<one of the quick_prompts>" -F "user_id=claude-create-agent" -F "stream=false" \
+  --form-string "message=<one of the quick_prompts>" \
+  --form-string "user_id=claude-create-agent" \
+  --form-string "stream=false" \
   -o /tmp/agent-out.json -w "HTTP %{http_code} in %{time_total}s\n"
 jq -r '.content // .' < /tmp/agent-out.json
 ```
@@ -220,10 +234,10 @@ Use the configured endpoint/authentication if different from this local example.
 - **5xx** — inspect the selected runtime's logs for import/configuration errors.
 - **Empty, paused or failed run** — inspect run status and tool errors before changing the prompt.
 - **Tool not firing** — inspect tool registration, connection and the scenario's expectations;
-  use [eval-and-improve](../eval-and-improve/SKILL.md) for behavioral diagnosis.
+  use [improve](../improve/SKILL.md) for behavioral diagnosis.
 
 Iterate 2–3 times, then ask.
 
 ## 9. Done
 
-Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); OS Manager's roster, so the `agno` MCP tool runs it by name — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (they drive), [`/eval-and-improve`](../eval-and-improve/SKILL.md) (you drive), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report measured setup/ingestion results and any verification still outstanding.
+Lead with the smoke-test answer. Then where it lives: `https://os.agno.com/?ref=railway-template` (**Refresh**, Agents list) or `http://localhost:8000`; `/mcp` (`run_agent`); OS Manager's roster, so the `os_manager` MCP tool runs it by name — say that one out loud. Then the loop: [`/extend-agent`](../extend-agent/SKILL.md) (a specific change), [`/improve`](../improve/SKILL.md) (harden the agent with simulations), [`/create-evals`](../create-evals/SKILL.md) (offer to persist the smoke test as the first case). Report the checks performed, any ingestion or scheduling results when applicable, and verification still outstanding.

@@ -23,7 +23,7 @@ def get_web_tools() -> list[ParallelTools | MCPTools]:
         return [ParallelTools()]
     return [
         MCPTools(
-            url="https://search.parallel.ai/mcp",
+            url="https://mcp.parallel.ai/mcp",
             transport="streamable-http",
             name="parallel_tools",
             timeout_seconds=30,
@@ -50,7 +50,7 @@ registry = Registry(
     tools=[
         *get_web_tools(),
         shared_notes.tools(add_instructions=True),
-        FileGenerationTools(enable_pdf_generation=False, enable_docx_generation=False),
+        FileGenerationTools(enable_pdf_generation=True, enable_docx_generation=False),
         CalculatorTools(),
     ],
     models=[default_model()],

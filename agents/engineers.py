@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from agno.agents.base import BaseExternalAgent
 from agno.agents.claude import ClaudeAgent
 from agno.agents.codex import CodexAgent
 
@@ -16,25 +15,30 @@ if sandbox is not None and REPOSITORY is None:
 repository = None if sandbox is None else REPOSITORY
 cwd = str(Path(__file__).resolve().parents[1]) if sandbox is None else None
 
-claude_engineer = ClaudeAgent(
-    id="claude-engineer",
-    name="Claude Engineer",
-    model="claude-opus-5-5",
-    db=db,
-    cwd=cwd,
-    sandbox=sandbox,
-    repository=repository,
-    system_prompt={"type": "preset", "preset": "claude_code"},
-    permission_mode="acceptEdits",
-)
-codex_engineer = CodexAgent(
-    id="codex-engineer",
-    name="Codex Engineer",
-    model="gpt-6.1-sol",
-    db=db,
-    cwd=cwd,
-    sandbox=sandbox,
-    repository=repository,
-    sandbox_mode="workspace-write",
-)
-engineers: list[BaseExternalAgent] = [claude_engineer, codex_engineer]
+
+def create_claude_engineer() -> ClaudeAgent:
+    return ClaudeAgent(
+        id="claude-engineer",
+        name="Claude Engineer",
+        model="claude-opus-5-5",
+        db=db,
+        cwd=cwd,
+        sandbox=sandbox,
+        repository=repository,
+        system_prompt={"type": "preset", "preset": "claude_code"},
+        permission_mode="auto",
+    )
+
+
+def create_codex_engineer() -> CodexAgent:
+    return CodexAgent(
+        id="codex-engineer",
+        name="Codex Engineer",
+        model="gpt-6.1-sol",
+        db=db,
+        cwd=cwd,
+        sandbox=sandbox,
+        repository=repository,
+        sandbox_mode="workspace-write",
+        approval_mode="auto_review",
+    )

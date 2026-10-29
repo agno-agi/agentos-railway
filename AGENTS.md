@@ -27,14 +27,14 @@ workflows in `.agents/skills/`; `.claude/skills` links to that directory.
 | Add an agent | [create-agent](.agents/skills/create-agent/SKILL.md) |
 | Change an agent or add a Studio capability | [extend-agent](.agents/skills/extend-agent/SKILL.md) |
 | Add behavioral coverage | [create-evals](.agents/skills/create-evals/SKILL.md) |
-| Repair evals or explore and improve agent behavior | [eval-and-improve](.agents/skills/eval-and-improve/SKILL.md) |
+| Harden an agent with simulations and targeted fixes | [improve](.agents/skills/improve/SKILL.md) |
 | Review repository consistency and public readiness | [review-and-improve](.agents/skills/review-and-improve/SKILL.md) |
 | Deploy or change production configuration | [deploy-platform](.agents/skills/deploy-platform/SKILL.md) |
 
 ## Where changes belong
 
 - `app/main.py`: AgentOS registration, shared database, OS Manager, Company and queue.
-- `app/interfaces.py`: MCP OAuth, `agno` and built-in MCP tools, optional Slack.
+- `app/interfaces.py`: MCP OAuth, `os_manager` and built-in MCP tools, optional Slack.
 - `app/company.py`: Product and Source declarations. `app/config.yaml`: component
   descriptions, prompts and optional additional Products.
 - `app/registry.py`: Studio palette, web tools, shared knowledge, learning and notes.
@@ -93,7 +93,9 @@ pin, Product metadata PATCH replaces the whole dictionary. Preserve existing met
 `app/company.py` declares `agentos-maintenance` for every day at 09:00 UTC, executed by
 Company Manager (`company-manager-internal`, executor type `agent`). It reviews Agno
 releases and this codebase and proposes up to three Backlog Tasks, reusing existing
-proposals. Its instructions prohibit accepting or executing work; `auto_accept=False`.
+proposals. The routine is disabled by default (`enabled=False`);
+enable it from the Company page in the AgentOS UI.
+Its instructions prohibit accepting or executing work; `auto_accept=False`.
 Scheduled reviews spend model calls. Verify the saved creator, schedule, authorization
 and run history before relying on them; declarations do not overwrite saved edits.
 
@@ -106,26 +108,38 @@ specialists remain excluded. Before adding a Routine, verify executor support an
 the caller's authorization. Do not register internal manager members to bypass
 executor restrictions.
 
-## Engineers and sandboxes
+## Coding agents and sandboxes
 
-Keep the engineers' stable IDs and explicit models. Both are registered and run in the
-absolute project root on the AgentOS server when no sandbox is configured. A configured
+Keep the coding agents' stable IDs and explicit models. Enable their factories in
+`app/main.py`; they are unregistered by default. Enabled coding agents run in the absolute
+project root on the AgentOS server when no sandbox is configured. A configured
 sandbox owns its repository checkout; invalid configuration must fail rather than fall
 back to server execution. Keep provider configuration in `app/sandbox.py` and agent
 declarations in `agents/engineers.py`.
 
-Select the provider by returning `None`, `docker_sandbox()`, or
-`agentcore_sandbox("runtime-arn")` from `sandbox_provider()`. Sandbox selection, image
-and runtime ARN are code settings, not environment switches. Supply optional Bedrock
-settings or private-repository credentials explicitly through the provider's `env`;
-never put credential values in source. Agno forwards the harness model credentials.
+Enable sandboxes with `SANDBOX_ENABLED = True` in `app/sandbox.py`; the template
+defaults to `False`. `SANDBOX_PROVIDER` selects `docker` (default) or `agentcore`,
+independently of `RUNTIME_ENV` and JWT authorization. Invalid providers and missing
+AgentCore ARN/bucket values must fail without falling back to server execution.
+The sandbox image remains a code setting.
+Read account-specific runtime ARNs and checkpoint settings from environment variables;
+never commit their values. Supply optional Bedrock settings through the provider's
+`env`. Agno forwards the harness model credentials.
+The sandbox helpers forward GH_TOKEN, optional GITHUB_READ_TOKEN, and Git author/committer
+settings. Private checkout falls back to GH_TOKEN. GitHub CLI and its Git credential helper
+are installed in the shared image; supply tokens at runtime only.
 
-For Docker engineering, run the API on the host using the [sandbox setup guide](docs/sandboxes.md#local-docker-sandbox).
+For local Docker sandboxes, keep the API in Compose using the [sandbox setup guide](docs/harnesses.md#local-docker-sandbox).
+The API image includes the Docker CLI; Compose mounts the daemon socket into the API
+only. Sandbox containers must not receive that socket. This grants the API daemon access
+and is intended for trusted local development.
 Build the sandbox with `docker build --target sandbox --load -t agno-sandbox:local .`.
-Development checkpoints use the absolute project `tmp/checkpoints` path. Production
-AgentCore requires a persistent `/data` mount; provision its runtime with AWS tooling.
-Use `up.sh --with-checkpoint-volume` for a new Railway deployment using AgentCore;
-mount `/data` on an existing API service before deploying the provider change.
+Development checkpoints use the absolute project `tmp/checkpoints` path and survive
+only while those files remain. Hosted AgentCore checkpoints use S3; no API disk is
+required. Configure the bucket/prefix explicitly and give the API appropriate AWS
+access, following docs/harnesses.md. Do not put checkpoint archives in PostgreSQL.
+See [docs/scaling.md](docs/scaling.md) for current scaling guidance.
+Local source mounts and PostgreSQL volumes remain.
 
 `REPOSITORY` in `app/sandbox.py` defaults to `None`. Set it to a `Repository` with
 the user's URL and branch before enabling a sandbox; startup rejects a sandbox
@@ -141,7 +155,8 @@ supports sandbox HTTP admission through the durable PostgreSQL queue with sessio
 Use the deployment skill and [Railway instructions](README.md#deploy-on-railway).
 Commands use the project venv, Railway CLI 5.49.0 or newer, and an explicit production
 env file (default `.env.production`). Never sync `RUNTIME_ENV=dev` to production.
-Keep one API replica and require JWT verification before deploying the API.
+Start with one API instance and require JWT verification before deploying the API.
+Follow docs/scaling.md when adding replicas.
 
 Provisioning requires a workspace and rejects an already-linked checkout. Use env sync
 and redeploy for an existing project. Keep application policy in `app/`, environment

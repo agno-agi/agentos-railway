@@ -44,13 +44,11 @@ OS Manager, its members and Company Manager are framework-owned; do not restore
 the old application-owned manager/builder/engineer stack. OS, Company and queue storage
 reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
 
-`app/company.py` declares `agentos-maintenance`: Company Manager reviews releases and
-the codebase every day at 09:00 UTC, proposes up to three Backlog Tasks and has automatic
-acceptance disabled. Verify the declaration against saved schedule state; do not infer
-successful execution from its presence. Before removing or renaming a component in an
-existing deployment, inspect saved schedules and Studio references read-only when access
-is available. Source absence does not establish that a saved record is absent. Preserve
-historical sessions, notes and Company records.
+`app/company.py` defines the daily `agentos-maintenance` review, disabled by default.
+To start it, enable it from the Company page in the AgentOS UI.
+Proposed Tasks are not automatically accepted.
+Check saved schedules and Studio references before renaming or removing components.
+Preserve historical sessions, notes and Company records.
 
 ## 3. Verify proportionately
 
@@ -79,7 +77,7 @@ Even eval CLI help/list commands import knowledge storage and require PostgreSQL
 `evals/cases.py` directly when the database is unavailable.
 Evals use the application's database and persist sessions and results. Use explicitly owned
 fixtures for mutating cases; do not restore snapshot-diff cleanup or delete historical data.
-Do not smoke every engineer automatically: those runs can execute code and modify workspaces.
+Do not smoke every coding agent automatically: those runs can execute code and modify workspaces.
 HTTP availability, direct execution, delegation and Company Task completion are separate checks.
 
 ## 4. Report
@@ -95,5 +93,5 @@ do not equate a passing linter or mock fixture with a healthy deployed platform.
 
 Route agent behavior changes to [extend-agent](../extend-agent/SKILL.md), missing eval
 coverage to [create-evals](../create-evals/SKILL.md), eval failures and agent hardening to
-[eval-and-improve](../eval-and-improve/SKILL.md), and an explicitly requested deployment
+[improve](../improve/SKILL.md), and an explicitly requested deployment
 to [deploy-platform](../deploy-platform/SKILL.md).
