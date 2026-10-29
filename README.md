@@ -1,33 +1,33 @@
-# AgentOS: The Agent Platform That Builds Itself
+# AgentOS: The self-driving agent platform
 
-AgentOS is a durable agent runtime that serves agents over API, MCP, and chat interfaces like Slack.
-Build agents for your product, your team, or yourself. Run them in your own cloud,
-keep their data in your own database, and manage them from [AgentOS](https://os.agno.com).
+Build agents for your product, your company, or your customers. Run them as durable
+services on AgentOS. Put them to work automating company operations.
+
+- **Build** agents with the Agno, Claude Agent, or Codex SDKs. Combine agents into
+  teams and workflows.
+- **Run** agents as durable services with built-in API and MCP. AgentOS handles
+  authentication, role-based access, human approvals, scheduling, and durable execution.
+- **Automate** company operations with CompanyOS. Give agents responsibilities,
+  organize work into projects and tasks, and configure recurring routines. People set
+  direction and review results; agents own and execute.
 
 Built with [Agno](https://github.com/agno-agi/agno), this template gives you a working
 agent platform that you can run locally or deploy to Railway.
 
-**Three ways to build agents.**
+Use your agents in:
 
-1. **Use a coding agent.** Open the repo in Claude Code, Codex, or Cursor. The included
-   skills help it create, test, and improve your agents.
-2. **Describe what you need.** Chat with OS Manager, the built-in agent that helps you
-   manage the platform and build new agents.
-3. **Use Studio.** Build agents visually in [AgentOS Studio](https://os.agno.com).
+1. **Your product:** call them through the REST API.
+2. **Claude and ChatGPT:** connect through the MCP server.
+3. **Slack:** connect a Slack app to talk to OS Manager from your workspace.
 
-**Three ways to use your agents.**
-
-1. **In your product.** Call your agents through the REST API.
-2. **In AI apps.** Connect apps such as Claude and ChatGPT through MCP.
-3. **In Slack.** Connect a Slack app to talk to OS Manager from your workspace.
-
-The AgentOS UI lets you chat with your agents, review past conversations, and see
-the steps an agent took. Your PostgreSQL database stores conversations, memories,
-and Company work.
+Run your platform in your own cloud and keep your data in your own PostgreSQL database.
+Use the [AgentOS UI](https://os.agno.com) to review conversations, inspect traces,
+manage knowledge, and track your agents' work. Build agents with code, use Studio,
+or chat with OS Manager.
 
 ## Get started
 
-Copy this prompt into your coding agent:
+Give this prompt to your coding agent:
 
 ```text
 Help me set up my agent platform and build my first agent.
@@ -38,15 +38,12 @@ cd into it, and follow .agents/skills/setup-platform/SKILL.md.
 
 It checks Docker, helps you add your API key, starts the platform, and walks you
 through building your first agent. Already cloned the repo? Ask your coding agent
-to follow [setup-platform](.agents/skills/setup-platform/SKILL.md) in that folder.
-
-Prefer to set it up yourself? Follow the steps below.
+to run the `/setup-platform` skill.
 
 ## Coding agents
 
 The platform includes **Claude Engineer** and **Codex Engineer**, disabled by default.
-They can read code, make changes, and run commands. Enable the ones you need in
-`app/main.py`, with `ANTHROPIC_API_KEY` for Claude or `OPENAI_API_KEY` for Codex.
+They can read code, make changes, and run commands. Enable them in `app/main.py`.
 Follow the [harness setup guide](docs/harnesses.md) for the steps.
 
 Once enabled, chat with a coding agent in AgentOS or ask OS Manager to use one:
@@ -54,21 +51,13 @@ Once enabled, chat with a coding agent in AgentOS or ask OS Manager to use one:
 > Ask Codex Engineer to review this project and suggest improvements. Don't change any files yet.
 
 Without a sandbox, coding agents run on the API host with its file and credential
-access. For isolation and checkpoint recovery, the same guide covers local Docker
-and [AWS AgentCore](docs/harnesses.md#aws-agentcore-sandbox). The included
-[scripts/aws.py](scripts/aws.py) prepares the AWS resources;
-preview with `plan`, provision with `apply`, and retrieve configuration with `status`.
-Set `SANDBOX_ENABLED = True` and your repository in `app/sandbox.py` to enable sandboxes.
-`SANDBOX_PROVIDER` selects `docker` locally or `agentcore` on your host, independently
-of JWT authorization. Configure the backend before deploying the enabled code.
-Local sandboxes use the same Compose API, with Docker daemon access through its socket.
-GitHub CLI is included. Set `GH_TOKEN` to enable repository access and PR publishing;
-see [GitHub access](docs/harnesses.md#publish-changes-to-github) for permissions and commit identity.
+access. For isolation and checkpoint recovery, set up a
+[Docker or AgentCore sandbox](docs/harnesses.md#sandboxes-and-checkpoints).
 
 ## Run locally
 
-You'll need Git, Docker with Compose, and an OpenAI API key. Make sure Docker is running.
-Run the commands below in a terminal.
+You'll need Git, Docker with Compose, and an OpenAI API key.
+Make sure Docker is running, then run the commands below in your terminal.
 
 ### 1. Start the platform
 
@@ -105,7 +94,7 @@ The check should report `9 tools; required tools available`.
 
 Tell OS Manager what you want to build. For example:
 
-> Help me build an agent that answers questions about my product. Here's the documentation URL: …
+> Help me build a daily briefing agent about the companies and topics I follow. Here's what I care about: …
 
 Review what it proposes, then ask it to build and publish the agent.
 Refresh the Agents list and try it out. You can chat with your new agent directly
@@ -131,24 +120,19 @@ suggested prompts in [app/config.yaml](app/config.yaml). To make a tool or model
 available in Studio, add it to [app/registry.py](app/registry.py).
 
 You can give agents documents to search, a notebook to keep notes, and memory
-to remember each user. Keep a product's documentation in its own knowledge base,
-separate from the platform's documents.
+to remember each user.
 
 ## Company
 
-Company organizes ongoing work. A **Product** is what you're working on, a
-**Project** groups related work, and a **Task** is one piece of work to complete.
-A **Routine** is a set of instructions that can run on a schedule.
+CompanyOS organizes the work you delegate to agents. A Product defines an ongoing
+area of responsibility, a Project groups related work toward a goal, and a Task
+describes a specific job to complete. Routines give agents instructions to carry
+out on a schedule.
 
-This template includes an **AgentOS** Product for improving the platform itself.
-To get started, ask OS Manager:
-
-> Review this codebase and recent Agno releases. Suggest the most useful improvements.
-
-It also includes a daily review at **09:00 UTC**. Company Manager reads the code
-and Agno release notes, then proposes up to three Tasks for you to review.
+This template includes an `AgentOS` Product for improving the platform itself,
+with a daily review routine scheduled for 09:00 UTC. Company Manager reads the
+code and Agno release notes, then proposes up to three Tasks for you to review.
 The review is instructed to suggest work and leave approval and execution to you.
-Automatic acceptance is off.
 
 Scheduled reviews use your model API keys and incur usage costs. Check the saved
 schedule and run history in Company to see when a review will run and what it did.
