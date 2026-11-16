@@ -61,7 +61,7 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp.types import PaginatedRequestParams
 
 REQUIRED = {
-    "os_manager", "get_agentos_config", "run_agent", "run_team", "run_workflow",
+    "super_agent", "get_agentos_config", "run_agent", "run_team", "run_workflow",
     "continue_run", "cancel_run", "get_sessions", "get_session_runs",
 }
 
@@ -113,11 +113,11 @@ async def main():
                     raise RuntimeError(f"missing required tools: {', '.join(sorted(missing))}")
                 print(f"✓ {len(names)} tools; required tools available")
                 if prompt:
-                    result = await session.call_tool("os_manager", {"message": prompt})
+                    result = await session.call_tool("super_agent", {"message": prompt})
                     answer = "\n".join(item.text for item in result.content if hasattr(item, "text"))
                     if result.is_error:
-                        raise RuntimeError(f"os_manager tool failed: {answer or 'see API logs'}")
-                    print(f"✓ OS Manager responded\n\n{answer}")
+                        raise RuntimeError(f"super_agent tool failed: {answer or 'see API logs'}")
+                    print(f"✓ Super Agent responded\n\n{answer}")
     print("\nDone.")
 
 

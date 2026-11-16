@@ -10,11 +10,6 @@ see [sandbox setup](harnesses.md) for optional isolation and checkpoint recovery
 
 ## Optional multi-replica architecture
 
-The same architecture applies across cloud providers; service provisioning,
-networking, credentials and load-balancer settings depend on the deployment target.
-Keep those details in the provider's deployment instructions and keep the shared
-deployment skill pointed at this guide.
-
 | Component | Responsibility |
 | --- | --- |
 | PostgreSQL | Saved conversations, Company records, schedule claims and the durable execution queue |

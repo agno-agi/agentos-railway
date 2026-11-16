@@ -5,54 +5,31 @@ description: Review this AgentOS repository for public readiness after a refacto
 
 # Review and Improve
 
-Review the requested scope against [AGENTS.md](../../../AGENTS.md) and the actual
-implementation. When comparing with a branch or PR, record the base and head SHAs,
-and distinguish committed changes from local edits. A review-only request stays read-only.
-For a review-and-improve request, correct clear documentation and link errors within scope;
-report behavior changes separately unless the user has authorized their repair.
+Check that the repository does what it says. Compare the documentation, skills and
+configuration with the code, fix clear documentation errors when asked to improve, and report
+behavior problems with evidence. A review-only request changes nothing.
 
-## 1. Establish the scope
+Read [`AGENTS.md`](../../../AGENTS.md) and `git status` first. When comparing with a branch or
+PR, note the base and head commits.
 
-Inspect the working tree before editing and preserve concurrent changes. Review the named
-files first. A repository-wide pass covers `README.md`, `AGENTS.md`, `example.env`, skills,
-`app/`, `agents/`, `teams/`, `db/`, `evals/`, `scripts/`, and build/deployment configuration.
-Include user-added workflows or other directories when present. Exclude environments,
-caches, generated files and Git internals from content scans. Do not print env-file values.
+## 1. Compare
 
-A running API is not required for the source review. Establish whether development uses
-Compose or the host API before attempting runtime checks; use the matching README commands.
-If a runtime is unavailable or belongs to another checkout, continue the source review and
-report the runtime verification gap.
+Review the files the user named. For the whole repository, check that:
 
-## 2. Compare declarations, documentation and behavior
+- Every agent and team in `agents/` and `teams/` that should be served is registered in
+  `app/main.py` and described in `app/config.yaml`.
+- README, `AGENTS.md`, `example.env` and the skills name files, commands, settings and
+  defaults that exist and work.
+- What the docs say about Studio, knowledge, learning and notes matches `app/registry.py`.
+- Eval cases in `evals/cases.py` target agents and tools that exist.
+- Sandbox, MCP and deployment docs match `app/sandbox.py`, `app/interfaces.py`,
+  `compose.yaml`, `Dockerfile` and the provider deployment files listed in `AGENTS.md`.
+- Skill links resolve and each skill hands off to the right next skill.
 
-| Check | Evidence |
-|---|---|
-| Application agents and teams are deliberately registered, with stable IDs | Source declarations, `app/main.py`, `app/config.yaml` |
-| Framework-owned components stay in Agno | `OSManager(...)`, `CompanyConfig(...)`, installed framework source |
-| Shared resources and Studio capabilities match documentation | `app/registry.py`, `db/`, AgentOS registration |
-| Configuration names, defaults and prerequisites agree | Environment reads, `example.env`, README, Compose, deployment scripts |
-| Documented commands and file paths work | Scripts, skills, CLI help and installed signatures |
-| Skills remain discoverable and their routing is coherent | Frontmatter, relative links, `.claude/skills`, `CLAUDE.md` |
-| Eval targets, tool names and CLI examples exist | `evals/cases.py`, `evals/__main__.py`, installed Agno eval APIs |
-| Sandbox documentation matches execution and persistence requirements | `app/sandbox.py`, `agents/engineers.py`, Dockerfile, README |
-| MCP claims match the exposed interface and authentication behavior | `app/interfaces.py`, `app/main.py`, `scripts/mcp_check.sh` |
+Super Agent, Platform Builder and Mini Agent belong to Agno; do not add application copies of
+them. Before renaming or removing a component, check saved schedules and Studio references.
 
-Do not register every file found under `agents/` or invent manifest entries for internal
-components: determine whether it is an intended public component, a helper or framework-owned.
-OS Manager, its members and Company Manager are framework-owned; do not restore
-the old application-owned manager/builder/engineer stack. OS, Company and queue storage
-reuse `get_postgres_db()`; knowledge content adapters have distinct IDs.
-
-`app/company.py` defines the daily `agentos-maintenance` review, disabled by default.
-To start it, enable it from the Company page in the AgentOS UI.
-Proposed Tasks are not automatically accepted.
-Check saved schedules and Studio references before renaming or removing components.
-Preserve historical sessions, notes and Company records.
-
-## 3. Verify proportionately
-
-Use static checks first:
+## 2. Verify
 
 ```sh
 source .venv/bin/activate
@@ -60,38 +37,18 @@ source .venv/bin/activate
 git diff --check
 ```
 
-For shell changes, run `bash -n` on the affected scripts. After authorized edits, format
-only as needed and inspect the resulting diff. Use disposable local fixtures to reproduce
-script failures when useful; keep the starter free of a bundled regression-test suite.
-CLI help and mock fixtures do not establish successful cloud deployment.
+With the API running, also check `/docs` and `./scripts/mcp_check.sh`. Run evals or model
+prompts only when the user asks; they spend model calls and save results. Do not run the
+coding agents as a routine check, because they execute code.
 
-For an available local API, verify `/health` and the relevant component listing using its
-configured authentication. Confirm the process or container serves this checkout before
-drawing conclusions. Run `scripts/mcp_check.sh` in Compose mode, or
-`MCP_CHECK_HOST=1 ./scripts/mcp_check.sh` for the host API. The default MCP check proves
-initialization and required tool availability, not an agent answer.
+## 3. Report
 
-Run model probes or evals only within the user's authorized scope and budget. Inspect
-available cases before selecting a tag; do not assume `release` or `live` cases exist.
-Even eval CLI help/list commands import knowledge storage and require PostgreSQL; inspect
-`evals/cases.py` directly when the database is unavailable.
-Evals use the application's database and persist sessions and results. Use explicitly owned
-fixtures for mutating cases; do not restore snapshot-diff cleanup or delete historical data.
-Do not smoke every coding agent automatically: those runs can execute code and modify workspaces.
-HTTP availability, direct execution, delegation and Company Task completion are separate checks.
+Lead with findings, most serious first: file and line, what triggers the problem, what
+happens, and the fix. Separate problems that were already there from ones the change
+introduced. Say what you corrected, what you checked and what you did not. When you changed
+files, record the checks in `tmp/VERIFY.md`.
 
-## 4. Report
-
-Lead with actionable findings: severity, file and line, triggering condition, observed or
-source-backed consequence, and recommended fix. Label inherited issues separately from
-regressions against the comparison base. Explain what was corrected and what remains.
-Give a sharing or merge recommendation limited to the reviewed scope.
-
-Record verification in `tmp/VERIFY.md` when making changes, separating static,
-deterministic, model, container and hosted results. Report skipped checks and their limits;
-do not equate a passing linter or mock fixture with a healthy deployed platform.
-
-Route agent behavior changes to [extend-agent](../extend-agent/SKILL.md), missing eval
-coverage to [create-evals](../create-evals/SKILL.md), eval failures and agent hardening to
-[improve](../improve/SKILL.md), and an explicitly requested deployment
-to [deploy-platform](../deploy-platform/SKILL.md).
+For follow-up work use [extend-agent](../extend-agent/SKILL.md) for behavior changes,
+[create-evals](../create-evals/SKILL.md) for missing coverage,
+[improve](../improve/SKILL.md) for failing evals and hardening, and
+[deploy-platform](../deploy-platform/SKILL.md) for deployment.

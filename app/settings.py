@@ -13,6 +13,6 @@ def default_model() -> OpenAIResponses:
     return OpenAIResponses(id="gpt-6.1-sol")
 
 
-def manager_model() -> OpenAIResponses:
-    """Model for OS Manager and Company Product Manager."""
+def super_agent_model() -> OpenAIResponses:
+    """Model for Super Agent and Company work."""
     return OpenAIResponses(id="gpt-6.1-sol")

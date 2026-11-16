@@ -1,4 +1,4 @@
-"""Reach OS Manager through MCP and, when configured, Slack."""
+"""Reach Super Agent through MCP and, when configured, Slack."""
 
 from os import getenv
 
@@ -14,16 +14,16 @@ def mcp_auth(agentos_url: str) -> AgentOSBuiltinAuth | None:
 
 
 def attach_interfaces(agent_os: AgentOS) -> None:
-    """Publish OS Manager alongside the built-in MCP tools; optionally attach Slack."""
+    """Publish Super Agent alongside the built-in MCP tools; optionally attach Slack."""
     manager = agent_os.manager
     if manager is None:
-        raise RuntimeError("OS Manager must be configured before attaching interfaces.")
+        raise RuntimeError("Super Agent must be configured before attaching interfaces.")
     agent_os.mcp = MCPConfig(
         tools=[
             manager.as_tool(
-                name="os_manager",
-                title="OS Manager",
-                description="Talk to OS Manager of this AgentOS. Pass session_id back to continue the conversation.",
+                name="super_agent",
+                title="Super Agent",
+                description="Talk to Super Agent on this AgentOS.",
             )
         ],
         default_tools=True,

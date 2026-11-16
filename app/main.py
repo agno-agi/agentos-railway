@@ -14,7 +14,7 @@ from agno.os import AgentOS, CompanyConfig, OSManager
 from app.company import products
 from app.interfaces import attach_interfaces, mcp_auth
 from app.registry import registry, shared_knowledge, shared_learning
-from app.settings import manager_model
+from app.settings import super_agent_model
 from db import get_postgres_db
 
 runtime_env = getenv("RUNTIME_ENV", "prd")
@@ -34,10 +34,13 @@ agent_os = AgentOS(
     authorization=runtime_env != "dev",
     manager=OSManager(
         root=agentos_root,
-        model=manager_model(),
+        model=super_agent_model(),
         learning=shared_learning,
     ),
-    company=CompanyConfig(products=products, model=manager_model()),
+    company=CompanyConfig(
+        products=products,
+        model=super_agent_model(),
+    ),
     queue=QueueConfig(durable=True, db=db),
     knowledge=[shared_knowledge],
     agents=[

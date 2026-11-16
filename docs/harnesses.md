@@ -48,14 +48,14 @@ changing it. For private repositories, configure [GitHub access](#publish-change
 The repository setting only applies when sandboxes are enabled.
 
 Complete the backend setup below before deploying this change. Compose selects
-`SANDBOX_PROVIDER=docker`; select `agentcore` in your hosted deployment settings.
-See your repository's [deployment instructions](../README.md#deploy-in-production).
+`SANDBOX_PROVIDER=docker`; the Render Blueprint selects `agentcore`.
 `RUNTIME_ENV` still controls JWT authorization independently.
 
 ### Local Docker sandbox
 
-Configure `.env` using the [local setup instructions](../README.md#run-locally).
-From the repository root, build the sandbox image and start the platform:
+Configure `.env` using the [local setup instructions](../README.md#or-run-it-yourself).
+Uncomment the `/var/run/docker.sock` mount under `agentos-api.volumes` in
+`compose.yaml`. From the repository root, build the sandbox image and start the platform:
 
 ```sh
 docker build --target sandbox --load -t agno-sandbox:local .
@@ -67,16 +67,17 @@ The first command builds and loads the Dockerfile's `sandbox` stage. The API run
 Compose and starts separate containers from that image for coding sessions.
 Rebuild the sandbox image when its dependencies or Dockerfile change.
 
-Compose gives the API access to your Docker daemon through its socket. Use this for
+The enabled mount gives the API access to your Docker daemon through its socket. Use this for
 trusted local development; coding sandboxes receive no socket. Checkpoints persist
-in the project's `tmp/checkpoints` folder while those files remain.
+in the project's `tmp/checkpoints` folder while those files remain. Comment the mount
+out again when disabling Docker sandboxes and run `docker compose up -d agentos-api`.
 
 Model credentials are forwarded automatically. For private repositories and publishing,
 configure [GitHub access](#publish-changes-to-github).
 
 ### AWS AgentCore sandbox
 
-Your API stays on its current host. AgentCore runs coding sessions, and S3 stores
+Your API stays on its current host (Render). AgentCore runs coding sessions, and S3 stores
 their checkpoints. Run [scripts/aws.py](../scripts/aws.py) locally to set this up.
 It creates the runtime, image repository, checkpoint bucket, and required IAM identities.
 
@@ -166,11 +167,11 @@ policy instead; the runtime's execution role is a separate identity.
 
 #### 4. Connect and deploy
 
-In your API host's environment settings using your deployment instructions, add:
+In your API host's environment settings (**Environment** on Render), add:
 
 | Variable | Value |
 | --- | --- |
-| `SANDBOX_PROVIDER` | `agentcore`. |
+| `SANDBOX_PROVIDER` | `agentcore` (already set by the Render Blueprint). |
 | `AWS_ACCESS_KEY_ID` | The application user's access key ID. |
 | `AWS_SECRET_ACCESS_KEY` | Its secret access key. |
 | `AWS_REGION` | The region printed by the script. |
@@ -184,8 +185,8 @@ Agno forwards model credentials to the sandbox. For IAM user keys, remove stale
 
 Confirm sandboxes and the repository are configured in `app/sandbox.py`, and the
 coding agents are enabled in `app/main.py`. Push any code changes to your deployment
-branch, then save the environment settings and redeploy using your host's
-deployment instructions. No Docker daemon or persistent API disk is needed for AgentCore.
+branch, then save the environment settings and redeploy. On Render, choose
+**Save, rebuild, and deploy**. No Docker daemon or persistent API disk is needed there.
 
 #### 5. Try a coding agent
 
@@ -340,7 +341,7 @@ def create_repository_agents(slug: str, url: str, branch: str = "main"):
             sandbox=sandbox,
             repository=repository,
             system_prompt={"type": "preset", "preset": "claude_code"},
-            permission_mode="acceptEdits",
+            permission_mode="auto",
         ),
         CodexAgent(
             id=f"{slug}-codex",
@@ -350,6 +351,7 @@ def create_repository_agents(slug: str, url: str, branch: str = "main"):
             sandbox=sandbox,
             repository=repository,
             sandbox_mode="workspace-write",
+            approval_mode="auto_review",
         ),
     ]
 ```

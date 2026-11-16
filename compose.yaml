@@ -24,13 +24,14 @@ services:
     # --reload-dir limits the watcher to dirs that contain runtime code.
     command: >
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-      --reload-dir agents --reload-dir app --reload-dir db --reload-dir evals
+      --reload-dir agents --reload-dir app --reload-dir db
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Uncomment only when setting up local Docker sandboxes (docs/harnesses.md).
+      # - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - path: .env
         required: false
