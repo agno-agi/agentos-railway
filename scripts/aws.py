@@ -125,7 +125,7 @@ class SandboxDeployment:
 
     def __init__(self) -> None:
         session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
-        self.profile = session.profile_name or "default credential chain"
+        self.profile = AWS_PROFILE or "default credential chain"
         self.region = session.region_name or "us-east-1"
         self.partition = session.get_partition_for_region(self.region)
         self.account = session.client("sts", region_name=self.region).get_caller_identity()["Account"]
@@ -496,6 +496,11 @@ Resources:
     Properties:
       RepositoryName: !Ref RepositoryName
       ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules": [{"rulePriority": 1, "description": "Keep the 10 newest images",
+            "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10},
+            "action": {"type": "expire"}}]}
       EncryptionConfiguration:
         EncryptionType: AES256
       ImageScanningConfiguration:
