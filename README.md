@@ -116,22 +116,29 @@ updates. If you use sandboxes, also set your repository URL and branch in the
 
 Ask your coding agent to follow
 [/deploy-platform](.agents/skills/deploy-platform/SKILL.md). This template targets Railway.
-You’ll need Railway CLI (`railway login`), Docker and OpenSSL.
+You’ll need Railway CLI 5.49.0 or newer (`railway login`) and the project venv from
+`./scripts/venv_setup.sh`.
 
-Set `RAILWAY_PROJECT_NAME` if you need a specific project name. The scripts provision an API service and PostgreSQL, and link this checkout to the project.
+Select the intended workspace with `--workspace` or `RAILWAY_WORKSPACE`. The scripts
+provision an API service and PostgreSQL, and link this checkout to the project.
+Use sync/redeploy for an already-linked project; do not provision another one.
 
 Create `.env.production` from [example.env](example.env) if absent. Set `OPENAI_API_KEY`
 and any other model credentials you need. Keep `RUNTIME_ENV=prd` or leave it unset.
 
 ```sh
-./scripts/railway/up.sh
+./scripts/railway/up.sh --workspace YOUR_WORKSPACE
 ```
 
-When setup provides the HTTPS URL, connect it as a **Live** connection at
-[os.agno.com](https://os.agno.com). Enable JWT authorization in **Settings → OS Security**
-and supply the public verification key. If the prompt was skipped, save the full quoted
-multiline `JWT_VERIFICATION_KEY` in `.env.production`, then run
-`./scripts/railway/env-sync.sh`. The API requires the key to start in production.
+Without a verification key, setup saves the public URL and returns exit code 2 with
+**Provisioned; the API has not been deployed**. Connect that URL as a **Live** connection
+at [os.agno.com](https://os.agno.com), enable JWT authorization in **Settings → OS Security**,
+and save the full quoted multiline `JWT_VERIFICATION_KEY` in `.env.production`. Finish with:
+
+```sh
+./scripts/railway/env-sync.sh .env.production --no-deploy
+./scripts/railway/redeploy.sh
+```
 
 Railway reads project settings through its CLI; confirm the linked project before updates.
 Use `./scripts/railway/redeploy.sh` for code and `./scripts/railway/env-sync.sh` for settings.
